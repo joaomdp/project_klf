@@ -1,0 +1,4 @@
+api/
+api/**
+node_modules/
+dist/

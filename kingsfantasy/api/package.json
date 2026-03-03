@@ -1,0 +1,57 @@
+{
+  "name": "kings-lendas-fantasy-api",
+  "version": "1.0.0",
+  "description": "Backend API for Kings Lendas Fantasy",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "echo \"Tests not implemented yet\" && exit 0",
+    "db:diagnose": "ts-node src/scripts/1-diagnose-database.ts",
+    "db:rebalance": "ts-node src/scripts/2-rebalance-prices.ts",
+    "db:fix-urls": "ts-node src/scripts/3-fix-image-urls.ts",
+    "db:update-champions": "ts-node src/scripts/4-update-champions.ts",
+    "db:update-configs": "ts-node src/scripts/5-update-configs.ts",
+    "db:seed-rounds": "ts-node src/scripts/6-seed-more-rounds.ts",
+    "db:add-analyst-rating": "ts-node src/scripts/7-add-analyst-rating.ts",
+    "db:validate": "ts-node src/scripts/8-validate-all.ts",
+    "db:seed-all": "ts-node src/scripts/9-seed-all.ts",
+    "test-riot-api": "ts-node scripts/test-riot-api.ts",
+    "check-riot-account": "ts-node scripts/check-riot-account.ts",
+    "import-round": "ts-node scripts/auto-import-idl-round.ts",
+    "import-season": "ts-node scripts/import-season.ts",
+    "list-db": "ts-node scripts/list-database-state.ts",
+    "verify-mappings": "ts-node scripts/verify-mappings.ts",
+    "find-tournament-matches": "ts-node scripts/find-tournament-matches.ts",
+    "describe-tables": "ts-node scripts/describe-tables.ts"
+  },
+  "keywords": [
+    "fantasy",
+    "lol",
+    "cblol",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "axios": "^1.13.4",
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "fast-levenshtein": "^3.0.0",
+    "node-cron": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/fast-levenshtein": "^0.0.4",
+    "@types/node": "^20.10.6",
+    "@types/node-cron": "^3.0.11",
+    "nodemon": "^3.0.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

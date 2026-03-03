@@ -1,0 +1,20 @@
+# Template CSV - Partidas
+# Como preencher:
+#   - data: formato YYYY-MM-DD HH:MM (exemplo: 2025-06-28 18:00)
+#   - time1: nome EXATO do time 1 (exemplo: Oreiudos Esports)
+#   - time2: nome EXATO do time 2 (exemplo: Gen GG)
+#   - placar1: número de vitórias do time 1 (exemplo: 2)
+#   - placar2: número de vitórias do time 2 (exemplo: 1)
+#   - vencedor: nome EXATO do time vencedor (exemplo: Oreiudos Esports)
+#
+# Times disponíveis:
+#   - Oreiudos Esports
+#   - Gen GG
+#   - G12 Esports
+#   - Tepei Assassins
+#
+# IMPORTANTE: Use vírgula (,) como separador, não ponto-e-vírgula (;)
+
+data,time1,time2,placar1,placar2,vencedor
+2025-06-28 18:00,Oreiudos Esports,Gen GG,2,1,Oreiudos Esports
+2025-06-29 18:00,G12 Esports,Tepei Assassins,0,2,Tepei Assassins

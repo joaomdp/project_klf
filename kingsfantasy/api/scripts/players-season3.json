@@ -1,0 +1,28 @@
+[
+  {"Link": "Yang", "Team": "Oreiudos Esports", "Role": "Top"},
+  {"Link": "Pijack", "Team": "Oreiudos Esports", "Role": "Jungle"},
+  {"Link": "Kennzy", "Team": "Oreiudos Esports", "Role": "Mid"},
+  {"Link": "anato", "Team": "Oreiudos Esports", "Role": "ADC"},
+  {"Link": "Brucer", "Team": "Oreiudos Esports", "Role": "Support"},
+  {"Link": "micaO", "Team": "Oreiudos Esports", "Role": "ADC"},
+  {"Link": "Juliera", "Team": "Oreiudos Esports", "Role": "Support"},
+  {"Link": "Shoiti", "Team": "Oreiudos Esports", "Role": "Support"},
+  
+  {"Link": "Pijack", "Team": "Gen GG", "Role": "Top"},
+  {"Link": "Ranger", "Team": "Gen GG", "Role": "Jungle"},
+  {"Link": "Takeshi", "Team": "Gen GG", "Role": "Mid"},
+  {"Link": "esA", "Team": "Gen GG", "Role": "ADC"},
+  {"Link": "Loop", "Team": "Gen GG", "Role": "Support"},
+  
+  {"Link": "Ayel", "Team": "G12 Esports", "Role": "Top"},
+  {"Link": "Minerva", "Team": "G12 Esports", "Role": "Jungle"},
+  {"Link": "Kina", "Team": "G12 Esports", "Role": "Mid"},
+  {"Link": "Buerinho", "Team": "G12 Esports", "Role": "ADC"},
+  {"Link": "Elkinho", "Team": "G12 Esports", "Role": "Support"},
+  
+  {"Link": "Tay", "Team": "Tepei Assassins", "Role": "Top"},
+  {"Link": "Accez", "Team": "Tepei Assassins", "Role": "Jungle"},
+  {"Link": "Slezzy", "Team": "Tepei Assassins", "Role": "Mid"},
+  {"Link": "Clovao", "Team": "Tepei Assassins", "Role": "ADC"},
+  {"Link": "Manel", "Team": "Tepei Assassins", "Role": "Support"}
+]

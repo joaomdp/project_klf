@@ -1,0 +1,17 @@
+# Dependencies
+**/node_modules/
+
+# Build output
+**/dist/
+**/build/
+
+# Environment files
+**/.env
+**/.env.*
+
+# Local git backups
+**/.git.bak/
+
+# Windows special files
+nul
+C

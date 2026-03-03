@@ -1,0 +1,30 @@
+[
+  {
+    "id": 4,
+    "round_id": 16,
+    "team_a_id": "7323c60f-ac08-4c45-9c2e-a71b524bcbb6",
+    "team_b_id": "f07836f1-3330-49d3-bf3f-1434003068e9",
+    "scheduled_time": "2025-06-28T21:00:00+00:00",
+    "winner_id": "7323c60f-ac08-4c45-9c2e-a71b524bcbb6",
+    "status": "completed",
+    "game_duration_minutes": null,
+    "vod_url": null,
+    "leaguepedia_url": null,
+    "created_at": "2026-02-18T21:56:08.806687+00:00",
+    "updated_at": "2026-02-18T21:56:08.806687+00:00"
+  },
+  {
+    "id": 5,
+    "round_id": 16,
+    "team_a_id": "af49550b-a083-477b-99e5-513b6aeda00e",
+    "team_b_id": "a59cd445-c281-4cf6-819a-ade10a89da2f",
+    "scheduled_time": "2025-06-29T21:00:00+00:00",
+    "winner_id": "a59cd445-c281-4cf6-819a-ade10a89da2f",
+    "status": "completed",
+    "game_duration_minutes": null,
+    "vod_url": null,
+    "leaguepedia_url": null,
+    "created_at": "2026-02-18T21:56:08.881036+00:00",
+    "updated_at": "2026-02-18T21:56:08.881036+00:00"
+  }
+]

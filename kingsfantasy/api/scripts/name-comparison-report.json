@@ -1,0 +1,264 @@
+{
+  "generated_at": "2026-02-18T17:01:30.248Z",
+  "teams": {
+    "total_leaguepedia": 4,
+    "total_db": 18,
+    "exact_matches": 4,
+    "fuzzy_matches": 0,
+    "unmatched_leaguepedia": [],
+    "unmatched_db": [
+      "LOUD",
+      "paiN Gaming",
+      "FURIA Esports",
+      "Fluxo",
+      "RED Canids",
+      "INTZ",
+      "Vivo Keyd",
+      "KaBuM",
+      "ÉanDG",
+      "Vôs Grandes",
+      "paiNtriotas",
+      "100Vices",
+      "FONatic",
+      "Karmine Cospe"
+    ]
+  },
+  "players": {
+    "total_leaguepedia": 23,
+    "total_db": 50,
+    "exact_matches": 14,
+    "fuzzy_matches": 0,
+    "unmatched": 9,
+    "match_rate": 61
+  },
+  "team_mappings": [
+    {
+      "leaguepedia_name": "Oreiudos Esports",
+      "db_name": "Oreiudos Esports",
+      "db_id": "7323c60f-ac08-4c45-9c2e-a71b524bcbb6",
+      "confidence": 1
+    },
+    {
+      "leaguepedia_name": "Gen GG",
+      "db_name": "Gen GG",
+      "db_id": "f07836f1-3330-49d3-bf3f-1434003068e9",
+      "confidence": 1
+    },
+    {
+      "leaguepedia_name": "G12 Esports",
+      "db_name": "G12 Esports",
+      "db_id": "af49550b-a083-477b-99e5-513b6aeda00e",
+      "confidence": 1
+    },
+    {
+      "leaguepedia_name": "Tepei Assassins",
+      "db_name": "Tepei Assassins",
+      "db_id": "a59cd445-c281-4cf6-819a-ade10a89da2f",
+      "confidence": 1
+    }
+  ],
+  "player_mappings": [
+    {
+      "leaguepedia_name": "Yang",
+      "leaguepedia_team": "Oreiudos Esports",
+      "leaguepedia_role": "Top",
+      "db_name": "Yang",
+      "db_id": "c2ea9186-c9a4-4981-9e51-55614547c763",
+      "db_team": "Karmine Cospe",
+      "db_role": "TOP",
+      "confidence": 0.95,
+      "match_type": "exact"
+    },
+    {
+      "leaguepedia_name": "Pijack",
+      "leaguepedia_team": "Oreiudos Esports",
+      "leaguepedia_role": "Jungle",
+      "db_name": "Pijack",
+      "db_id": "2fcc9516-e1bf-460d-85de-08be85234e8e",
+      "db_team": "100Vices",
+      "db_role": "TOP",
+      "confidence": 0.95,
+      "match_type": "exact"
+    },
+    {
+      "leaguepedia_name": "Brucer",
+      "leaguepedia_team": "Oreiudos Esports",
+      "leaguepedia_role": "Support",
+      "db_name": "Brucer",
+      "db_id": "be6877d5-db17-4536-83e4-0cb848342115",
+      "db_team": "Oreiudos Esports",
+      "db_role": "MID",
+      "confidence": 0.95,
+      "match_type": "exact"
+    },
+    {
+      "leaguepedia_name": "micaO",
+      "leaguepedia_team": "Oreiudos Esports",
+      "leaguepedia_role": "ADC",
+      "db_name": "micaO",
+      "db_id": "92e0284c-0fbd-4864-bf30-19a0c313d489",
+      "db_team": "paiNtriotas",
+      "db_role": "ADC",
+      "confidence": 0.95,
+      "match_type": "exact"
+    },
+    {
+      "leaguepedia_name": "Juliera",
+      "leaguepedia_team": "Oreiudos Esports",
+      "leaguepedia_role": "Support",
+      "db_name": "Juliera",
+      "db_id": "824b7b6d-93b1-4999-833c-a6e1aa446a8e",
+      "db_team": "Karmine Cospe",
+      "db_role": "ADC",
+      "confidence": 0.95,
+      "match_type": "exact"
+    },
+    {
+      "leaguepedia_name": "Shoiti",
+      "leaguepedia_team": "Oreiudos Esports",
+      "leaguepedia_role": "Support",
+      "db_name": "Shoiti",
+      "db_id": "741f8cf8-1324-44b9-a4fd-7da56e4e0674",
+      "db_team": "Oreiudos Esports",
+      "db_role": "SUPPORT",
+      "confidence": 1,
+      "match_type": "exact"
+    },
+    {
+      "leaguepedia_name": "Pijack",
+      "leaguepedia_team": "Gen GG",
+      "leaguepedia_role": "Top",
+      "db_name": "Pijack",
+      "db_id": "2fcc9516-e1bf-460d-85de-08be85234e8e",
+      "db_team": "100Vices",
+      "db_role": "TOP",
+      "confidence": 0.95,
+      "match_type": "exact"
+    },
+    {
+      "leaguepedia_name": "Takeshi",
+      "leaguepedia_team": "Gen GG",
+      "leaguepedia_role": "Mid",
+      "db_name": "Takeshi",
+      "db_id": "60dbc96b-cfb5-4b7e-bb1f-fafcc69d6bac",
+      "db_team": "100Vices",
+      "db_role": "MID",
+      "confidence": 0.95,
+      "match_type": "exact"
+    },
+    {
+      "leaguepedia_name": "esA",
+      "leaguepedia_team": "Gen GG",
+      "leaguepedia_role": "ADC",
+      "db_name": "esA",
+      "db_id": "99e6e7e3-5c40-4e4d-98ed-835719118faf",
+      "db_team": "Gen GG",
+      "db_role": "SUPPORT",
+      "confidence": 0.95,
+      "match_type": "exact"
+    },
+    {
+      "leaguepedia_name": "Ayel",
+      "leaguepedia_team": "G12 Esports",
+      "leaguepedia_role": "Top",
+      "db_name": "Ayel",
+      "db_id": "283d7bdc-5fd3-4d8d-ac80-26874f8c1b3d",
+      "db_team": "Gen GG",
+      "db_role": "TOP",
+      "confidence": 0.95,
+      "match_type": "exact"
+    },
+    {
+      "leaguepedia_name": "Minerva",
+      "leaguepedia_team": "G12 Esports",
+      "leaguepedia_role": "Jungle",
+      "db_name": "Minerva",
+      "db_id": "2a8c5907-098b-4d59-87b3-f4380504d579",
+      "db_team": "G12 Esports",
+      "db_role": "JUNGLE",
+      "confidence": 1,
+      "match_type": "exact"
+    },
+    {
+      "leaguepedia_name": "Kina",
+      "leaguepedia_team": "G12 Esports",
+      "leaguepedia_role": "Mid",
+      "db_name": "Kina",
+      "db_id": "cd5a293b-818f-4adb-a700-9b389af3528a",
+      "db_team": "Tepei Assassins",
+      "db_role": "MID",
+      "confidence": 0.95,
+      "match_type": "exact"
+    },
+    {
+      "leaguepedia_name": "Tay",
+      "leaguepedia_team": "Tepei Assassins",
+      "leaguepedia_role": "Top",
+      "db_name": "Tay",
+      "db_id": "d3f3e4f2-e534-41ee-8312-61257fed5564",
+      "db_team": "Tepei Assassins",
+      "db_role": "TOP",
+      "confidence": 1,
+      "match_type": "exact"
+    },
+    {
+      "leaguepedia_name": "Accez",
+      "leaguepedia_team": "Tepei Assassins",
+      "leaguepedia_role": "Jungle",
+      "db_name": "Accez",
+      "db_id": "c3ce663e-0ebf-4339-a66c-01932c2b8802",
+      "db_team": "paiNtriotas",
+      "db_role": "JUNGLE",
+      "confidence": 0.95,
+      "match_type": "exact"
+    }
+  ],
+  "unmatched_teams": [],
+  "unmatched_players": [
+    {
+      "Link": "Kennzy",
+      "Team": "Oreiudos Esports",
+      "Role": "Mid"
+    },
+    {
+      "Link": "anato",
+      "Team": "Oreiudos Esports",
+      "Role": "ADC"
+    },
+    {
+      "Link": "Ranger",
+      "Team": "Gen GG",
+      "Role": "Jungle"
+    },
+    {
+      "Link": "Loop",
+      "Team": "Gen GG",
+      "Role": "Support"
+    },
+    {
+      "Link": "Buerinho",
+      "Team": "G12 Esports",
+      "Role": "ADC"
+    },
+    {
+      "Link": "Elkinho",
+      "Team": "G12 Esports",
+      "Role": "Support"
+    },
+    {
+      "Link": "Slezzy",
+      "Team": "Tepei Assassins",
+      "Role": "Mid"
+    },
+    {
+      "Link": "Clovao",
+      "Team": "Tepei Assassins",
+      "Role": "ADC"
+    },
+    {
+      "Link": "Manel",
+      "Team": "Tepei Assassins",
+      "Role": "Support"
+    }
+  ]
+}

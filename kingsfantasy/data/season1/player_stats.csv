@@ -1,0 +1,39 @@
+# Template CSV - Estatísticas de Jogadores
+# Como preencher:
+#   - partida_id: deixe em branco, será preenchido automaticamente pelo sistema
+#   - data: formato YYYY-MM-DD HH:MM (deve corresponder a uma partida existente)
+#   - time1: nome do primeiro time da partida
+#   - time2: nome do segundo time da partida
+#   - jogador: nome EXATO do jogador (exemplo: Yang)
+#   - campeao: nome do campeão em inglês (exemplo: Aatrox, LeeSin, Kai'Sa)
+#   - kills: número de abates
+#   - deaths: número de mortes
+#   - assists: número de assistências
+#   - cs: farm total (minions + jungle)
+#   - first_blood: 1 se pegou first blood, 0 se não
+#   - triple_kill: 1 se fez triple kill, 0 se não
+#   - quadra_kill: 1 se fez quadra kill, 0 se não
+#   - penta_kill: 1 se fez penta kill, 0 se não
+#
+# IMPORTANTE: 
+#   - Preencha 10 linhas por partida (5 jogadores de cada time)
+#   - O vencedor da partida será detectado automaticamente
+#   - Use vírgula (,) como separador
+#
+# Jogadores disponíveis:
+#   Oreiudos Esports: Yang, Pijack, Kennzy, anato, Brucer, micaO, Juliera, Shoiti
+#   Gen GG: Pijack, Ranger, Takeshi, esA, Loop
+#   G12 Esports: Ayel, Minerva, Kina, Buerinho, Elkinho
+#   Tepei Assassins: Tay, Accez, Slezzy, Clovao, Manel
+
+partida_id,data,time1,time2,jogador,campeao,kills,deaths,assists,cs,first_blood,triple_kill,quadra_kill,penta_kill
+,2025-06-28 18:00,Oreiudos Esports,Gen GG,Yang,Aatrox,5,2,8,250,1,0,0,0
+,2025-06-28 18:00,Oreiudos Esports,Gen GG,Pijack,LeeSin,8,3,12,180,0,1,0,0
+,2025-06-28 18:00,Oreiudos Esports,Gen GG,Kennzy,Orianna,3,1,15,320,0,0,0,0
+,2025-06-28 18:00,Oreiudos Esports,Gen GG,anato,Jinx,10,2,6,380,0,0,1,0
+,2025-06-28 18:00,Oreiudos Esports,Gen GG,Brucer,Thresh,1,3,20,45,0,0,0,0
+,2025-06-28 18:00,Oreiudos Esports,Gen GG,Pijack,Gnar,2,5,4,280,0,0,0,0
+,2025-06-28 18:00,Oreiudos Esports,Gen GG,Ranger,Viego,4,6,5,160,0,0,0,0
+,2025-06-28 18:00,Oreiudos Esports,Gen GG,Takeshi,Azir,6,4,7,310,0,0,0,0
+,2025-06-28 18:00,Oreiudos Esports,Gen GG,esA,Aphelios,7,5,8,360,0,0,0,0
+,2025-06-28 18:00,Oreiudos Esports,Gen GG,Loop,Nautilus,0,8,12,40,0,0,0,0

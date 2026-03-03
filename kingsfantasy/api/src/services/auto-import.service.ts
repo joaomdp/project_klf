@@ -1,0 +1,334 @@
+import { supabase } from '../config/supabase';
+import { leaguepediaService } from './leaguepedia.service';
+import { mapperService } from './mapper.service';
+import { scoringService } from './scoring.service';
+
+/**
+ * AUTO IMPORT SERVICE
+ * 
+ * Orchestrates the automatic import of match data from Leaguepedia
+ * into the Kings Fantasy database.
+ * 
+ * Flow:
+ * 1. Fetch matches from Leaguepedia for a specific round/week
+ * 2. Map player/champion/team names to database IDs
+ * 3. Create match records and player performances
+ * 4. Calculate fantasy points for each performance
+ * 5. Mark round as completed
+ */
+
+interface ImportRoundResult {
+  success: boolean;
+  roundId: number;
+  matchesImported: number;
+  performancesImported: number;
+  errors: string[];
+}
+
+interface ImportMatchResult {
+  success: boolean;
+  matchId?: number;
+  performancesCreated?: number;
+  error?: string;
+}
+
+class AutoImportService {
+  /**
+   * Import all matches for a specific round/week
+   * 
+   * @param overviewPage - Leaguepedia tournament OverviewPage (e.g., "IDL Kings Lendas Season 3")
+   * @param roundNumber - Round number (1-7 for regular season)
+   * @returns ImportRoundResult with stats and errors
+   */
+  async importRound(overviewPage: string, roundNumber: number): Promise<ImportRoundResult> {
+    const result: ImportRoundResult = {
+      success: false,
+      roundId: 0,
+      matchesImported: 0,
+      performancesImported: 0,
+      errors: []
+    };
+
+    try {
+      console.log(`🚀 Starting import for ${overviewPage}, Round ${roundNumber}`);
+
+      // Initialize mapper caches
+      await mapperService.initializeCaches();
+      console.log('✅ Mapper caches initialized');
+
+      // Fetch matches from Leaguepedia
+      const lpMatches = await leaguepediaService.getMatches(overviewPage, roundNumber);
+      console.log(`📥 Fetched ${lpMatches.length} matches from Leaguepedia`);
+
+      if (lpMatches.length === 0) {
+        result.errors.push(`No matches found for ${overviewPage} Round ${roundNumber}`);
+        return result;
+      }
+
+      // Determine season from OverviewPage
+      const season = this.extractSeasonFromOverviewPage(overviewPage);
+
+      // Find or create the round in database
+      const round = await this.findOrCreateRound(season, roundNumber);
+      result.roundId = round.id;
+      console.log(`📋 Using round ID: ${round.id}`);
+
+      // Import each match
+      for (const lpMatch of lpMatches) {
+        try {
+          const matchResult = await this.importMatch(round.id, lpMatch);
+          
+          if (matchResult.success) {
+            result.matchesImported++;
+            result.performancesImported += matchResult.performancesCreated || 0;
+            console.log(`✅ Imported match: ${lpMatch.Team1} vs ${lpMatch.Team2} (${matchResult.performancesCreated} performances)`);
+          } else {
+            result.errors.push(`Match ${lpMatch.Team1} vs ${lpMatch.Team2}: ${matchResult.error}`);
+            console.error(`❌ Failed to import match: ${matchResult.error}`);
+          }
+        } catch (error: any) {
+          result.errors.push(`Match ${lpMatch.Team1} vs ${lpMatch.Team2}: ${error.message}`);
+          console.error(`❌ Error importing match:`, error);
+        }
+      }
+
+      // Mark round as completed if all matches imported successfully
+      if (result.matchesImported === lpMatches.length) {
+        await this.markRoundAsCompleted(round.id);
+        result.success = true;
+        console.log(`✅ Round ${roundNumber} marked as completed`);
+      } else {
+        result.errors.push(`Only ${result.matchesImported}/${lpMatches.length} matches imported successfully`);
+        console.warn(`⚠️ Partial import: ${result.matchesImported}/${lpMatches.length} matches`);
+      }
+
+      console.log(`🎉 Import completed: ${result.matchesImported} matches, ${result.performancesImported} performances`);
+      return result;
+
+    } catch (error: any) {
+      result.errors.push(`Fatal error: ${error.message}`);
+      console.error('❌ Fatal error during import:', error);
+      return result;
+    }
+  }
+
+  /**
+   * Import a single match and its player performances
+   */
+  private async importMatch(roundId: number, lpMatch: any): Promise<ImportMatchResult> {
+    try {
+      // Map team IDs
+      const team1Id = mapperService.getTeamId(lpMatch.Team1);
+      const team2Id = mapperService.getTeamId(lpMatch.Team2);
+
+      if (!team1Id || !team2Id) {
+        return {
+          success: false,
+          error: `Team mapping failed: ${lpMatch.Team1} (${team1Id}) vs ${lpMatch.Team2} (${team2Id})`
+        };
+      }
+
+      // Determine winner
+      const winnerId = lpMatch.Winner === '1' ? team1Id : team2Id;
+
+      // Parse date (format: "2024-01-28 19:00:00")
+      const matchDate = new Date(lpMatch.DateTime_UTC);
+
+      // Create match record
+      const { data: match, error: matchError } = await supabase
+        .from('matches')
+        .insert({
+          round_id: roundId,
+          team_a_id: team1Id,
+          team_b_id: team2Id,
+          winner_id: winnerId,
+          scheduled_time: matchDate.toISOString(),
+          status: 'completed'
+        })
+        .select()
+        .single();
+
+      if (matchError || !match) {
+        return {
+          success: false,
+          error: `Failed to create match: ${matchError?.message}`
+        };
+      }
+
+      // Fetch player stats from Leaguepedia
+      const playerStats = await leaguepediaService.getPlayerStats(lpMatch.GameId);
+
+      if (playerStats.length === 0) {
+        return {
+          success: false,
+          error: `No player stats found for GameId: ${lpMatch.GameId}`
+        };
+      }
+
+      // Import each player performance
+      let performancesCreated = 0;
+      for (const stat of playerStats) {
+        try {
+          // Map performance data
+          const performance = mapperService.mapPlayerPerformance(stat, match.id, winnerId);
+
+          if (!performance) {
+            console.warn(`⚠️ Could not map performance for player: ${stat.Link}`);
+            continue;
+          }
+
+          // Calculate base points
+          const basePoints = await scoringService.calculateBasePoints({
+            kills: performance.kills,
+            deaths: performance.deaths,
+            assists: performance.assists,
+            cs: performance.cs
+          });
+
+          // Create performance record
+          const { error: perfError } = await supabase
+            .from('player_performances')
+            .insert({
+              ...performance,
+              fantasy_points: basePoints // Will be recalculated later with buffs
+            });
+
+          if (perfError) {
+            console.error(`❌ Failed to create performance for ${stat.Link}:`, perfError);
+            continue;
+          }
+
+          performancesCreated++;
+        } catch (error: any) {
+          console.error(`❌ Error creating performance for ${stat.Link}:`, error);
+        }
+      }
+
+      return {
+        success: true,
+        matchId: match.id,
+        performancesCreated
+      };
+
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Extract season number from OverviewPage
+   */
+  private extractSeasonFromOverviewPage(overviewPage: string): number {
+    // "IDL Kings Lendas" -> Season 1
+    // "IDL Kings Lendas Season 2" -> Season 2
+    // "IDL Kings Lendas Season 3" -> Season 3
+    const match = overviewPage.match(/Season (\d+)/i);
+    return match ? parseInt(match[1]) : 1;
+  }
+
+  /**
+   * Find or create a round in the database
+   */
+  private async findOrCreateRound(season: number, roundNumber: number) {
+    // Check if round already exists
+    const { data: existingRound } = await supabase
+      .from('rounds')
+      .select('*')
+      .eq('season', season)
+      .eq('round_number', roundNumber)
+      .single();
+
+    if (existingRound) {
+      return existingRound;
+    }
+
+    // Create new round
+    const { data: newRound, error } = await supabase
+      .from('rounds')
+      .insert({
+        season,
+        round_number: roundNumber,
+        start_date: new Date().toISOString(),
+        end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days later
+        market_close_time: new Date().toISOString(), // Close market at start
+        status: 'upcoming'
+      })
+      .select()
+      .single();
+
+    if (error || !newRound) {
+      throw new Error(`Failed to create round: ${error?.message}`);
+    }
+
+    return newRound;
+  }
+
+  /**
+   * Mark a round as completed
+   */
+  private async markRoundAsCompleted(roundId: number) {
+    const { error } = await supabase
+      .from('rounds')
+      .update({ status: 'completed' })
+      .eq('id', roundId);
+
+    if (error) {
+      throw new Error(`Failed to mark round as completed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get the season's OverviewPage for Leaguepedia
+   */
+  getOverviewPage(season: number): string {
+    const overviewPages: Record<number, string> = {
+      1: 'IDL Kings Lendas',
+      2: 'IDL Kings Lendas Season 2',
+      3: 'IDL Kings Lendas Season 3',
+      4: 'IDL Kings Lendas Season 4' // Will exist when Season 4 starts
+    };
+
+    return overviewPages[season] || overviewPages[1];
+  }
+
+  /**
+   * Get available weeks/rounds for a season
+   */
+  async getAvailableRounds(season: number): Promise<number[]> {
+    const overviewPage = this.getOverviewPage(season);
+    const weeks = await leaguepediaService.getAvailableWeeks(overviewPage);
+    return weeks;
+  }
+
+  /**
+   * Get import status for a round
+   */
+  async getRoundImportStatus(season: number, roundNumber: number) {
+    const { data: round } = await supabase
+      .from('rounds')
+      .select('*, matches(count)')
+      .eq('season', season)
+      .eq('round_number', roundNumber)
+      .single();
+
+    if (!round) {
+      return {
+        exists: false,
+        completed: false,
+        matchesCount: 0
+      };
+    }
+
+    return {
+      exists: true,
+      completed: round.completed,
+      matchesCount: round.matches?.[0]?.count || 0,
+      roundId: round.id
+    };
+  }
+}
+
+export const autoImportService = new AutoImportService();

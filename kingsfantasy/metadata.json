@@ -1,0 +1,8 @@
+{
+  "name": "Kings Lendas Fantasy",
+  "description": "O fantasy game oficial da liga amadora Kings Lendas. Escale seus pro-players favoritos, gerencie seu orçamento e dispute o topo do ranking com seus amigos em uma experiência imersiva de League of Legends.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

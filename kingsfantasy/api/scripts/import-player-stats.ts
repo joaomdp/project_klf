@@ -235,12 +235,7 @@ async function importPlayerStats(csvPath: string) {
         kills,
         deaths,
         assists,
-        cs,
-        first_blood: firstBlood,
-        triple_kill: tripleKill,
-        quadra_kill: quadraKill,
-        penta_kill: pentaKill,
-        is_winner: isWinner
+        cs
       });
 
       // Inserir performance

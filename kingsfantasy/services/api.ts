@@ -5,8 +5,17 @@ import { INITIAL_BUDGET } from '../constants';
 /**
  * CONFIGURAÇÃO DO BACKEND KINGS LENDAS 2026
  */
-const SUPABASE_URL = 'https://xfkjdzeclvdyjxjpllbb.supabase.co';
-const SUPABASE_ANON_KEY: string = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhma2pkemVjbHZkeWp4anBsbGJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NDUzMDUsImV4cCI6MjA4MzIyMTMwNX0.szByBteMU7eQEj4so-4L4jWWgrhB2f5JU82oludfZfc';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY: string = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const AUTH_DEBUG_ENABLED = import.meta.env.DEV && import.meta.env.VITE_AUTH_DEBUG === 'true';
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  if (import.meta.env.DEV) {
+    console.warn('Supabase env vars are not configured. API calls will fail until you set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  } else {
+    throw new Error('Supabase env vars are not configured.');
+  }
+}
 
 const buildAuthHeaders = (
   anonKey: string,
@@ -35,6 +44,7 @@ const buildAuthHeaders = (
 };
 
 const logAuthDebug = (label: string, anonKey: string, userToken?: string | null) => {
+  if (!AUTH_DEBUG_ENABLED) return;
   console.log(`🔍 DEBUG ${label} - anonKey: ${anonKey.substring(0, 20)}...`);
   console.log(`🔍 DEBUG ${label} - userToken: ${userToken ? userToken.substring(0, 20) + '...' : 'NULL'}`);
 };
@@ -963,7 +973,7 @@ export const DataService = {
   /**
    * Base URL da API do backend
    */
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api',
+  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://projectklf-production.up.railway.app/api',
 
   // =====================================================
   // ADMIN API

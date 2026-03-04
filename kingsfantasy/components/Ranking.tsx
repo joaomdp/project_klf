@@ -4,7 +4,7 @@ import { MOCK_RANKING } from '../constants';
 import { DataService } from '../services/api';
 import { League as LeagueType, RankingEntry } from '../types';
 import kingsLogo from '../assets/images/logo/logo.png';
-import leagueBackgroundImage from '../assets/images/backgrounds/fundo-capa-liga.jpg';
+import leagueBackgroundImage from '../assets/images/backgrounds/fundo-capa-liga.optimized.jpg';
 
 interface League {
   id: string;
@@ -85,7 +85,7 @@ const RankingItem: React.FC<{
   isUser: boolean;
 }> = React.memo(({ entry, isUser }) => {
   return (
-    <div className={`flex items-center p-5 px-8 gap-8 hover:bg-white/[0.02] transition-all group cursor-pointer ${isUser ? 'bg-[#6366F1]/[0.05]' : ''}`}>
+    <div className={`flex flex-col sm:flex-row sm:items-center p-4 sm:p-5 sm:px-8 gap-4 sm:gap-8 hover:bg-white/[0.02] transition-all group cursor-pointer ${isUser ? 'bg-[#6366F1]/[0.05]' : ''}`}>
       <div className="w-8 text-center shrink-0">
         <span className={`font-orbitron font-black text-sm ${entry.rank <= 3 ? 'text-[#6366F1]' : 'text-gray-700'}`}>
           {entry.rank}
@@ -107,7 +107,7 @@ const RankingItem: React.FC<{
           {entry.userName}
         </p>
       </div>
-      <div className="text-right">
+      <div className="text-left sm:text-right w-full sm:w-auto">
         <p className="font-orbitron font-black text-white text-lg tracking-tight leading-none">
           {entry.points.toFixed(2)}
         </p>

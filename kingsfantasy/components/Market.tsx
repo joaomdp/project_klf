@@ -124,20 +124,25 @@ const Market: React.FC<MarketProps> = ({ players, userTeam, onHire, onFire, onCl
         </div>
       )}
 
-      <div className="lg:col-span-4 space-y-8">
-        <div className="sticky top-32 space-y-8">
-          <div className="relative aspect-square w-full rounded-[2.5rem] overflow-hidden border border-white/10 bg-black shadow-[0_0_50px_rgba(0,0,0,0.8)] group">
-             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
-             <img src="https://i.imgur.com/myc9dfj.png" className="w-full h-full object-cover opacity-40 contrast-[1.2]" alt="Tactical Field" />
+        <div className="lg:col-span-4 space-y-8">
+        <div className="lg:sticky lg:top-32 space-y-8">
+           <div className="relative aspect-[5/4.8] w-full rounded-[2.5rem] overflow-hidden border border-white/10 bg-black shadow-[0_0_50px_rgba(0,0,0,0.8)] group">
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
+              <img
+                src="https://i.imgur.com/myc9dfj.png"
+                className="absolute inset-0 w-full h-full object-cover object-[50%_35%] scale-[1.28] opacity-55 contrast-[1.2] saturate-125"
+                alt="Tactical Field"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/15 to-black/55"></div>
              
              {rolesList.map(role => {
                const p = userTeam.players[role.id];
                return (
-                 <div key={role.id} className="absolute -translate-x-1/2 -translate-y-1/2 z-20" style={{ top: role.top, left: role.left }}>
-                    <div className="relative group/pin cursor-pointer flex flex-col items-center gap-0.5" onClick={() => p && onFire(role.id)}>
-                       <div className={`w-12 h-12 rounded-full border-2 transition-all duration-500 flex items-center justify-center overflow-hidden ${
-                         p ? 'border-[#6366F1] bg-black shadow-[0_0_20px_rgba(94,108,255,0.5)] scale-110' : 'border-white/10 bg-black/80 hover:border-white/40'
-                       }`}>
+                   <div key={role.id} className="absolute -translate-x-1/2 -translate-y-1/2 z-20" style={{ top: role.top, left: role.left }}>
+                     <div className="relative group/pin cursor-pointer flex flex-col items-center gap-0.5" onClick={() => p && onFire(role.id)}>
+                       <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 transition-all duration-500 flex items-center justify-center overflow-hidden ${
+                          p ? 'border-[#6366F1] bg-black shadow-[0_0_20px_rgba(94,108,255,0.5)] scale-110' : 'border-white/10 bg-black/80 hover:border-white/40'
+                        }`}>
                           {p ? (
                             <PlayerImage player={p} priority className="w-full h-full rounded-full" imgClassName="w-full h-full object-cover" />
                           ) : (
@@ -158,7 +163,7 @@ const Market: React.FC<MarketProps> = ({ players, userTeam, onHire, onFire, onCl
           <div className="glass-card p-7 border border-white/5 space-y-8">
             <div className="space-y-4">
               <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.4em] block px-1">MINHA ESCALAÇÃO</span>
-              <div className="grid grid-cols-5 gap-3">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                 {rolesList.map(role => {
                   const p = userTeam.players[role.id];
                   const champ = p?.selectedChampion || p?.lastChampion;
@@ -334,8 +339,12 @@ const Market: React.FC<MarketProps> = ({ players, userTeam, onHire, onFire, onCl
                 </div>
 
                 <div className="flex flex-col md:flex-row items-stretch relative z-10">
-                  <div className="relative w-full md:w-48 h-48 md:h-auto shrink-0 overflow-hidden" style={{ clipPath: 'polygon(0 0, 100% 0, 85% 100%, 0% 100%)' }}>
-                    <PlayerImage player={player} className="w-full h-full grayscale-[0.3] group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110" />
+                   <div className="relative w-full md:w-52 h-60 md:h-auto shrink-0 overflow-hidden" style={{ clipPath: 'polygon(0 0, 100% 0, 85% 100%, 0% 100%)' }}>
+                     <PlayerImage
+                       player={player}
+                       className="absolute inset-0 w-full h-full"
+                       imgClassName="w-full h-full object-cover object-[50%_5%] scale-[1.2]"
+                     />
                     <div className="absolute top-3 left-3 z-20"><TeamLogo logoUrl={player.teamLogo} teamName={player.team} className="w-8 h-8" /></div>
                     
                     {hiredChamp && (
@@ -347,11 +356,11 @@ const Market: React.FC<MarketProps> = ({ players, userTeam, onHire, onFire, onCl
 
                   <div className="flex-1 p-6 md:p-10 flex flex-col justify-center gap-6">
                     <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <img src={roleMetadata[player.role].icon} className="w-3.5 h-3.5 brightness-200 opacity-40" alt="" />
-                        <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em]">{player.team}</span>
-                      </div>
-                      <h3 className="text-4xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#6366F1] transition-colors">{player.name}</h3>
+                   <div className="flex items-center gap-3 mb-1">
+                     <img src={roleMetadata[player.role].icon} className="w-3.5 h-3.5 brightness-200 opacity-40" alt="" />
+                     <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em]">{player.team}</span>
+                   </div>
+                   <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#6366F1] transition-colors">{player.name}</h3>
                     </div>
                     <div className="flex items-center gap-10">
                       <div>

@@ -4,8 +4,8 @@ import { UserTeam, Role, League } from '../types';
 import { MOCK_PLAYERS } from '../constants';
 import PlayerImage from './PlayerImage';
 import { DataService } from '../services/api';
-import jogosSabado from '../assets/images/logo/jogos-sabado.jpg';
-import jogosDomingo from '../assets/images/logo/jogos-domingo.jpg';
+import jogosSabado from '../assets/images/logo/jogos-sabado.optimized.jpg';
+import jogosDomingo from '../assets/images/logo/jogos-domingo.optimized.jpg';
 import StandingsTable from './StandingsTable';
 
 interface DashboardProps {
@@ -126,11 +126,11 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, onNavigate }) => {
       {/* COLUNA LATERAL */}
       <div className="lg:col-span-4 space-y-8">
         <section>
-          <h2 className="text-[13px] font-black text-gray-500 uppercase tracking-tight mb-5 px-1">MEU TIME</h2>
-          <div className="glass-card p-6 border border-white/5 relative overflow-hidden group">
+          <h2 className="text-[11px] sm:text-[13px] font-black text-gray-500 uppercase tracking-tight mb-4 sm:mb-5 px-1">MEU TIME</h2>
+          <div className="glass-card p-4 sm:p-6 border border-white/5 relative overflow-hidden group">
             <div className="relative z-10">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-16 h-16 bg-black border border-[#6366F1]/20 flex items-center justify-center shadow-2xl overflow-hidden rounded-full">
+              <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-black border border-[#6366F1]/20 flex items-center justify-center shadow-2xl overflow-hidden rounded-full">
                   {userTeam.avatar ? (
                     <img 
                       src={userTeam.avatar}
@@ -150,27 +150,27 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, onNavigate }) => {
                   )}
                 </div>
                 <div>
-                  <h3 className="font-orbitron font-black text-xl text-white leading-tight uppercase tracking-tighter">{userTeam.name}</h3>
-                  <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">{userTeam.userName}</p>
+                  <h3 className="font-orbitron font-black text-lg sm:text-xl text-white leading-tight uppercase tracking-tighter">{userTeam.name}</h3>
+                  <p className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">{userTeam.userName}</p>
                 </div>
               </div>
 
               <div className="space-y-6">
                 <div>
-                  <div className="flex justify-between items-center text-[10px] font-black text-gray-400 tracking-wider uppercase mb-2 px-1">
+                  <div className="flex justify-between items-center text-[9px] sm:text-[10px] font-black text-gray-400 tracking-wider uppercase mb-2 px-1">
                     <span>PAITRIMÔNIO ATUAL</span>
                     <div className="flex items-center gap-2">
                        <PaiCoin size="sm" />
-                       <span className="text-xl font-orbitron font-black text-white">{formatValue(userTeam.budget)}</span>
+                        <span className="text-xl sm:text-xl font-orbitron font-black text-white">{formatValue(userTeam.budget)}</span>
                     </div>
                   </div>
                   <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
                     <div className="h-full bg-[#6366F1] shadow-[0_0_10px_rgba(94,108,255,0.5)]" style={{ width: `${(userTeam.budget / 100) * 100}%` }}></div>
                   </div>
                 </div>
-                <div className="flex justify-between items-center py-4 border-y border-white/5">
-                  <span className="text-[12px] font-black text-gray-400 uppercase tracking-widest">PONTOS TOTAIS</span>
-                  <span className="text-xl font-orbitron font-black text-white">{userTeam.totalPoints}</span>
+                <div className="flex justify-between items-center py-3 sm:py-4 border-y border-white/5">
+                  <span className="text-[10px] sm:text-[12px] font-black text-gray-400 uppercase tracking-widest">PONTOS TOTAIS</span>
+                  <span className="text-xl sm:text-xl font-orbitron font-black text-white">{userTeam.totalPoints}</span>
                 </div>
               </div>
 
@@ -179,7 +179,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, onNavigate }) => {
                 className="mt-8 space-y-4 cursor-pointer group/lineup"
               >
                 <div className="flex justify-between items-center px-1">
-                  <span className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em]">MINHA ESCALAÇÃO</span>
+                  <span className="text-[9px] sm:text-[11px] font-black text-gray-400 uppercase tracking-[0.25em] sm:tracking-[0.3em]">MINHA ESCALAÇÃO</span>
                   <div className="flex items-center gap-2 text-[#6366F1] opacity-0 group-hover/lineup:opacity-100 transition-all">
                      <span className="text-[9px] font-black uppercase tracking-widest">VER TUDO</span>
                      <i className="fa-solid fa-arrow-right text-[10px] group-hover/lineup:translate-x-1 transition-all"></i>
@@ -187,13 +187,13 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, onNavigate }) => {
                 </div>
                 
                 {/* GRID DE JOGADORES */}
-                <div className="grid grid-cols-5 gap-3">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1 sm:gap-3">
                   {rolesList.map(role => {
                     const player = userTeam.players[role];
                     const champ = player?.selectedChampion || player?.lastChampion;
                     return (
                       <div key={role} className="flex flex-col gap-2 items-center">
-                        <div className={`aspect-square w-full rounded-full border transition-all duration-500 relative ${player ? 'border-[#6366F1]/60 bg-black shadow-[0_0_25px_rgba(94,108,255,0.15)]' : 'border-white/5 bg-white/[0.02]'}`}>
+                        <div className={`aspect-square w-full rounded-full border transition-all duration-500 relative scale-[0.78] sm:scale-100 ${player ? 'border-[#6366F1]/60 bg-black shadow-[0_0_25px_rgba(94,108,255,0.15)]' : 'border-white/5 bg-white/[0.02]'}`}>
                           {player ? (
                             <>
                               <div className="w-full h-full p-1 rounded-full overflow-hidden">
@@ -211,7 +211,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, onNavigate }) => {
                             </div>
                           )}
                         </div>
-                        <span className={`text-[10px] font-black text-center uppercase tracking-tighter truncate w-full px-1 ${player ? 'text-[#6366F1]' : 'text-gray-700'}`}>
+                        <span className={`text-[7px] sm:text-[10px] font-black text-center uppercase tracking-tighter truncate w-full px-1 ${player ? 'text-[#6366F1]' : 'text-gray-700'}`}>
                           {player ? player.name : roleMetadata[role].label.substring(0,3)}
                         </span>
                       </div>

@@ -22,8 +22,8 @@ const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({ player, onClose }
   };
 
   return (
-    <div className={`fixed left-0 right-0 bottom-0 top-28 z-[300] flex justify-center py-12 md:py-20 transition-all duration-300 ${isClosing ? 'bg-black/0 backdrop-blur-0' : 'bg-black/85 backdrop-blur-md'}`}>
-      <div className="fixed inset-0 top-28" onClick={triggerClose}></div>
+    <div className={`fixed left-0 right-0 bottom-0 top-16 md:top-28 z-[300] flex justify-center py-6 md:py-20 transition-all duration-300 ${isClosing ? 'bg-black/0 backdrop-blur-0' : 'bg-black/85 backdrop-blur-md'}`}>
+      <div className="fixed inset-0 top-16 md:top-28" onClick={triggerClose}></div>
       <div className={`relative w-full max-w-md h-fit bg-[#0B0411] rounded-[40px] border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] transition-all duration-500 overflow-hidden ${isClosing ? 'opacity-0 scale-95 translate-y-12' : 'opacity-100 scale-100 translate-y-0 animate-in zoom-in-95'}`}>
         <div className="p-8 border-b border-white/5 flex items-center justify-between bg-gradient-to-br from-[#6366F1]/10 to-transparent relative z-10">
           <div className="flex items-center gap-5">

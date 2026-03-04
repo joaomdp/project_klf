@@ -92,11 +92,11 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
                 <div className="h-px w-20 bg-white/10"></div>
               </div>
 
-              <h1 className="text-8xl md:text-[11rem] font-orbitron font-black text-white uppercase tracking-tighter leading-[0.75] mix-blend-difference">
+              <h1 className="text-4xl sm:text-6xl md:text-8xl lg:text-[11rem] font-orbitron font-black text-white uppercase tracking-tighter leading-[0.85] mix-blend-difference">
                 {userTeam.name}
               </h1>
 
-              <div className="flex items-center gap-8">
+              <div className="flex flex-wrap items-center gap-4 sm:gap-8">
                 <button 
                   onClick={onNavigateToMarket}
                   className="group relative px-10 py-4 overflow-hidden bg-black/40 border border-[#6366F1]/30 hover:border-[#6366F1] transition-all shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(99,102,241,0.3)]"
@@ -109,10 +109,15 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
           </div>
         </div>
 
-        <div className="lg:col-span-4 flex flex-col gap-6">
-          <div className="relative w-full aspect-square rounded-[2.5rem] overflow-hidden border border-white/10 bg-black shadow-[0_0_80px_rgba(0,0,0,1)] group">
+          <div className="lg:col-span-4 flex flex-col gap-6">
+          <div className="relative w-full aspect-[5/4.8] rounded-[2.5rem] overflow-hidden border border-white/10 bg-black shadow-[0_0_80px_rgba(0,0,0,1)] group">
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
-            <img src="https://i.imgur.com/myc9dfj.png" className="w-full h-full object-cover opacity-40 contrast-[1.4] transition-all duration-[20s] group-hover:scale-110 group-hover:rotate-2" alt="Tactical Map" />
+            <img
+              src="https://i.imgur.com/myc9dfj.png"
+              className="absolute inset-0 w-full h-full object-cover object-[50%_35%] scale-[1.28] opacity-45 contrast-[1.35] transition-all duration-[20s] group-hover:scale-[1.35] group-hover:rotate-1"
+              alt="Tactical Map"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/15 to-black/55"></div>
             
             {roles.map(role => {
               const p = userTeam.players[role.id];
@@ -147,7 +152,7 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
           <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent"></div>
         </div>
         
-        <div className="flex items-stretch bg-black/40 border border-white/5 overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+          <div className="flex flex-col md:flex-row items-stretch bg-black/40 border border-white/5 overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
           <PowerModule 
             label="PAITRIMÔNIO" 
             value={formatValue(userTeam.budget)} 

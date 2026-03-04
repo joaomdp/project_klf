@@ -60,7 +60,7 @@ const StandingsTable: React.FC = () => {
   return (
     <section>
       <div className="flex items-center gap-6 mb-6">
-        <h2 className="text-[12px] font-black text-gray-500 uppercase tracking-[0.4em]">TABELA - COPA CBLOL</h2>
+        <h2 className="text-[10px] sm:text-[12px] font-black text-gray-500 uppercase tracking-[0.3em] sm:tracking-[0.4em]">TABELA - KINGS LENDAS</h2>
         <div className="h-px flex-1 bg-white/10"></div>
       </div>
 

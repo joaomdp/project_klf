@@ -17,7 +17,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate }) => {
   ];
 
   return (
-    <aside className="w-full md:w-64 bg-[#0a141e] border-r border-[#c89b3c]/20 flex flex-col sticky top-0 md:h-screen z-50">
+    <aside className="w-full md:w-64 bg-[#0a141e] border-r border-[#c89b3c]/20 flex flex-col md:sticky md:top-0 md:h-screen z-50">
       <div className="p-6 flex items-center gap-3">
         <div className="w-10 h-10 bg-gold rounded-full flex items-center justify-center text-[#010a13]">
           <i className="fa-solid fa-crown text-xl"></i>

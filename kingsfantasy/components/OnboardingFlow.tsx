@@ -172,12 +172,12 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
   const fallbackLogo = "https://raw.githubusercontent.com/joaomdp/kingsfantasy/main/times/logo.png";
 
   return (
-    <div className="fixed inset-0 z-[6000] bg-[#0B0411] flex flex-col items-center justify-center overflow-hidden font-inter">
+    <div className="fixed inset-0 z-[6000] bg-[#0B0411] flex flex-col items-center justify-center overflow-y-auto min-h-[100dvh] font-inter">
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
       <div className="absolute inset-0 bg-gradient-to-b from-[#6366F1]/5 via-transparent to-transparent pointer-events-none"></div>
 
       {step === 'verify' && (
-        <div className="w-full max-w-md p-10 space-y-12 animate-in fade-in relative z-10">
+        <div className="w-full max-w-md p-6 sm:p-10 space-y-12 animate-in fade-in relative z-10">
            <div className="text-center space-y-4">
              <h2 className="text-white font-orbitron font-black text-3xl uppercase tracking-tighter">VERIFICAÇÃO</h2>
              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed">DIGITE O CÓDIGO ENVIADO PARA<br/>{userEmail}</p>
@@ -192,7 +192,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
       )}
 
       {step === 'username' && (
-        <div className="w-full max-w-md p-10 space-y-8 animate-in fade-in relative z-10">
+        <div className="w-full max-w-md p-6 sm:p-10 space-y-8 animate-in fade-in relative z-10">
           <div className="text-center space-y-4">
             <h2 className="text-white font-orbitron font-black text-3xl uppercase tracking-tighter">SEU USERNAME</h2>
             <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed">ESCOLHA UM NOME ÚNICO PARA VOCÊ</p>
@@ -237,7 +237,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
       )}
 
       {step === 'fav-team' && (
-        <div className="w-full max-w-6xl flex flex-col items-center animate-in fade-in relative z-10 h-full pt-10">
+          <div className="w-full max-w-6xl flex flex-col items-center animate-in fade-in relative z-10 min-h-full pt-10">
           <div className="w-full max-w-4xl text-center mb-4 shrink-0 px-4">
             <h3 className="text-white text-[12px] font-bold uppercase tracking-[0.4em] mb-8">TIME FAVORITO</h3>
             {renderProgress()}
@@ -250,8 +250,8 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
               <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Sincronizando Banco de Dados...</span>
             </div>
           ) : (
-            <div className="w-full flex-1 overflow-y-auto no-scrollbar px-6 pb-48">
-               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-6 gap-y-12 max-w-5xl mx-auto pt-6">
+            <div className="w-full flex-1 overflow-y-auto no-scrollbar px-4 sm:px-6 pb-32 sm:pb-48">
+               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-4 sm:gap-x-6 gap-y-8 sm:gap-y-12 max-w-5xl mx-auto pt-6">
                 {dbTeams.map(team => (
                   <button 
                     key={team.id}

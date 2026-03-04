@@ -87,9 +87,9 @@ const ChampionSelector: React.FC<ChampionSelectorProps> = ({ playerName, playerI
         {/* Header */}
         <div className="relative p-6 border-b border-white/10 bg-gradient-to-b from-white/[0.02] to-transparent shrink-0">
           {/* Botão fechar */}
-          <button 
+            <button
             onClick={onClose}
-            className="absolute top-8 right-8 w-10 h-10 flex items-center justify-center border border-white/10 bg-white/5 hover:bg-red-500/10 hover:border-red-500/30 text-gray-500 hover:text-red-500 transition-all group"
+              className="absolute top-4 right-4 sm:top-8 sm:right-8 w-10 h-10 flex items-center justify-center border border-white/10 bg-white/5 hover:bg-red-500/10 hover:border-red-500/30 text-gray-500 hover:text-red-500 transition-all group"
           >
             <i className="fa-solid fa-xmark text-sm group-hover:rotate-90 transition-transform duration-300"></i>
           </button>
@@ -99,7 +99,7 @@ const ChampionSelector: React.FC<ChampionSelectorProps> = ({ playerName, playerI
             <div className="space-y-2">
               <div className="flex items-center gap-3">
                 <div className="w-1 h-7 bg-[#6366F1]"></div>
-                <h2 className="font-orbitron font-black text-3xl text-white uppercase tracking-tighter">SELEÇÃO DE CAMPEÃO</h2>
+                <h2 className="font-orbitron font-black text-2xl sm:text-3xl text-white uppercase tracking-tighter">SELEÇÃO DE CAMPEÃO</h2>
               </div>
               <div className="flex items-center gap-2 ml-4">
                 <span className="text-[9px] font-black text-gray-600 uppercase tracking-[0.3em]">JOGADOR:</span>
@@ -122,7 +122,7 @@ const ChampionSelector: React.FC<ChampionSelectorProps> = ({ playerName, playerI
               </div>
 
               {/* Role Filters - Compactos */}
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap sm:flex-nowrap sm:overflow-x-auto sm:no-scrollbar">
                 {roleFilters.map((filter) => (
                   <button 
                     key={filter.id} 
@@ -160,7 +160,7 @@ const ChampionSelector: React.FC<ChampionSelectorProps> = ({ playerName, playerI
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-black/20">
           <div className="max-w-4xl mx-auto">
             {filteredChampions.length > 0 ? (
-              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
                 {filteredChampions.map((champ) => (
                   <button 
                     key={champ.id} 

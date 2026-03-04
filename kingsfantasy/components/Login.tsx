@@ -99,7 +99,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[5000] overflow-hidden">
+    <div className="fixed inset-0 z-[5000] overflow-y-auto min-h-[100dvh]">
       
       {/* Loading Overlay */}
       {loading && (
@@ -136,7 +136,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         <div className="absolute inset-0 bg-gradient-to-l from-black/80 via-black/50 to-transparent"></div>
       </div>
 
-      <div className="relative w-full max-w-[1600px] h-full flex items-center justify-center mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div className="relative w-full max-w-[1600px] min-h-full flex items-start sm:items-center justify-center mx-auto px-4 sm:px-6 py-8 sm:py-12">
 
         {/* Form Container - Centralizado */}
         <div className="relative w-full max-w-[550px] z-20">
@@ -178,7 +178,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 </div>
 
                 {/* Social Buttons */}
-                <div className="grid grid-cols-2 gap-3 mb-6 md:mb-7 animate-in fade-in slide-in-from-right duration-700 delay-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 md:mb-7 animate-in fade-in slide-in-from-right duration-700 delay-100">
                   <button 
                     type="button"
                     onClick={() => handleSocialLogin('discord')}

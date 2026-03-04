@@ -41,9 +41,9 @@ const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({ roundId, userTeamId, on
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-300"
       onClick={handleBackdropClick}
     >
-      <div className="relative max-w-2xl w-full mx-4 bg-black border border-white/10 shadow-[0_0_80px_rgba(99,102,241,0.3)] animate-in zoom-in-95 duration-300">
+        <div className="relative max-w-2xl w-full mx-4 bg-black border border-white/10 shadow-[0_0_80px_rgba(99,102,241,0.3)] animate-in zoom-in-95 duration-300">
         {/* Header */}
-        <div className="px-8 py-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-center">
+        <div className="px-4 sm:px-8 py-4 sm:py-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <i className="fa-solid fa-chart-line text-[#6366F1]"></i>
             <h2 className="text-xl font-orbitron font-black text-white uppercase tracking-tight">
@@ -59,7 +59,7 @@ const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({ roundId, userTeamId, on
         </div>
 
         {/* Content */}
-        <div className="p-8">
+        <div className="p-4 sm:p-8">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               <i className="fa-solid fa-spinner fa-spin text-4xl text-[#6366F1]"></i>
@@ -80,11 +80,11 @@ const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({ roundId, userTeamId, on
           ) : (
             <div className="space-y-6">
               {/* Total Points - Big Display */}
-              <div className="bg-gradient-to-r from-[#6366F1]/20 to-purple-600/20 border border-[#6366F1]/40 p-6 text-center">
+              <div className="bg-gradient-to-r from-[#6366F1]/20 to-purple-600/20 border border-[#6366F1]/40 p-4 sm:p-6 text-center">
                 <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] block mb-2">
                   PONTUAÇÃO TOTAL
                 </span>
-                <span className="text-6xl font-orbitron font-black text-white block">
+                <span className="text-4xl sm:text-6xl font-orbitron font-black text-white block">
                   {score.totalPoints.toFixed(1)}
                 </span>
               </div>

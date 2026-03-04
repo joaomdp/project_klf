@@ -105,7 +105,7 @@ Responda em português de forma clara e estratégica.`;
   };
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col h-[calc(100vh-250px)]">
+    <div className="max-w-4xl mx-auto flex flex-col min-h-[calc(100dvh-200px)] sm:h-[calc(100vh-250px)]">
       <div className="flex-1 overflow-y-auto mb-6 space-y-4 pr-2 custom-scrollbar">
         <div className="flex gap-4">
           <div className="w-16 h-16 flex items-center justify-center shrink-0">

@@ -189,8 +189,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh] px-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
+    <div
+      className="fixed inset-0 z-[9999] flex items-start justify-center pt-6 sm:pt-[15vh] px-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div 

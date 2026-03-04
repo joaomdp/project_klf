@@ -1,5 +1,5 @@
 import React from 'react';
-import backgroundImage from '../assets/images/backgrounds/skt-back.jpg';
+import backgroundImage from '../assets/images/backgrounds/skt-back.optimized.jpg';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -7,7 +7,7 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
   return (
-    <div className="fixed inset-0 z-[5000] overflow-hidden">
+    <div className="fixed inset-0 z-[5000] overflow-y-auto">
       
       {/* Full Background Image */}
       <div 
@@ -20,7 +20,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent"></div>
       </div>
 
-      <div className="relative z-10 w-full h-full max-w-[1800px] mx-auto flex items-center px-6 sm:px-8 md:px-12 lg:px-16">
+      <div className="relative z-10 w-full min-h-full max-w-[1800px] mx-auto flex items-center px-6 sm:px-8 md:px-12 lg:px-16 py-16 sm:py-20">
         
         {/* Left Side - Content */}
         <div className="w-full lg:w-[55%] xl:w-1/2 relative z-20">
@@ -34,13 +34,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
             {/* Title */}
             <div className="space-y-4 md:space-y-5 animate-in fade-in slide-in-from-left duration-700 delay-100">
-              <h1 className="font-orbitron font-black text-6xl sm:text-7xl lg:text-8xl xl:text-9xl text-white uppercase tracking-tighter leading-[0.85]">
+              <h1 className="font-orbitron font-black text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-white uppercase tracking-tighter leading-[0.9]">
                 FANTASY<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#6366F1] via-[#8B5CF6] to-[#6366F1] animate-gradient">
                   KINGS<br />LENDAS
                 </span>
               </h1>
-              <p className="text-lg sm:text-xl lg:text-2xl text-gray-400 font-medium max-w-xl leading-relaxed">
+              <p className="text-base sm:text-lg lg:text-xl text-gray-400 font-medium max-w-xl leading-relaxed">
                 Monte, ou pelo menos teste montar um time com esses bagres. Dispute ligas, pontue e domine o cenário da Kings.
               </p>
             </div>
@@ -96,7 +96,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes gradient {
           0% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }

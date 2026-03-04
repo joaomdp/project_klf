@@ -17,8 +17,8 @@ interface DashboardProps {
  * CONFIGURAÇÃO DO MEDIA HUB
  */
 const MEDIA_HUB_CONFIG = {
-  videoId: "9c90Q9qZlh8",
-  videoTitle: "CONHECEMOS o FAKER e DEIXAMOS O CAEDREL CARECA no REDBULL LEAGUE OF IT OWN",
+  videoId: "dcVDc8uUzK4",
+  videoTitle: "DRAFT DOS CAPITÃES da COPA KINGS LENDAS 2026",
   customThumbnail: "",
   channelName: "Cortes da Ilha",
   channelIcon: "https://i.imgur.com/4ilaY1c.png"

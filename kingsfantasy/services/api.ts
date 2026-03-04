@@ -983,14 +983,18 @@ export const DataService = {
     const anonKey = this.getAnonKey();
     const userToken = this.getUserToken();
 
-    if (!userToken) {
-      return { ok: false, error: 'Usuário não autenticado' };
-    }
-
     try {
       const response = await fetch(`${this.API_BASE_URL}/admin`, {
         headers: buildAuthHeaders(anonKey, userToken, { allowAnonFallback: false })
       });
+
+      if (response.status === 401) {
+        return { ok: false, error: 'Usuário não autenticado' };
+      }
+
+      if (response.status === 403) {
+        return { ok: false, error: 'Acesso negado' };
+      }
 
       if (!response.ok) {
         const errorText = await response.text();

@@ -16,11 +16,32 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 const allowedOrigins = (process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3000', 'https://kingslendas.vercel.app']
+  : [
+    'http://localhost:3000',
+    'https://kingslendas.vercel.app',
+    'https://www.kingslendas.vercel.app'
+  ]
 ).map((origin) => origin.trim());
 
+const isAllowedOrigin = (origin?: string) => {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  try {
+    const url = new URL(origin);
+    return url.protocol === 'https:' && url.hostname.endsWith('.vercel.app');
+  } catch (error) {
+    return false;
+  }
+};
+
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));

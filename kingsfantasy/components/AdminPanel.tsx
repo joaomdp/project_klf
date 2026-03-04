@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { DataService } from '../services/api';
 
 interface AdminPanelProps {
@@ -56,7 +56,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [teams, setTeams] = useState<any[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
-  const [champions, setChampions] = useState<any[]>([]);
+  const [champions, setChampions] = useState<Array<{ id: number | string; name: string; key_name?: string }>>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [leagues, setLeagues] = useState<any[]>([]);
   const [playersLoading, setPlayersLoading] = useState(false);
@@ -282,16 +282,49 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     setLeaguesLoading(false);
   };
 
+  const loadSectionData = useCallback(async (sectionId: typeof activeSection) => {
+    switch (sectionId) {
+      case 'players':
+        await Promise.all([loadPlayers(), loadTeams()]);
+        break;
+      case 'teams':
+        await loadTeams();
+        break;
+      case 'rounds':
+        await loadRounds();
+        break;
+      case 'matches':
+        await Promise.all([loadMatches(), loadTeams(), loadRounds()]);
+        break;
+      case 'performances':
+        await Promise.all([loadRounds(), loadMatches(), loadPlayers(), loadChampions()]);
+        break;
+      case 'market':
+        await loadRounds();
+        break;
+      case 'users':
+        await loadUsers();
+        break;
+      case 'leagues':
+        await loadLeagues();
+        break;
+      default:
+        break;
+    }
+  }, [
+    loadPlayers,
+    loadTeams,
+    loadRounds,
+    loadMatches,
+    loadChampions,
+    loadUsers,
+    loadLeagues
+  ]);
+
   useEffect(() => {
     if (!isAdmin) return;
-    loadPlayers();
-    loadTeams();
-    loadRounds();
-    loadMatches();
-    loadChampions();
-    loadUsers();
-    loadLeagues();
-  }, [isAdmin]);
+    loadSectionData(activeSection);
+  }, [isAdmin, activeSection, loadSectionData]);
 
   useEffect(() => {
     if (!rounds.length) return;
@@ -692,11 +725,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
     setCsvPreviewFileName(file.name);
 
-    const championById = new Map(champions.map((champion) => [String(champion.id), champion]));
-    const championByName = new Map(champions.map((champion) => [normalizeCsvKey(champion.name), champion]));
-    const championByKeyName = new Map(
-      champions.map((champion) => [normalizeCsvKey(champion.key_name || ''), champion])
-    );
+    const championById = new Map<string, { id: number | string; name: string; key_name?: string }>();
+    const championByName = new Map<string, { id: number | string; name: string; key_name?: string }>();
+    const championByKeyName = new Map<string, { id: number | string; name: string; key_name?: string }>();
+
+    champions.forEach((champion) => {
+      championById.set(String(champion.id), champion);
+      championByName.set(normalizeCsvKey(champion.name), champion);
+      if (champion.key_name) {
+        championByKeyName.set(normalizeCsvKey(champion.key_name), champion);
+      }
+    });
     const playerById = new Map(players.map((player) => [String(player.id), player]));
     const playerByName = new Map(players.map((player) => [normalizeCsvKey(player.name), player]));
     const matchPlayerIds = new Set(

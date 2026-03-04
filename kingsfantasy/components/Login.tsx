@@ -4,6 +4,7 @@ import { AuthService } from '../services/auth';
 import { DataService } from '../services/api';
 import backgroundImage from '../assets/images/backgrounds/skt-back.jpg';
 import logo from '../assets/images/logo/logo.png';
+import LoadingScreen from './LoadingScreen';
 
 interface LoginProps {
   onLoginSuccess: (userData: any) => void;
@@ -102,28 +103,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     <div className="fixed inset-0 z-[5000] overflow-y-auto min-h-[100dvh]">
       
       {/* Loading Overlay */}
-      {loading && (
-        <div className="absolute inset-0 z-[6000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="flex flex-col items-center gap-6">
-            <div className="relative">
-              <img 
-                src="https://raw.githubusercontent.com/joaomdp/kingsfantasy/main/times/logo.png" 
-                alt="Kings Logo" 
-                className="w-24 h-24 object-cover animate-pulse shadow-[0_0_60px_rgba(99,102,241,0.6)] invert-[0.1] sepia-[1] saturate-[5] hue-rotate-[210deg]" 
-              />
-              <div className="absolute inset-0 bg-gradient-to-br from-[#6366F1]/20 to-[#8B5CF6]/20 animate-spin" style={{ animationDuration: '3s' }}></div>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#6366F1] animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 rounded-full bg-[#6366F1] animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 rounded-full bg-[#6366F1] animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              </div>
-              <p className="text-sm font-bold text-white uppercase tracking-widest">Carregando...</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {loading && <LoadingScreen />}
       
       {/* Full Background Image */}
       <div 

@@ -57,13 +57,29 @@ const getAvatarFromSession = (session: any, userName: string, fallback: string) 
   return fallback;
 };
 
+const isTokenExpired = (token?: string | null) => {
+  if (!token) return true;
+  try {
+    const base64Url = token.split('.')[1];
+    if (!base64Url) return true;
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(base64));
+    if (!payload?.exp) return false;
+    const now = Math.floor(Date.now() / 1000);
+    return payload.exp < now;
+  } catch (error) {
+    console.warn('⚠️ Falha ao validar expiração do token', error);
+    return false;
+  }
+};
+
 const clearInvalidSession = () => {
   const sessionStr = localStorage.getItem('nexus_session');
   if (!sessionStr) return;
 
   try {
     const session = JSON.parse(sessionStr);
-    if (!session.access_token || !session.user?.id) {
+    if (!session.access_token || !session.user?.id || isTokenExpired(session.access_token)) {
       console.log('⚠️ Sessão inválida detectada, limpando...');
       localStorage.removeItem('nexus_session');
       Object.keys(localStorage).forEach(key => {
@@ -85,7 +101,17 @@ const AppContent: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | undefined>(undefined);
   const [players, setPlayers] = useState<Player[]>(MOCK_PLAYERS);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const sessionStr = localStorage.getItem('nexus_session');
+      const hasSession = Boolean(sessionStr);
+      const hasAuthHash = window.location.hash.includes('access_token');
+      return hasSession || hasAuthHash;
+    } catch (error) {
+      console.warn('⚠️ Falha ao ler sessão inicial', error);
+      return true;
+    }
+  });
   const isMarketOpen = true;
   const [dbConnected, setDbConnected] = useState(false);
   const [isCreateLeagueOpen, setIsCreateLeagueOpen] = useState(false);
@@ -220,20 +246,21 @@ const AppContent: React.FC = () => {
       
       const callbackResult: any = AuthService.handleAuthCallback();
       const session = (callbackResult && !callbackResult.error) ? callbackResult : AuthService.getSession();
-      
-        if (session && session.access_token && session.user?.id) {
+
+      const hasSession = Boolean(session && session.access_token && session.user?.id);
+        if (hasSession) {
+        setIsLoading(true);
         console.log('✅ Sessão válida encontrada, userId:', session.user?.id);
         // Usuário autenticado - esconde landing page
         setShowLanding(false);
         
-          // Busca os jogadores ANTES de tentar buscar dados do usuário
-          await fetchPlayers();
-
-          await checkAdminAccess();
-        
-        // Tenta buscar dados do time do usuário no banco de dados
-        console.log('🔍 Buscando dados do usuário:', session.user.id);
-        const existingTeam = await DataService.getUserTeam(session.user.id);
+          // Busca dados essenciais em paralelo para reduzir tempo de carregamento
+          console.log('🔍 Buscando dados do usuário:', session.user.id);
+          const [, , existingTeam] = await Promise.all([
+            fetchPlayers(),
+            checkAdminAccess(),
+            DataService.getUserTeam(session.user.id)
+          ]);
         
         if (existingTeam) {
           // Usuário já tem dados no banco - carrega e não precisa fazer onboarding
@@ -265,9 +292,11 @@ const AppContent: React.FC = () => {
             avatar
           }));
         }
-      } else {
+       } else {
         console.log('ℹ️ Nenhuma sessão encontrada, mostrando landing page');
         setShowLanding(true);
+        setIsAuthenticated(false);
+        setNeedsOnboarding(false);
       }
       
         setIsLoading(false);
@@ -295,47 +324,52 @@ const AppContent: React.FC = () => {
   }, [fetchPlayers]);
 
   const handleLoginSuccess = async (userData: any) => {
+    setIsLoading(true);
     setShowLanding(false);
     setIsAuthenticated(true);
     
-    // Busca os jogadores após autenticação bem-sucedida
-    await fetchPlayers();
-    await checkAdminAccess();
-    
-    // Verifica se o usuário já tem dados no banco
-    const session = AuthService.getSession();
-    if (session?.user?.id) {
-      console.log('🔍 handleLoginSuccess - Verificando usuário:', session.user.id);
-      const existingTeam = await DataService.getUserTeam(session.user.id);
-      
-         if (existingTeam) {
-          // Usuário já existe - carrega os dados e pula onboarding
-          console.log('✅ handleLoginSuccess - Usuário existente:', existingTeam.userName);
-          const teamWithUpdatedPoints = withRecalculatedPoints(existingTeam);
+    try {
+      const session = AuthService.getSession();
+      if (session?.user?.id) {
+        // Busca jogadores, admin e time do usuário em paralelo
+        console.log('🔍 handleLoginSuccess - Verificando usuário:', session.user.id);
+        const [, , existingTeam] = await Promise.all([
+          fetchPlayers(),
+          checkAdminAccess(),
+          DataService.getUserTeam(session.user.id)
+        ]);
         
-        setUserTeam(teamWithUpdatedPoints);
-        setNeedsOnboarding(false);
-        localStorage.setItem(`setup_complete_${session.user.id}`, 'true');
-        console.log('✅ handleLoginSuccess - Setup marcado como completo');
+           if (existingTeam) {
+            // Usuário já existe - carrega os dados e pula onboarding
+            console.log('✅ handleLoginSuccess - Usuário existente:', existingTeam.userName);
+            const teamWithUpdatedPoints = withRecalculatedPoints(existingTeam);
+          
+          setUserTeam(teamWithUpdatedPoints);
+          setNeedsOnboarding(false);
+          localStorage.setItem(`setup_complete_${session.user.id}`, 'true');
+          console.log('✅ handleLoginSuccess - Setup marcado como completo');
+        } else {
+          // Usuário novo - precisa fazer onboarding
+          console.log('⚠️ handleLoginSuccess - Novo usuário, iniciando onboarding');
+          // Define o userName baseado nos dados disponíveis
+          const userName = getUserNameFromSession(session);
+          const avatar = userData.avatar || getAvatarFromSession(session, userName, userTeam.avatar);
+          
+          setUserTeam(prev => ({
+            ...prev,
+            userId: session.user?.id || prev.userId,
+            userName,
+            avatar
+          }));
+          setNeedsOnboarding(true);
+        }
       } else {
-        // Usuário novo - precisa fazer onboarding
-        console.log('⚠️ handleLoginSuccess - Novo usuário, iniciando onboarding');
-        // Define o userName baseado nos dados disponíveis
-        const userName = getUserNameFromSession(session);
-        const avatar = userData.avatar || getAvatarFromSession(session, userName, userTeam.avatar);
-        
-        setUserTeam(prev => ({
-          ...prev,
-          userId: session.user?.id || prev.userId,
-          userName,
-          avatar
-        }));
+        // Fallback: assume que é novo usuário
+        console.log('⚠️ handleLoginSuccess - Sem session.user.id, assumindo novo usuário');
         setNeedsOnboarding(true);
       }
-    } else {
-      // Fallback: assume que é novo usuário
-      console.log('⚠️ handleLoginSuccess - Sem session.user.id, assumindo novo usuário');
-      setNeedsOnboarding(true);
+    } finally {
+      setIsLoading(false);
     }
   };
 

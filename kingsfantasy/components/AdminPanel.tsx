@@ -201,7 +201,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     });
   };
 
-  const loadPlayers = async () => {
+  const loadPlayers = useCallback(async () => {
     setPlayersLoading(true);
     setPlayersError(null);
     const result = await DataService.getAdminPlayers();
@@ -211,9 +211,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       setPlayersError(result.error || 'Erro ao buscar jogadores');
     }
     setPlayersLoading(false);
-  };
+  }, []);
 
-  const loadTeams = async () => {
+  const loadTeams = useCallback(async () => {
     setTeamsLoading(true);
     setTeamsError(null);
     const result = await DataService.getAdminTeams();
@@ -223,9 +223,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       setTeamsError(result.error || 'Erro ao buscar times');
     }
     setTeamsLoading(false);
-  };
+  }, []);
 
-  const loadRounds = async () => {
+  const loadRounds = useCallback(async () => {
     setRoundsLoading(true);
     setRoundsError(null);
     const result = await DataService.getAdminRounds();
@@ -235,9 +235,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       setRoundsError(result.error || 'Erro ao buscar rodadas');
     }
     setRoundsLoading(false);
-  };
+  }, []);
 
-  const loadMatches = async (roundId?: number) => {
+  const loadMatches = useCallback(async (roundId?: number) => {
     setMatchesLoading(true);
     setMatchesError(null);
     const result = await DataService.getAdminMatches(roundId);
@@ -247,18 +247,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       setMatchesError(result.error || 'Erro ao buscar partidas');
     }
     setMatchesLoading(false);
-  };
+  }, []);
 
-  const loadChampions = async () => {
+  const loadChampions = useCallback(async () => {
     setChampionsLoading(true);
     const result = await DataService.getChampions();
     if (result) {
       setChampions(result);
     }
     setChampionsLoading(false);
-  };
+  }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     setUsersLoading(true);
     setUsersError(null);
     const result = await DataService.getAdminUsers();
@@ -268,9 +268,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       setUsersError(result.error || 'Erro ao buscar usuários');
     }
     setUsersLoading(false);
-  };
+  }, []);
 
-  const loadLeagues = async () => {
+  const loadLeagues = useCallback(async () => {
     setLeaguesLoading(true);
     setLeaguesError(null);
     const result = await DataService.getAdminLeagues();
@@ -280,7 +280,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       setLeaguesError(result.error || 'Erro ao buscar ligas');
     }
     setLeaguesLoading(false);
-  };
+  }, []);
 
   const loadSectionData = useCallback(async (sectionId: typeof activeSection) => {
     switch (sectionId) {

@@ -100,23 +100,9 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
           >
             <i className={`fa-solid ${isMenuOpen ? 'fa-xmark' : 'fa-bars'} text-lg`}></i>
           </button>
-          {showMarketTimer ? (
-            <div className="hidden xl:flex items-center border-r border-white/10 pr-6">
-              <MarketTimer compact className="whitespace-nowrap" />
-            </div>
-          ) : (
-            <div className="hidden 2xl:flex flex-col text-right border-r border-white/10 pr-8">
-               <span className={`text-[10px] font-black tracking-wider uppercase ${(marketIsOpen ?? false) ? 'text-[#6366F1]' : 'text-red-500'}`}>
-                 {(marketIsOpen ?? false) ? 'MERCADO ABERTO' : 'MERCADO FECHADO'}
-               </span>
-               <div className="flex items-center justify-end gap-1.5 mt-1.5">
-                  <span className={`w-2 h-2 rounded-full animate-pulse shadow-lg ${(marketIsOpen ?? false) ? 'bg-[#6366F1] shadow-[#6366F1]/50' : 'bg-red-500 shadow-red-500/50'}`}></span>
-                  <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">
-                    {(marketIsOpen ?? false) ? 'Faça sua escalação' : 'Rodada em andamento'}
-                  </span>
-               </div>
-             </div>
-          )}
+          <div className="hidden xl:flex items-center border-r border-white/10 pr-6">
+            <MarketTimer compact className="whitespace-nowrap" />
+          </div>
           
           <div 
             className={`flex items-center gap-4 sm:gap-5 cursor-pointer group p-2 sm:p-2.5 rounded-2xl transition-all border ${activePage === 'profile' ? 'bg-white/5 border-white/10' : 'border-transparent hover:bg-white/5'}`}

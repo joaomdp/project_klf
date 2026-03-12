@@ -122,43 +122,41 @@ const MarketTimer: React.FC<MarketTimerProps> = ({ className = '', onMarketClose
   const colors = colorClasses[urgencyColor];
 
   if (compact) {
-    if (loading) {
-      return (
-        <div className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-gray-500 ${className}`}>
-          <i className="fa-solid fa-spinner fa-spin"></i>
-          <span>Carregando mercado</span>
+    const renderCompact = (title: string, subtitle: string, open: boolean, showSpinner = false) => (
+      <div className={`flex flex-col text-right ${className}`}>
+        <span className={`text-[10px] font-black tracking-wider uppercase ${open ? 'text-[#6366F1]' : 'text-red-500'}`}>
+          {title}
+        </span>
+        <div className="flex items-center justify-end gap-1.5 mt-1.5">
+          {showSpinner ? (
+            <i className="fa-solid fa-spinner fa-spin text-[10px] text-gray-500"></i>
+          ) : (
+            <span className={`w-2 h-2 rounded-full animate-pulse shadow-lg ${open ? 'bg-[#6366F1] shadow-[#6366F1]/50' : 'bg-red-500 shadow-red-500/50'}`}></span>
+          )}
+          <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">
+            {subtitle}
+          </span>
         </div>
-      );
+      </div>
+    );
+
+    if (loading) {
+      return renderCompact('MERCADO', 'Carregando status', false, true);
     }
 
     if (!marketStatus) {
-      return (
-        <div className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-red-400 ${className}`}>
-          <span className="w-2 h-2 rounded-full bg-red-500"></span>
-          <span>Erro no mercado</span>
-        </div>
-      );
+      return renderCompact('MERCADO FECHADO', 'Erro ao carregar', false);
     }
 
     if (!marketStatus.isOpen) {
-      return (
-        <div className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-red-400 ${className}`}>
-          <span className="w-2 h-2 rounded-full bg-red-500"></span>
-          <span>Mercado fechado</span>
-        </div>
-      );
+      return renderCompact('MERCADO FECHADO', 'Rodada em andamento', false);
     }
 
-    return (
-      <div className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] ${colors.text} ${className}`}>
-        <span className={`w-2 h-2 rounded-full ${colors.indicator} animate-pulse`}></span>
-        <span>
-          {timeRemaining
-            ? `Fecha em ${String(timeRemaining.hours).padStart(2, '0')}:${String(timeRemaining.minutes).padStart(2, '0')}:${String(timeRemaining.seconds).padStart(2, '0')}`
-            : 'Mercado aberto'}
-        </span>
-      </div>
-    );
+    const countdown = timeRemaining
+      ? `${String(timeRemaining.hours).padStart(2, '0')}:${String(timeRemaining.minutes).padStart(2, '0')}:${String(timeRemaining.seconds).padStart(2, '0')}`
+      : null;
+
+    return renderCompact('MERCADO ABERTO', countdown ? `Fecha em ${countdown}` : 'Faça sua escalação', true);
   }
 
   if (!marketStatus.isOpen) {

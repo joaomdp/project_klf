@@ -100,8 +100,8 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
             <i className={`fa-solid ${isMenuOpen ? 'fa-xmark' : 'fa-bars'} text-lg`}></i>
           </button>
           {showMarketTimer ? (
-            <div className="hidden xl:block border-r border-white/10 pr-6">
-              <MarketTimer className="p-3 min-w-[240px]" />
+            <div className="hidden xl:flex items-center border-r border-white/10 pr-6">
+              <MarketTimer compact className="whitespace-nowrap" />
             </div>
           ) : (
             <div className="hidden 2xl:flex flex-col text-right border-r border-white/10 pr-8">

@@ -383,12 +383,12 @@ const Market: React.FC<MarketProps> = ({
                    </div>
                     <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#6366F1] transition-colors">{player.name}</h3>
                     <p className="mt-2 mb-1 text-[10px] uppercase tracking-[0.15em] text-gray-500">Confrontos da rodada</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <div className="mt-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar pr-1">
                       {matchupList.length > 0 ? (
                         matchupList.map((matchup, index) => (
                           <div
                             key={`${player.id}-matchup-${matchup.opponentName}-${index}`}
-                            className="w-10 h-10 bg-black/40 overflow-hidden"
+                            className="w-10 h-10 overflow-hidden shrink-0"
                             title={`Contra: ${matchup.opponentName}`}
                           >
                             {matchup.opponentLogoUrl ? (

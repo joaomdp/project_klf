@@ -5,9 +5,10 @@ import { DataService } from '../services/api';
 interface MarketTimerProps {
   className?: string;
   onMarketClose?: () => void;
+  compact?: boolean;
 }
 
-const MarketTimer: React.FC<MarketTimerProps> = ({ className = '', onMarketClose }) => {
+const MarketTimer: React.FC<MarketTimerProps> = ({ className = '', onMarketClose, compact = false }) => {
   const [marketStatus, setMarketStatus] = useState<{
     isOpen: boolean;
     message: string;
@@ -119,6 +120,46 @@ const MarketTimer: React.FC<MarketTimerProps> = ({ className = '', onMarketClose
   };
 
   const colors = colorClasses[urgencyColor];
+
+  if (compact) {
+    if (loading) {
+      return (
+        <div className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-gray-500 ${className}`}>
+          <i className="fa-solid fa-spinner fa-spin"></i>
+          <span>Carregando mercado</span>
+        </div>
+      );
+    }
+
+    if (!marketStatus) {
+      return (
+        <div className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-red-400 ${className}`}>
+          <span className="w-2 h-2 rounded-full bg-red-500"></span>
+          <span>Erro no mercado</span>
+        </div>
+      );
+    }
+
+    if (!marketStatus.isOpen) {
+      return (
+        <div className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-red-400 ${className}`}>
+          <span className="w-2 h-2 rounded-full bg-red-500"></span>
+          <span>Mercado fechado</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] ${colors.text} ${className}`}>
+        <span className={`w-2 h-2 rounded-full ${colors.indicator} animate-pulse`}></span>
+        <span>
+          {timeRemaining
+            ? `Fecha em ${String(timeRemaining.hours).padStart(2, '0')}:${String(timeRemaining.minutes).padStart(2, '0')}:${String(timeRemaining.seconds).padStart(2, '0')}`
+            : 'Mercado aberto'}
+        </span>
+      </div>
+    );
+  }
 
   if (!marketStatus.isOpen) {
     return (

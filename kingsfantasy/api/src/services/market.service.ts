@@ -34,7 +34,39 @@ class MarketService {
    */
   async getMarketStatus(): Promise<MarketStatus> {
     try {
-      // Buscar rodadas elegíveis e priorizar a que está realmente com mercado aberto
+      const now = new Date();
+
+      // 1) Prioriza qualquer rodada com mercado aberto (independente do status)
+      const { data: openRounds, error: openRoundsError } = await supabase
+        .from('rounds')
+        .select('*')
+        .eq('is_market_open', true)
+        .order('market_close_time', { ascending: true })
+        .limit(20);
+
+      if (openRoundsError && openRoundsError.code !== 'PGRST116') throw openRoundsError;
+
+      const currentlyOpenRound = (openRounds || []).find((item: any) => {
+        const closeTime = new Date(item.market_close_time);
+        return !Number.isNaN(closeTime.getTime()) && now < closeTime;
+      });
+
+      if (currentlyOpenRound) {
+        const marketCloseTime = new Date(currentlyOpenRound.market_close_time);
+        return {
+          isOpen: true,
+          currentRound: {
+            id: currentlyOpenRound.id,
+            round_number: currentlyOpenRound.round_number,
+            start_date: currentlyOpenRound.start_date,
+            market_close_time: currentlyOpenRound.market_close_time
+          },
+          nextCloseTime: currentlyOpenRound.market_close_time,
+          message: `Mercado aberto até ${marketCloseTime.toLocaleString('pt-BR')}`
+        };
+      }
+
+      // 2) Sem mercado aberto, busca próxima rodada elegível para contexto
       const { data: rounds, error } = await supabase
         .from('rounds')
         .select('*')
@@ -51,16 +83,9 @@ class MarketService {
         };
       }
 
-      const now = new Date();
-      const roundWithOpenMarket = rounds.find((item: any) => {
-        if (!item.is_market_open) return false;
-        const closeTime = new Date(item.market_close_time);
-        return now < closeTime;
-      });
-
-      const round = roundWithOpenMarket || rounds[0];
+      const round = rounds[0];
       const marketCloseTime = new Date(round.market_close_time);
-      const isOpen = Boolean(roundWithOpenMarket) && now < marketCloseTime;
+      const isOpen = false;
 
       return {
         isOpen,

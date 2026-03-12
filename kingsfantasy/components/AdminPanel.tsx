@@ -413,10 +413,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   };
 
   const handleCreateRound = async () => {
-    const seasonValue = Number(newRoundForm.season);
-    const roundValue = Number(newRoundForm.round_number);
+    const seasonRawValue = newRoundForm.season.trim();
+    const roundRawValue = newRoundForm.round_number.trim();
+    const seasonValue = Number.parseInt(seasonRawValue, 10);
+    const roundValue = Number.parseInt(roundRawValue, 10);
 
-    if (!seasonValue || !roundValue) {
+    const hasInvalidSeason = !seasonRawValue || !Number.isInteger(seasonValue) || seasonValue <= 0;
+    const hasInvalidRoundNumber = !roundRawValue || !Number.isInteger(roundValue) || roundValue <= 0;
+
+    if (hasInvalidSeason || hasInvalidRoundNumber) {
       setRoundsError('Informe temporada e numero da rodada.');
       return;
     }
@@ -1880,6 +1885,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
             <div>
               <label className="text-[10px] text-gray-500 uppercase tracking-[0.3em]">Temporada</label>
               <input
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
                 value={newRoundForm.season}
                 onChange={(event) => setNewRoundForm((prev) => ({ ...prev, season: event.target.value }))}
                 placeholder="Ex: 4"
@@ -1889,6 +1898,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
             <div>
               <label className="text-[10px] text-gray-500 uppercase tracking-[0.3em]">Numero da rodada</label>
               <input
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
                 value={newRoundForm.round_number}
                 onChange={(event) => setNewRoundForm((prev) => ({ ...prev, round_number: event.target.value }))}
                 placeholder="Ex: 7"

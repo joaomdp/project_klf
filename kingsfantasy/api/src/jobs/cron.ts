@@ -8,7 +8,7 @@ import { supabase } from '../config/supabase';
  * CRON JOBS - AUTOMAÇÃO DO SISTEMA
  * 
  * Jobs agendados:
- * 1. Verificar fechamento do mercado (a cada hora)
+ * 1. Verificar fechamento do mercado (a cada minuto)
  * 2. Calcular pontuações (segunda-feira 9h)
  * 3. Reabrir mercado (terça-feira 00h)
  * 4. Atualizar status de rodadas (a cada 30 minutos)
@@ -24,8 +24,8 @@ class CronJobsService {
   startAllJobs() {
     console.log('⏰ Starting cron jobs...');
 
-    // Job 1: Verificar fechamento do mercado (a cada hora)
-    const marketCheckJob = cron.schedule('0 * * * *', async () => {
+    // Job 1: Verificar fechamento do mercado (a cada minuto)
+    const marketCheckJob = cron.schedule('* * * * *', async () => {
       console.log('🔍 [CRON] Checking if market should close...');
       try {
         const result = await marketService.checkAndCloseMarket();
@@ -163,7 +163,7 @@ class CronJobsService {
     this.jobs = [marketCheckJob, scoringJob, marketReopenJob, roundStatusJob, autoImportJob];
 
     console.log('✅ All cron jobs started:');
-    console.log('   1. Market check: Every hour (0 * * * *)');
+    console.log('   1. Market check: Every minute (* * * * *)');
     console.log('   2. Score calculation: Monday 9am (0 9 * * 1)');
     console.log('   3. Market reopen: Tuesday 12am (0 0 * * 2)');
     console.log('   4. Round status update: Every 30 minutes (*/30 * * * *)');
@@ -267,9 +267,9 @@ class CronJobsService {
       jobs: [
         {
           name: 'Market Check',
-          schedule: 'Every hour',
-          cron: '0 * * * *',
-          description: 'Check if market should close (1h before round)'
+          schedule: 'Every minute',
+          cron: '* * * * *',
+          description: 'Check if market should close at market_close_time'
         },
         {
           name: 'Score Calculation',

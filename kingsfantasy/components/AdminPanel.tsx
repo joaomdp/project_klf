@@ -572,10 +572,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       return;
     }
 
+    const parsedCloseTime = new Date(marketCloseTimeInput);
+    if (Number.isNaN(parsedCloseTime.getTime())) {
+      setMarketError('Data de fechamento inválida.');
+      return;
+    }
+
     setMarketError(null);
     setMarketActionLoading(true);
     const result = await DataService.updateAdminRoundDates(roundId, {
-      market_close_time: marketCloseTimeInput
+      market_close_time: parsedCloseTime.toISOString()
     });
 
     if (!result.ok) {

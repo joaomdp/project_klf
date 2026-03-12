@@ -130,8 +130,7 @@ class MarketService {
         .from('user_teams')
         .update({
           is_locked: true,
-          last_locked_at: new Date().toISOString(),
-          current_round_id: roundId
+          last_locked_at: new Date().toISOString()
         });
 
       if (lockError) throw lockError;
@@ -182,8 +181,7 @@ class MarketService {
       const { error: unlockError } = await adminSupabase
         .from('user_teams')
         .update({
-          is_locked: false,
-          current_round_id: nextRound.id
+          is_locked: false
         });
 
       if (unlockError) throw unlockError;
@@ -206,7 +204,6 @@ class MarketService {
       const { data: rounds, error } = await adminSupabase
         .from('rounds')
         .select('*')
-        .in('status', this.SCHEDULABLE_ROUND_STATUSES)
         .eq('is_market_open', true);
 
       if (error) throw error;

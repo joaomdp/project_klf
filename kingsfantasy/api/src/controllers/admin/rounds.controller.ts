@@ -344,9 +344,12 @@ export async function updateRoundDates(req: AuthenticatedRequest, res: Response)
     if (market_close_time) updateData.market_close_time = market_close_time;
 
     // Atualizar rodada
-    const { data: round, error: updateError } = await supabase
+    const { data: round, error: updateError } = await adminSupabase
       .from('rounds')
-      .update(updateData)
+      .update({
+        ...updateData,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', parseInt(id))
       .select()
       .single();
@@ -356,7 +359,8 @@ export async function updateRoundDates(req: AuthenticatedRequest, res: Response)
       return res.status(404).json({
         success: false,
         error: 'Rodada não encontrada ou erro ao atualizar',
-        round_id: id
+        round_id: id,
+        details: updateError?.message || null
       });
     }
 

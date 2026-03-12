@@ -382,22 +382,23 @@ const Market: React.FC<MarketProps> = ({
                      <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em]">{player.team}</span>
                    </div>
                     <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#6366F1] transition-colors">{player.name}</h3>
+                    <p className="mt-2 mb-1 text-[10px] uppercase tracking-[0.15em] text-gray-500">Confrontos da rodada</p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       {matchupList.length > 0 ? (
                         matchupList.map((matchup, index) => (
                           <div
                             key={`${player.id}-matchup-${matchup.opponentName}-${index}`}
-                            className="w-7 h-7 rounded-full border border-white/20 bg-black/50 overflow-hidden"
+                            className="w-10 h-10 bg-black/40 overflow-hidden"
                             title={`Contra: ${matchup.opponentName}`}
                           >
                             {matchup.opponentLogoUrl ? (
                               <img
                                 src={matchup.opponentLogoUrl}
                                 alt={matchup.opponentName}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-contain"
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-[9px] font-black text-gray-400 uppercase">
+                              <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-gray-400 uppercase">
                                 {matchup.opponentName.slice(0, 2)}
                               </div>
                             )}

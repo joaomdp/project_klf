@@ -30,6 +30,123 @@ function mapRoundStatusToApi(status: string): string {
   return ROUND_STATUS_DB_TO_API[status] || status;
 }
 
+type FinalizeRoundCheckResult = {
+  roundId: number;
+  season: number;
+  roundNumber: number;
+  status: string;
+  isMarketOpen: boolean;
+  marketCloseTime: string | null;
+  totalMatches: number;
+  matchesMissingResults: number;
+  expectedPerformances: number;
+  totalPerformances: number;
+  missingPerformances: number;
+  performancesWithoutFantasyPoints: number;
+  canFinalize: boolean;
+  pendingItems: string[];
+};
+
+async function buildFinalizeRoundCheck(roundId: number): Promise<FinalizeRoundCheckResult> {
+  const { data: round, error: roundError } = await adminSupabase
+    .from('rounds')
+    .select('id, season, round_number, status, is_market_open, market_close_time')
+    .eq('id', roundId)
+    .single();
+
+  if (roundError || !round) {
+    throw new Error('Rodada não encontrada');
+  }
+
+  const { data: matches, error: matchesError } = await adminSupabase
+    .from('matches')
+    .select('id, team_a_id, team_b_id, winner_id, team_a_score, team_b_score, games_count')
+    .eq('round_id', roundId);
+
+  if (matchesError) throw matchesError;
+
+  const roundMatches = matches || [];
+  const totalMatches = roundMatches.length;
+  const matchesMissingResults = roundMatches.filter((match: any) => {
+    const missingWinner = !match.winner_id;
+    const missingTeamAScore = match.team_a_score === null || match.team_a_score === undefined;
+    const missingTeamBScore = match.team_b_score === null || match.team_b_score === undefined;
+    return missingWinner || missingTeamAScore || missingTeamBScore;
+  }).length;
+
+  const teamIds = Array.from(
+    new Set(
+      roundMatches.flatMap((match: any) => [String(match.team_a_id), String(match.team_b_id)])
+    )
+  );
+
+  let expectedPerformances = 0;
+  const matchIds = roundMatches.map((match: any) => Number(match.id));
+
+  if (teamIds.length > 0 && roundMatches.length > 0) {
+    const { data: teamPlayers, error: playersError } = await adminSupabase
+      .from('players')
+      .select('id, team_id')
+      .in('team_id', teamIds);
+
+    if (playersError) throw playersError;
+
+    const playersCountByTeam = (teamPlayers || []).reduce((map: Map<string, number>, player: any) => {
+      const teamId = String(player.team_id);
+      const current = map.get(teamId) || 0;
+      map.set(teamId, current + 1);
+      return map;
+    }, new Map<string, number>());
+
+    expectedPerformances = roundMatches.reduce((sum: number, match: any) => {
+      const gamesCount = Number(match.games_count || 1);
+      const teamACount = playersCountByTeam.get(String(match.team_a_id)) || 0;
+      const teamBCount = playersCountByTeam.get(String(match.team_b_id)) || 0;
+      return sum + gamesCount * (teamACount + teamBCount);
+    }, 0);
+  }
+
+  let totalPerformances = 0;
+  let performancesWithoutFantasyPoints = 0;
+
+  if (matchIds.length > 0) {
+    const { data: performances, error: performancesError } = await adminSupabase
+      .from('player_performances')
+      .select('id, fantasy_points')
+      .in('match_id', matchIds);
+
+    if (performancesError) throw performancesError;
+
+    totalPerformances = performances?.length || 0;
+    performancesWithoutFantasyPoints = (performances || []).filter((perf: any) => perf.fantasy_points === null).length;
+  }
+
+  const missingPerformances = Math.max(expectedPerformances - totalPerformances, 0);
+
+  const pendingItems: string[] = [];
+  if (totalMatches === 0) pendingItems.push('Nenhuma partida cadastrada na rodada');
+  if (matchesMissingResults > 0) pendingItems.push(`${matchesMissingResults} partida(s) sem vencedor/placar`);
+  if (missingPerformances > 0) pendingItems.push(`${missingPerformances} performance(s) ainda não lançada(s)`);
+  if (performancesWithoutFantasyPoints > 0) pendingItems.push(`${performancesWithoutFantasyPoints} performance(s) sem fantasy_points`);
+
+  return {
+    roundId: Number(round.id),
+    season: Number(round.season),
+    roundNumber: Number(round.round_number),
+    status: mapRoundStatusToApi(String(round.status)),
+    isMarketOpen: Boolean(round.is_market_open),
+    marketCloseTime: round.market_close_time || null,
+    totalMatches,
+    matchesMissingResults,
+    expectedPerformances,
+    totalPerformances,
+    missingPerformances,
+    performancesWithoutFantasyPoints,
+    canFinalize: pendingItems.length === 0,
+    pendingItems
+  };
+}
+
 /**
  * ROUNDS CONTROLLER
  * 
@@ -507,17 +624,13 @@ export async function finalizeRound(req: AuthenticatedRequest, res: Response) {
       });
     }
 
-    const { data: round, error: roundError } = await adminSupabase
-      .from('rounds')
-      .select('id, status')
-      .eq('id', roundId)
-      .single();
+    const check = await buildFinalizeRoundCheck(roundId);
 
-    if (roundError || !round) {
-      return res.status(404).json({
+    if (!check.canFinalize) {
+      return res.status(409).json({
         success: false,
-        error: 'Rodada não encontrada',
-        round_id: roundId
+        error: 'Rodada com pendências para finalização',
+        check
       });
     }
 
@@ -532,6 +645,14 @@ export async function finalizeRound(req: AuthenticatedRequest, res: Response) {
       });
     }
 
+    await adminSupabase
+      .from('rounds')
+      .update({
+        is_market_open: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', roundId);
+
     return res.json({
       success: true,
       message: 'Rodada finalizada com sucesso',
@@ -543,6 +664,37 @@ export async function finalizeRound(req: AuthenticatedRequest, res: Response) {
       success: false,
       error: 'Erro interno ao finalizar rodada',
       message: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+/**
+ * Verificar checklist de finalização de rodada
+ * GET /api/admin/rounds/:id/finalize-check
+ */
+export async function getRoundFinalizeCheck(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const roundId = Number(id);
+
+    if (!Number.isFinite(roundId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'round_id inválido'
+      });
+    }
+
+    const check = await buildFinalizeRoundCheck(roundId);
+    return res.json({
+      success: true,
+      check
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erro desconhecido';
+    const statusCode = message === 'Rodada não encontrada' ? 404 : 500;
+    return res.status(statusCode).json({
+      success: false,
+      error: message
     });
   }
 }

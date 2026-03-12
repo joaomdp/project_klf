@@ -16,6 +16,7 @@ export interface Player {
   id: string;
   name: string;
   role: Role;
+  teamId?: string;
   team: string;
   teamLogo: string;
   price: number;

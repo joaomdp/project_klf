@@ -75,6 +75,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [usersError, setUsersError] = useState<string | null>(null);
   const [leaguesError, setLeaguesError] = useState<string | null>(null);
   const [finalizeRoundLoading, setFinalizeRoundLoading] = useState(false);
+  const [finalizeCheckLoading, setFinalizeCheckLoading] = useState(false);
+  const [finalizeCheckResult, setFinalizeCheckResult] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [priceEdits, setPriceEdits] = useState<Record<string, string>>({});
   const [playerEditId, setPlayerEditId] = useState<string | null>(null);
@@ -91,19 +93,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [newRoundForm, setNewRoundForm] = useState({
     season: '',
     round_number: '',
-    status: 'upcoming',
-    start_date: '',
-    end_date: '',
-    market_close_time: '',
-    is_market_open: true
+    status: 'upcoming'
   });
   const [matchForm, setMatchForm] = useState({
     round_id: '',
     team_a_id: '',
     team_b_id: '',
-    winner_id: '',
-    team_a_score: '',
-    team_b_score: '',
     games_count: '1'
   });
   const [performanceRoundId, setPerformanceRoundId] = useState('');
@@ -135,6 +130,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [csvPreviewFileName, setCsvPreviewFileName] = useState<string | null>(null);
   const [recalculatePlayersLoading, setRecalculatePlayersLoading] = useState(false);
   const [marketRoundId, setMarketRoundId] = useState('');
+  const [marketCloseTimeInput, setMarketCloseTimeInput] = useState('');
   const [activeRoundId, setActiveRoundId] = useState<string | null>(null);
   const [marketActionLoading, setMarketActionLoading] = useState(false);
   const [userSearch, setUserSearch] = useState('');
@@ -427,19 +423,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     }
 
     setRoundsError(null);
-    const resolvedStartDate = newRoundForm.market_close_time
-      ? newRoundForm.market_close_time
-      : new Date().toISOString();
-    const resolvedMarketCloseTime = newRoundForm.market_close_time
-      ? newRoundForm.market_close_time
-      : resolvedStartDate;
+    const resolvedStartDate = new Date().toISOString();
     const result = await DataService.createAdminRound({
       season: seasonValue,
       round_number: roundValue,
       status: newRoundForm.status || 'upcoming',
       start_date: resolvedStartDate,
-      market_close_time: resolvedMarketCloseTime,
-      is_market_open: newRoundForm.is_market_open
+      market_close_time: resolvedStartDate,
+      is_market_open: false
     });
 
     if (!result.ok) {
@@ -450,11 +441,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     setNewRoundForm({
       season: '',
       round_number: '',
-      status: 'upcoming',
-      market_close_time: '',
-      is_market_open: true
+      status: 'upcoming'
     });
     await loadRounds();
+    window.dispatchEvent(new Event('matches:refresh'));
   };
 
   const handleFinalizeRound = async () => {
@@ -474,9 +464,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       const result = await DataService.finalizeAdminRound(roundId);
       if (!result.ok) {
         setPerformancesError(result.error || 'Erro ao finalizar rodada');
+        await handleFinalizeCheck();
         return;
       }
 
+      setFinalizeCheckResult(null);
       await loadRounds();
       await loadPlayers();
       window.dispatchEvent(new Event('players:refresh'));
@@ -494,16 +486,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   };
 
   const handleCreateMatch = async () => {
-    const teamAScore = matchForm.team_a_score === '' ? null : Number(matchForm.team_a_score);
-    const teamBScore = matchForm.team_b_score === '' ? null : Number(matchForm.team_b_score);
     const gamesCount = matchForm.games_count === '' ? null : Number(matchForm.games_count);
 
     const missingFields: string[] = [];
     if (!matchForm.round_id) missingFields.push('Rodada');
     if (!matchForm.team_a_id) missingFields.push('Time A');
     if (!matchForm.team_b_id) missingFields.push('Time B');
-    if (teamAScore === null) missingFields.push('Placar Time A');
-    if (teamBScore === null) missingFields.push('Placar Time B');
     if (gamesCount === null) missingFields.push('Numero de partidas');
 
     if (missingFields.length > 0) {
@@ -514,15 +502,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     const roundId = matchForm.round_id;
     const teamAId = matchForm.team_a_id;
     const teamBId = matchForm.team_b_id;
-    const winnerId = matchForm.winner_id || null;
-
     if (teamAId === teamBId) {
       setMatchesError('Time A e Time B precisam ser diferentes.');
-      return;
-    }
-
-    if ((teamAScore !== null && Number.isNaN(teamAScore)) || (teamBScore !== null && Number.isNaN(teamBScore))) {
-      setMatchesError('Placar invalido.');
       return;
     }
 
@@ -536,11 +517,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       round_id: roundId,
       team_a_id: teamAId,
       team_b_id: teamBId,
-      winner_id: winnerId,
-      status: winnerId ? 'completed' : 'scheduled',
+      status: 'scheduled',
       scheduled_time: new Date().toISOString(),
-      team_a_score: teamAScore,
-      team_b_score: teamBScore,
       games_count: gamesCount || 1
     });
 
@@ -553,12 +531,62 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
         round_id: '',
         team_a_id: '',
         team_b_id: '',
-        winner_id: '',
-        team_a_score: '',
-        team_b_score: '',
         games_count: '1'
       });
     await loadMatches(roundId);
+    window.dispatchEvent(new Event('matches:refresh'));
+  };
+
+  const handleFinalizeCheck = async () => {
+    if (!performanceRoundId) {
+      setPerformancesError('Selecione uma rodada para validar o checklist.');
+      setFinalizeCheckResult(null);
+      return;
+    }
+
+    setPerformancesError(null);
+    setFinalizeCheckLoading(true);
+    const roundId = Number(performanceRoundId);
+    const result = await DataService.getAdminRoundFinalizeCheck(roundId);
+
+    if (!result.ok) {
+      setPerformancesError(result.error || 'Erro ao validar checklist da rodada');
+      setFinalizeCheckResult(null);
+      setFinalizeCheckLoading(false);
+      return;
+    }
+
+    setFinalizeCheckResult(result.check || null);
+    setFinalizeCheckLoading(false);
+  };
+
+  const handleSaveMarketCloseTime = async () => {
+    const roundId = Number(marketRoundId);
+    if (!roundId) {
+      setMarketError('Selecione uma rodada para definir o fechamento.');
+      return;
+    }
+
+    if (!marketCloseTimeInput) {
+      setMarketError('Informe uma data de fechamento do mercado.');
+      return;
+    }
+
+    setMarketError(null);
+    setMarketActionLoading(true);
+    const result = await DataService.updateAdminRoundDates(roundId, {
+      market_close_time: marketCloseTimeInput
+    });
+
+    if (!result.ok) {
+      setMarketError(result.error || 'Erro ao definir fechamento do mercado');
+      setMarketActionLoading(false);
+      return;
+    }
+
+    await loadRounds();
+    window.dispatchEvent(new Event('matches:refresh'));
+    setMarketActionLoading(false);
   };
 
   const handleMatchDelete = async (matchId: number) => {
@@ -571,6 +599,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       return;
     }
     await loadMatches();
+    window.dispatchEvent(new Event('matches:refresh'));
   };
 
   const buildPerformanceRow = (player: any, matchId: string, gameNumber: number) => ({
@@ -674,6 +703,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     setPerformanceMatchId('');
     setPerformanceGamesCount(1);
     setPerformanceRowsByGame([]);
+    setFinalizeCheckResult(null);
   };
 
   const handlePerformanceMatchChange = (matchId: string) => {
@@ -1190,6 +1220,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
         setMarketError(errorText || 'Erro ao atualizar mercado');
       } else {
         await loadRounds();
+        window.dispatchEvent(new Event('matches:refresh'));
       }
     } catch (error) {
       setMarketError(String(error));
@@ -1197,6 +1228,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       setMarketActionLoading(false);
     }
   };
+
+  const toDateTimeLocalValue = (value?: string | null) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const pad = (input: number) => String(input).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+
+  useEffect(() => {
+    if (!marketRoundId) {
+      setMarketCloseTimeInput('');
+      return;
+    }
+    const selectedRound = rounds.find((round) => String(round.id) === String(marketRoundId));
+    setMarketCloseTimeInput(toDateTimeLocalValue(selectedRound?.market_close_time));
+  }, [marketRoundId, rounds]);
 
   const renderPlayers = () => {
     if (playersLoading) {
@@ -1923,24 +1971,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                 <option value="completed">Completed</option>
               </select>
             </div>
-            <div>
-              <label className="text-[10px] text-gray-500 uppercase tracking-[0.3em]">Fechamento do mercado</label>
-              <input
-                type="datetime-local"
-                value={newRoundForm.market_close_time}
-                onChange={(event) => setNewRoundForm((prev) => ({ ...prev, market_close_time: event.target.value }))}
-                className="mt-2 bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
-              />
-            </div>
             <div className="flex items-end justify-between gap-4 md:col-span-3">
-              <label className="flex items-center gap-2 text-[10px] text-gray-500 uppercase tracking-[0.3em]">
-                <input
-                  type="checkbox"
-                  checked={newRoundForm.is_market_open}
-                  onChange={(event) => setNewRoundForm((prev) => ({ ...prev, is_market_open: event.target.checked }))}
-                />
-                Mercado aberto
-              </label>
+              <span className="text-[10px] text-gray-500 uppercase tracking-[0.3em]">
+                Defina o fechamento do mercado na aba Mercado
+              </span>
               <button
                 onClick={handleCreateRound}
                 className="btn-primary text-xs uppercase tracking-wider"
@@ -2032,43 +2066,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-xs text-gray-500">Vencedor (opcional)</label>
-              <select
-                value={matchForm.winner_id}
-                onChange={(event) => handleMatchFormChange('winner_id', event.target.value)}
-                className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg"
-              >
-                <option value="">Sem vencedor</option>
-                {teams
-                  .filter((team) => team.id === matchForm.team_a_id || team.id === matchForm.team_b_id)
-                  .map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs text-gray-500">Placar Time A</label>
-              <input
-                value={matchForm.team_a_score}
-                onChange={(event) => handleMatchFormChange('team_a_score', event.target.value)}
-                placeholder="Ex: 2"
-                className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs text-gray-500">Placar Time B</label>
-              <input
-                value={matchForm.team_b_score}
-                onChange={(event) => handleMatchFormChange('team_b_score', event.target.value)}
-                placeholder="Ex: 1"
-                className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg"
-              />
-            </div>
-            <div className="space-y-2">
               <label className="text-xs text-gray-500">Numero de partidas</label>
               <input
+                type="number"
+                min={1}
                 value={matchForm.games_count}
                 onChange={(event) => handleMatchFormChange('games_count', event.target.value)}
                 placeholder="Ex: 3"
@@ -2208,13 +2209,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                 </button>
                 <button
                   type="button"
+                  onClick={handleFinalizeCheck}
+                  className="text-[10px] uppercase tracking-[0.2em] text-amber-200 border border-amber-500/30 px-3 py-2 rounded-lg"
+                  disabled={finalizeCheckLoading}
+                >
+                  {finalizeCheckLoading ? 'Verificando...' : 'Verificar checklist da rodada'}
+                </button>
+                <button
+                  type="button"
                   onClick={handleFinalizeRound}
                   className="text-[10px] uppercase tracking-[0.2em] text-emerald-200 border border-emerald-500/30 px-3 py-2 rounded-lg"
-                  disabled={finalizeRoundLoading}
+                  disabled={finalizeRoundLoading || !finalizeCheckResult?.canFinalize}
                 >
                   {finalizeRoundLoading ? 'Finalizando...' : 'Finalizar rodada'}
                 </button>
               </div>
+              {finalizeCheckResult && (
+                <div className="border border-white/10 bg-black/30 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500">Checklist de finalização</p>
+                    <span
+                      className={`text-[10px] uppercase tracking-[0.2em] ${finalizeCheckResult.canFinalize ? 'text-emerald-300' : 'text-amber-300'}`}
+                    >
+                      {finalizeCheckResult.canFinalize ? 'Pronto para finalizar' : 'Existem pendências'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[10px] uppercase tracking-[0.18em] text-gray-400">
+                    <div>Partidas: <span className="text-white">{finalizeCheckResult.totalMatches}</span></div>
+                    <div>Sem resultado: <span className="text-white">{finalizeCheckResult.matchesMissingResults}</span></div>
+                    <div>Perf. esperadas: <span className="text-white">{finalizeCheckResult.expectedPerformances}</span></div>
+                    <div>Perf. lançadas: <span className="text-white">{finalizeCheckResult.totalPerformances}</span></div>
+                  </div>
+                  {finalizeCheckResult.pendingItems?.length > 0 && (
+                    <div className="space-y-2">
+                      {finalizeCheckResult.pendingItems.map((item: string) => (
+                        <p key={item} className="text-xs text-amber-200">- {item}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             {csvPreviewRows && (
               <div className="border border-white/10 bg-black/30 p-4 space-y-3">
@@ -2430,7 +2464,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
             Rodada ativa: {activeRoundId ? `#${activeRoundId}` : 'Nao encontrada'}
           </p>
         </div>
-        <div className="p-6 grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-4 items-center">
+        <div className="p-6 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto_auto] gap-4 items-end">
           <div className="space-y-2">
             <label className="text-[10px] text-gray-500 uppercase tracking-[0.3em]">Rodada</label>
             <select
@@ -2446,6 +2480,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
               ))}
             </select>
           </div>
+          <div className="space-y-2">
+            <label className="text-[10px] text-gray-500 uppercase tracking-[0.3em]">Fechamento do mercado</label>
+            <input
+              type="datetime-local"
+              value={marketCloseTimeInput}
+              onChange={(event) => setMarketCloseTimeInput(event.target.value)}
+              className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
+            />
+          </div>
+          <button
+            onClick={handleSaveMarketCloseTime}
+            className="btn-secondary text-xs uppercase tracking-wider"
+            disabled={marketActionLoading}
+          >
+            {marketActionLoading ? 'Processando...' : 'Salvar fechamento'}
+          </button>
           <button
             onClick={() => handleMarketAction('open')}
             className="btn-primary text-xs uppercase tracking-wider"

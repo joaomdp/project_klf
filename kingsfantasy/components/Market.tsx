@@ -9,6 +9,8 @@ import DiversityIndicator from './DiversityIndicator';
 interface MarketProps {
   players: Player[];
   userTeam: UserTeam;
+  teamMatchups?: Record<string, { label: string; scheduledTime?: string | null }>;
+  currentRoundLabel?: string | null;
   onHire: (player: Player) => void;
   onFire: (role: Role) => void;
   onClear: () => void;
@@ -16,7 +18,17 @@ interface MarketProps {
   onRefresh: () => Promise<boolean>;
 }
 
-const Market: React.FC<MarketProps> = ({ players, userTeam, onHire, onFire, onClear, onConfirm, onRefresh }) => {
+const Market: React.FC<MarketProps> = ({
+  players,
+  userTeam,
+  teamMatchups = {},
+  currentRoundLabel,
+  onHire,
+  onFire,
+  onClear,
+  onConfirm,
+  onRefresh
+}) => {
   const [filterRole, setFilterRole] = useState<Role | 'ALL'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [historyPlayer, setHistoryPlayer] = useState<Player | null>(null);
@@ -318,6 +330,14 @@ const Market: React.FC<MarketProps> = ({ players, userTeam, onHire, onFire, onCl
               ))}
             </div>
           </div>
+
+          {currentRoundLabel && (
+            <div className="bg-black/60 backdrop-blur-xl border border-white/5 px-4 py-3">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                Confrontos da {currentRoundLabel}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className={`space-y-4 transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
@@ -326,6 +346,7 @@ const Market: React.FC<MarketProps> = ({ players, userTeam, onHire, onFire, onCl
             const isHired = hiredPlayer?.id === player.id;
             const canAfford = isHired || (userTeam.budget + (hiredPlayer?.price || 0) >= player.price);
             const hiredChamp = isHired ? (hiredPlayer?.selectedChampion || hiredPlayer?.lastChampion) : null;
+            const matchup = player.teamId ? teamMatchups[player.teamId] : null;
 
             return (
               <div key={player.id} className={`relative group bg-black/40 border transition-all duration-500 overflow-hidden ${isHired ? 'border-[#6366F1]/60 shadow-[0_0_30px_rgba(94,108,255,0.1)]' : 'border-white/5 hover:border-white/20'}`}>
@@ -360,8 +381,11 @@ const Market: React.FC<MarketProps> = ({ players, userTeam, onHire, onFire, onCl
                      <img src={roleMetadata[player.role].icon} className="w-3.5 h-3.5 brightness-200 opacity-40" alt="" />
                      <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em]">{player.team}</span>
                    </div>
-                   <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#6366F1] transition-colors">{player.name}</h3>
-                    </div>
+                    <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#6366F1] transition-colors">{player.name}</h3>
+                    <p className="mt-2 text-[10px] uppercase tracking-[0.15em] text-gray-500">
+                      {matchup ? `Confronto: ${matchup.label}` : 'Confronto: a definir'}
+                    </p>
+                     </div>
                     <div className="flex items-center gap-10">
                       <div>
                         <div className="flex items-end gap-1.5 mb-1"><span className="text-2xl font-black text-white font-orbitron tracking-tighter leading-none">{player.avgPoints.toFixed(1)}</span><span className="text-[10px] font-black text-[#6366F1] mb-0.5">PTS</span></div>

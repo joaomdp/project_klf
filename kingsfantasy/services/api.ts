@@ -505,6 +505,7 @@ export const DataService = {
           id: item.id.toString(),
           name: item.name,
           role: mappedRole,
+          teamId: item.team_id ? String(item.team_id) : undefined,
           price: Number(item.price),
           points: Number(item.points),
           avgPoints: Number(item.avg_points),
@@ -1513,11 +1514,11 @@ export const DataService = {
     round_id: string;
     team_a_id: string;
     team_b_id: string;
-    winner_id: string | null;
+    winner_id?: string | null;
     scheduled_time: string;
     status?: string;
-    team_a_score: number | null;
-    team_b_score: number | null;
+    team_a_score?: number | null;
+    team_b_score?: number | null;
     games_count?: number;
   }): Promise<{ ok: boolean; error?: string }> {
     const anonKey = this.getAnonKey();
@@ -1727,6 +1728,65 @@ export const DataService = {
     } catch (error) {
       console.error('❌ Erro ao buscar status do mercado:', error);
       return null;
+    }
+  },
+
+  async getAdminRoundFinalizeCheck(roundId: number): Promise<{ ok: boolean; check?: any; error?: string }> {
+    const anonKey = this.getAnonKey();
+    const userToken = this.getUserToken();
+
+    if (!userToken) {
+      return { ok: false, error: 'Usuário não autenticado' };
+    }
+
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/admin/rounds/${roundId}/finalize-check`, {
+        headers: buildAuthHeaders(anonKey, userToken, { allowAnonFallback: false })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { ok: false, error: errorText || 'Erro ao verificar checklist da rodada' };
+      }
+
+      const data = await response.json().catch(() => null);
+      return { ok: true, check: data?.check };
+    } catch (error) {
+      return { ok: false, error: String(error) };
+    }
+  },
+
+  async getCurrentRoundMatchups(): Promise<{
+    round: {
+      id: number;
+      round_number: number;
+      start_date: string;
+      market_close_time: string;
+    } | null;
+    matches: Array<{
+      id: number;
+      round_id: number;
+      scheduled_time: string | null;
+      status: string;
+      team_a_id: string;
+      team_b_id: string;
+      team_a?: { id: string; name: string };
+      team_b?: { id: string; name: string };
+    }>;
+  }> {
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/market/matchups/current`);
+      if (!response.ok) {
+        return { round: null, matches: [] };
+      }
+      const data = await response.json();
+      return {
+        round: data.round || null,
+        matches: data.matches || []
+      };
+    } catch (error) {
+      console.error('❌ Erro ao buscar confrontos da rodada:', error);
+      return { round: null, matches: [] };
     }
   },
 

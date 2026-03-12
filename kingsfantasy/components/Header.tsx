@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Page } from '../types';
 import logoImage from '../assets/images/logo/logo.png';
+import MarketTimer from './MarketTimer';
 
 interface HeaderProps {
   activePage: Page;
@@ -10,6 +11,7 @@ interface HeaderProps {
   avatar: string;
   dbConnected?: boolean;
   isAdmin?: boolean;
+  showMarketTimer?: boolean;
 }
 
 const Logo: React.FC = () => {
@@ -37,7 +39,7 @@ const Logo: React.FC = () => {
   );
 };
 
-const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avatar, dbConnected = true, isAdmin = false }) => {
+const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avatar, dbConnected = true, isAdmin = false, showMarketTimer = false }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navItems: { id: Page; label: string }[] = [
     { id: 'dashboard', label: 'Início' },
@@ -97,17 +99,23 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
           >
             <i className={`fa-solid ${isMenuOpen ? 'fa-xmark' : 'fa-bars'} text-lg`}></i>
           </button>
-          <div className="hidden 2xl:flex flex-col text-right border-r border-white/10 pr-8">
-             <span className={`text-[10px] font-black tracking-wider uppercase ${dbConnected ? 'text-[#6366F1]' : 'text-red-500'}`}>
-               {dbConnected ? 'MERCADO ABERTO' : 'MERCADO FECHADO'}
-             </span>
-             <div className="flex items-center justify-end gap-1.5 mt-1.5">
-                <span className={`w-2 h-2 rounded-full animate-pulse shadow-lg ${dbConnected ? 'bg-[#6366F1] shadow-[#6366F1]/50' : 'bg-red-500 shadow-red-500/50'}`}></span>
-                <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">
-                  {dbConnected ? 'Faça sua escalação' : 'Rodada em andamento'}
-                </span>
-             </div>
-          </div>
+          {showMarketTimer ? (
+            <div className="hidden xl:block border-r border-white/10 pr-6">
+              <MarketTimer className="p-3 min-w-[240px]" />
+            </div>
+          ) : (
+            <div className="hidden 2xl:flex flex-col text-right border-r border-white/10 pr-8">
+               <span className={`text-[10px] font-black tracking-wider uppercase ${dbConnected ? 'text-[#6366F1]' : 'text-red-500'}`}>
+                 {dbConnected ? 'MERCADO ABERTO' : 'MERCADO FECHADO'}
+               </span>
+               <div className="flex items-center justify-end gap-1.5 mt-1.5">
+                  <span className={`w-2 h-2 rounded-full animate-pulse shadow-lg ${dbConnected ? 'bg-[#6366F1] shadow-[#6366F1]/50' : 'bg-red-500 shadow-red-500/50'}`}></span>
+                  <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">
+                    {dbConnected ? 'Faça sua escalação' : 'Rodada em andamento'}
+                  </span>
+               </div>
+            </div>
+          )}
           
           <div 
             className={`flex items-center gap-4 sm:gap-5 cursor-pointer group p-2 sm:p-2.5 rounded-2xl transition-all border ${activePage === 'profile' ? 'bg-white/5 border-white/10' : 'border-transparent hover:bg-white/5'}`}

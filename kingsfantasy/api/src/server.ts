@@ -250,6 +250,48 @@ app.get('/api/market/time-remaining', async (req: Request, res: Response) => {
   }
 });
 
+app.get('/api/market/matchups/current', async (req: Request, res: Response) => {
+  try {
+    const marketStatus = await marketService.getMarketStatus();
+
+    if (!marketStatus.currentRound?.id) {
+      return res.json({
+        success: true,
+        round: null,
+        matches: []
+      });
+    }
+
+    const { data: matches, error } = await supabase
+      .from('matches')
+      .select(`
+        id,
+        round_id,
+        scheduled_time,
+        status,
+        team_a_id,
+        team_b_id,
+        team_a:teams!matches_team_a_id_fkey(id, name),
+        team_b:teams!matches_team_b_id_fkey(id, name)
+      `)
+      .eq('round_id', marketStatus.currentRound.id)
+      .order('scheduled_time', { ascending: true });
+
+    if (error) throw error;
+
+    return res.json({
+      success: true,
+      round: marketStatus.currentRound,
+      matches: matches || []
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 app.post('/api/market/validate-trade/:userTeamId', async (req: Request, res: Response) => {
   try {
     const userTeamId = parseInt(req.params.userTeamId);

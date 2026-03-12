@@ -27,11 +27,11 @@ export async function createMatch(req: AuthenticatedRequest, res: Response) {
     } = req.body;
 
     // Validações básicas
-    if (!round_id || !team_a_id || !team_b_id || team_a_score === undefined || team_b_score === undefined) {
+    if (!round_id || !team_a_id || !team_b_id) {
       return res.status(400).json({
         success: false,
         error: 'Campos obrigatórios faltando',
-        required: ['round_id', 'team_a_id', 'team_b_id', 'team_a_score', 'team_b_score']
+        required: ['round_id', 'team_a_id', 'team_b_id']
       });
     }
 
@@ -39,6 +39,20 @@ export async function createMatch(req: AuthenticatedRequest, res: Response) {
       return res.status(400).json({
         success: false,
         error: 'games_count inválido'
+      });
+    }
+
+    if (team_a_score !== undefined && team_a_score !== null && Number.isNaN(Number(team_a_score))) {
+      return res.status(400).json({
+        success: false,
+        error: 'team_a_score inválido'
+      });
+    }
+
+    if (team_b_score !== undefined && team_b_score !== null && Number.isNaN(Number(team_b_score))) {
+      return res.status(400).json({
+        success: false,
+        error: 'team_b_score inválido'
       });
     }
 
@@ -80,7 +94,8 @@ export async function createMatch(req: AuthenticatedRequest, res: Response) {
     }
 
     // Inserir partida
-    const resolvedStatus = status || (winner_id ? 'completed' : 'scheduled');
+    const hasResult = winner_id || (team_a_score !== undefined && team_a_score !== null) || (team_b_score !== undefined && team_b_score !== null);
+    const resolvedStatus = status || (hasResult ? 'completed' : 'scheduled');
     const resolvedScheduledTime = scheduled_time || new Date().toISOString();
 
     const { data: match, error: matchError } = await adminSupabase

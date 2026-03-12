@@ -25,6 +25,10 @@ export interface MarketStatus {
 }
 
 class MarketService {
+  private readonly NEXT_ROUND_STATUSES = ['upcoming', 'pending', 'active', 'open', 'live'];
+
+  private readonly SCHEDULABLE_ROUND_STATUSES = ['upcoming', 'pending'];
+
   /**
    * Verifica status atual do mercado
    */
@@ -34,7 +38,7 @@ class MarketService {
       const { data: round, error } = await supabase
         .from('rounds')
         .select('*')
-        .in('status', ['upcoming', 'live'])
+        .in('status', this.NEXT_ROUND_STATUSES)
         .order('start_date', { ascending: true })
         .limit(1)
         .single();
@@ -121,7 +125,7 @@ class MarketService {
       const { data: nextRound, error: roundError } = await supabase
         .from('rounds')
         .select('id')
-        .eq('status', 'upcoming')
+        .in('status', this.SCHEDULABLE_ROUND_STATUSES)
         .order('start_date', { ascending: true })
         .limit(1)
         .single();
@@ -172,7 +176,7 @@ class MarketService {
       const { data: rounds, error } = await supabase
         .from('rounds')
         .select('*')
-        .eq('status', 'upcoming')
+        .in('status', this.SCHEDULABLE_ROUND_STATUSES)
         .eq('is_market_open', true);
 
       if (error) throw error;

@@ -23,6 +23,17 @@ import CommandPalette from './components/CommandPalette';
 import ShortcutsGuide from './components/ShortcutsGuide';
 import AdminPanel from './components/AdminPanel';
 
+type MarketMatch = {
+  id: number;
+  round_id: number;
+  scheduled_time: string | null;
+  status: string;
+  team_a_id: string;
+  team_b_id: string;
+  team_a?: { id: string; name: string };
+  team_b?: { id: string; name: string };
+};
+
 const DEFAULT_USER_TEAM: UserTeam = {
   id: 'u1',
   userId: 'current-user',
@@ -120,6 +131,8 @@ const AppContent: React.FC = () => {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isShortcutsGuideOpen, setIsShortcutsGuideOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [marketMatchups, setMarketMatchups] = useState<MarketMatch[]>([]);
+  const [marketRoundLabel, setMarketRoundLabel] = useState<string | null>(null);
   
   const { showToast } = useToast();
 
@@ -210,6 +223,16 @@ const AppContent: React.FC = () => {
     setIsAdmin(result.ok);
   }, []);
 
+  const loadCurrentRoundMatchups = useCallback(async () => {
+    const data = await DataService.getCurrentRoundMatchups();
+    setMarketMatchups(data.matches || []);
+    if (data.round?.round_number) {
+      setMarketRoundLabel(`rodada ${data.round.round_number}`);
+    } else {
+      setMarketRoundLabel(null);
+    }
+  }, []);
+
   const fetchPlayers = useCallback(async () => {
     try {
       const conn = await DataService.checkConnection();
@@ -261,6 +284,7 @@ const AppContent: React.FC = () => {
             checkAdminAccess(),
             DataService.getUserTeam(session.user.id)
           ]);
+          await loadCurrentRoundMatchups();
         
         if (existingTeam) {
           // Usuário já tem dados no banco - carrega e não precisa fazer onboarding
@@ -303,7 +327,7 @@ const AppContent: React.FC = () => {
       };
 
     initApp();
-  }, [fetchPlayers, calculateTotalPoints, checkAdminAccess]);
+  }, [fetchPlayers, calculateTotalPoints, checkAdminAccess, loadCurrentRoundMatchups]);
 
   useEffect(() => {
     if (!players.length) return;
@@ -319,9 +343,17 @@ const AppContent: React.FC = () => {
       fetchPlayers();
     };
 
+    const handleMatchesRefresh = () => {
+      loadCurrentRoundMatchups();
+    };
+
     window.addEventListener('players:refresh', handlePlayersRefresh as EventListener);
-    return () => window.removeEventListener('players:refresh', handlePlayersRefresh as EventListener);
-  }, [fetchPlayers]);
+    window.addEventListener('matches:refresh', handleMatchesRefresh as EventListener);
+    return () => {
+      window.removeEventListener('players:refresh', handlePlayersRefresh as EventListener);
+      window.removeEventListener('matches:refresh', handleMatchesRefresh as EventListener);
+    };
+  }, [fetchPlayers, loadCurrentRoundMatchups]);
 
   const handleLoginSuccess = async (userData: any) => {
     setIsLoading(true);
@@ -338,6 +370,7 @@ const AppContent: React.FC = () => {
           checkAdminAccess(),
           DataService.getUserTeam(session.user.id)
         ]);
+        await loadCurrentRoundMatchups();
         
            if (existingTeam) {
             // Usuário já existe - carrega os dados e pula onboarding
@@ -613,6 +646,17 @@ const AppContent: React.FC = () => {
           <Market
             players={players}
             userTeam={userTeam}
+            teamMatchups={marketMatchups.reduce<Record<string, { label: string; scheduledTime?: string | null }>>((acc, match) => {
+              const teamAId = String(match.team_a_id);
+              const teamBId = String(match.team_b_id);
+              const teamAName = match.team_a?.name || teamAId;
+              const teamBName = match.team_b?.name || teamBId;
+              const label = `${teamAName} vs ${teamBName}`;
+              acc[teamAId] = { label, scheduledTime: match.scheduled_time };
+              acc[teamBId] = { label, scheduledTime: match.scheduled_time };
+              return acc;
+            }, {})}
+            currentRoundLabel={marketRoundLabel}
             onHire={handleOpenChampionSelector}
             onFire={handleFirePlayer}
             onClear={() => isMarketOpen && resetTeam()}
@@ -759,14 +803,15 @@ const AppContent: React.FC = () => {
             </div>
           )}
 
-           <Header
-             activePage={currentPage}
-             onNavigate={setCurrentPage}
-             userName={userTeam.userName}
-             avatar={userTeam.avatar}
-             dbConnected={dbConnected}
-             isAdmin={isAdmin}
-           />
+            <Header
+              activePage={currentPage}
+              onNavigate={setCurrentPage}
+              userName={userTeam.userName}
+              avatar={userTeam.avatar}
+              dbConnected={dbConnected}
+              isAdmin={isAdmin}
+              showMarketTimer={currentPage === 'market'}
+            />
           
           <main className="flex-1 w-full max-w-[1440px] mx-auto px-6 md:px-12 py-12">
             <div key={currentPage} className="page-transition-container">

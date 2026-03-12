@@ -5,7 +5,8 @@ import {
   updateRoundStatus,
   listRounds,
   deleteRound,
-  finalizeRound
+  finalizeRound,
+  getRoundFinalizeCheck
 } from '../../controllers/admin/rounds.controller';
 
 const router = Router();
@@ -31,6 +32,9 @@ router.patch('/:id/status', updateRoundStatus);
 
 // POST /api/admin/rounds/:id/finalize - Finalizar rodada
 router.post('/:id/finalize', finalizeRound);
+
+// GET /api/admin/rounds/:id/finalize-check - Checklist antes de finalizar
+router.get('/:id/finalize-check', getRoundFinalizeCheck);
 
 // DELETE /api/admin/rounds/:id - Deletar rodada
 router.delete('/:id', deleteRound);

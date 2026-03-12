@@ -69,6 +69,13 @@ router.use('/stats', statsRouter);
 router.post('/market/force-open/:roundId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const roundId = parseInt(req.params.roundId);
+
+    if (!Number.isFinite(roundId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'roundId inválido'
+      });
+    }
     
     console.log(`🔓 Admin ${req.user?.email} forcing market open for round ${roundId}`);
     
@@ -92,6 +99,13 @@ router.post('/market/force-open/:roundId', async (req: AuthenticatedRequest, res
 router.post('/market/force-close/:roundId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const roundId = parseInt(req.params.roundId);
+
+    if (!Number.isFinite(roundId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'roundId inválido'
+      });
+    }
     
     console.log(`🔒 Admin ${req.user?.email} forcing market close for round ${roundId}`);
     
@@ -106,7 +120,7 @@ router.post('/market/force-close/:roundId', async (req: AuthenticatedRequest, re
     res.status(500).json({
       success: false,
       error: 'Erro ao forçar fechamento do mercado',
-      message: error instanceof Error ? error.message : 'Erro desconhecido'
+      message: error instanceof Error ? error.message : JSON.stringify(error)
     });
   }
 });

@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import { adminSupabase, supabase } from '../config/supabase';
 
 /**
  * MARKET SERVICE
@@ -115,7 +115,7 @@ class MarketService {
       console.log(`🔒 Closing market for round ${roundId}...`);
 
       // 1. Atualizar status do mercado na rodada
-      const { error: roundError } = await supabase
+      const { error: roundError } = await adminSupabase
         .from('rounds')
         .update({ 
           is_market_open: false,
@@ -126,7 +126,7 @@ class MarketService {
       if (roundError) throw roundError;
 
       // 2. Travar todos os user_teams
-      const { error: lockError } = await supabase
+      const { error: lockError } = await adminSupabase
         .from('user_teams')
         .update({
           is_locked: true,
@@ -152,7 +152,7 @@ class MarketService {
       console.log(`🔓 Opening market...`);
 
       // 1. Buscar próxima rodada upcoming
-      const { data: nextRound, error: roundError } = await supabase
+      const { data: nextRound, error: roundError } = await adminSupabase
         .from('rounds')
         .select('id')
         .in('status', this.SCHEDULABLE_ROUND_STATUSES)
@@ -168,7 +168,7 @@ class MarketService {
       }
 
       // 2. Abrir mercado
-      const { error: updateError } = await supabase
+      const { error: updateError } = await adminSupabase
         .from('rounds')
         .update({ 
           is_market_open: true,
@@ -179,7 +179,7 @@ class MarketService {
       if (updateError) throw updateError;
 
       // 3. Destravar todos os user_teams
-      const { error: unlockError } = await supabase
+      const { error: unlockError } = await adminSupabase
         .from('user_teams')
         .update({
           is_locked: false,
@@ -203,7 +203,7 @@ class MarketService {
     try {
       console.log('🔍 Checking if market should close...');
 
-      const { data: rounds, error } = await supabase
+      const { data: rounds, error } = await adminSupabase
         .from('rounds')
         .select('*')
         .in('status', this.SCHEDULABLE_ROUND_STATUSES)
@@ -325,7 +325,7 @@ class MarketService {
   async forceOpenMarket(roundId: number): Promise<void> {
     console.log(`⚠️  ADMIN: Force opening market for round ${roundId}`);
 
-    const { data: round, error: roundError } = await supabase
+    const { data: round, error: roundError } = await adminSupabase
       .from('rounds')
       .select('id, market_close_time')
       .eq('id', roundId)
@@ -340,7 +340,7 @@ class MarketService {
       ? new Date(now.getTime() + (24 * 60 * 60 * 1000)).toISOString()
       : round.market_close_time;
 
-    const { error } = await supabase
+    const { error } = await adminSupabase
       .from('rounds')
       .update({
         is_market_open: true,
@@ -351,9 +351,11 @@ class MarketService {
 
     if (error) throw error;
 
-    await supabase
+    const { error: unlockError } = await adminSupabase
       .from('user_teams')
       .update({ is_locked: false });
+
+    if (unlockError) throw unlockError;
 
     console.log(`✅ Market force-opened`);
   }

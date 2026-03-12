@@ -107,19 +107,62 @@ export async function createRound(req: AuthenticatedRequest, res: Response) {
     const resolvedStartDate = start_date || market_close_time || new Date().toISOString();
     const resolvedMarketCloseTime = market_close_time || start_date || new Date().toISOString();
 
-    const { data: round, error } = await adminSupabase
-      .from('rounds')
-      .insert({
-        season,
-        round_number,
-        start_date: resolvedStartDate,
-        end_date: end_date || null,
-        market_close_time: resolvedMarketCloseTime,
-        status: normalizedStatus,
-        is_market_open
-      })
-      .select('*')
-      .single();
+    const baseInsertPayload = {
+      season,
+      round_number,
+      start_date: resolvedStartDate,
+      end_date: end_date || null,
+      market_close_time: resolvedMarketCloseTime,
+      is_market_open
+    };
+
+    const statusCandidates = Array.from(new Set([
+      normalizedStatus,
+      'pending',
+      'upcoming',
+      'open',
+      'active',
+      'live',
+      'closed',
+      'completed',
+      'finished'
+    ].filter(Boolean))) as string[];
+
+    let round: any = null;
+    let error: any = null;
+
+    for (const statusCandidate of statusCandidates) {
+      const attempt = await adminSupabase
+        .from('rounds')
+        .insert({
+          ...baseInsertPayload,
+          status: statusCandidate
+        })
+        .select('*')
+        .single();
+
+      if (!attempt.error && attempt.data) {
+        round = attempt.data;
+        error = null;
+        break;
+      }
+
+      error = attempt.error;
+      if (!attempt.error?.message?.includes('rounds_status_check')) {
+        break;
+      }
+    }
+
+    if (error?.message?.includes('rounds_status_check') && !round) {
+      const fallbackAttempt = await adminSupabase
+        .from('rounds')
+        .insert(baseInsertPayload)
+        .select('*')
+        .single();
+
+      round = fallbackAttempt.data;
+      error = fallbackAttempt.error;
+    }
 
     if (error || !round) {
       console.error('❌ Error creating round:', error);

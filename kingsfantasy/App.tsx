@@ -125,6 +125,7 @@ const AppContent: React.FC = () => {
   });
   const isMarketOpen = true;
   const [dbConnected, setDbConnected] = useState(false);
+  const [marketIsOpen, setMarketIsOpen] = useState<boolean | null>(null);
   const [isCreateLeagueOpen, setIsCreateLeagueOpen] = useState(false);
   const [createdLeagueCode, setCreatedLeagueCode] = useState<string | null>(null);
   const [createdLeagueName, setCreatedLeagueName] = useState<string>('');
@@ -263,6 +264,13 @@ const AppContent: React.FC = () => {
     }
   }, [showToast]);
 
+  const refreshMarketStatus = useCallback(async () => {
+    const status = await DataService.getMarketStatus();
+    if (status) {
+      setMarketIsOpen(Boolean(status.isOpen));
+    }
+  }, []);
+
   useEffect(() => {
     const initApp = async () => {
       clearInvalidSession();
@@ -284,7 +292,7 @@ const AppContent: React.FC = () => {
             checkAdminAccess(),
             DataService.getUserTeam(session.user.id)
           ]);
-          await loadCurrentRoundMatchups();
+          await Promise.all([loadCurrentRoundMatchups(), refreshMarketStatus()]);
         
         if (existingTeam) {
           // Usuário já tem dados no banco - carrega e não precisa fazer onboarding
@@ -327,7 +335,7 @@ const AppContent: React.FC = () => {
       };
 
     initApp();
-  }, [fetchPlayers, calculateTotalPoints, checkAdminAccess, loadCurrentRoundMatchups]);
+  }, [fetchPlayers, calculateTotalPoints, checkAdminAccess, loadCurrentRoundMatchups, refreshMarketStatus]);
 
   useEffect(() => {
     if (!players.length) return;
@@ -355,6 +363,12 @@ const AppContent: React.FC = () => {
     };
   }, [fetchPlayers, loadCurrentRoundMatchups]);
 
+  useEffect(() => {
+    refreshMarketStatus();
+    const interval = setInterval(refreshMarketStatus, 30000);
+    return () => clearInterval(interval);
+  }, [refreshMarketStatus]);
+
   const handleLoginSuccess = async (userData: any) => {
     setIsLoading(true);
     setShowLanding(false);
@@ -370,7 +384,7 @@ const AppContent: React.FC = () => {
           checkAdminAccess(),
           DataService.getUserTeam(session.user.id)
         ]);
-        await loadCurrentRoundMatchups();
+        await Promise.all([loadCurrentRoundMatchups(), refreshMarketStatus()]);
         
            if (existingTeam) {
             // Usuário já existe - carrega os dados e pula onboarding
@@ -824,6 +838,7 @@ const AppContent: React.FC = () => {
               userName={userTeam.userName}
               avatar={userTeam.avatar}
               dbConnected={dbConnected}
+              marketIsOpen={marketIsOpen}
               isAdmin={isAdmin}
               showMarketTimer={currentPage === 'market'}
             />

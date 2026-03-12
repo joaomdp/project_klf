@@ -10,6 +10,7 @@ interface HeaderProps {
   userName: string;
   avatar: string;
   dbConnected?: boolean;
+  marketIsOpen?: boolean | null;
   isAdmin?: boolean;
   showMarketTimer?: boolean;
 }
@@ -39,7 +40,7 @@ const Logo: React.FC = () => {
   );
 };
 
-const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avatar, dbConnected = true, isAdmin = false, showMarketTimer = false }) => {
+const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avatar, dbConnected = true, marketIsOpen = null, isAdmin = false, showMarketTimer = false }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navItems: { id: Page; label: string }[] = [
     { id: 'dashboard', label: 'Início' },
@@ -105,16 +106,16 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
             </div>
           ) : (
             <div className="hidden 2xl:flex flex-col text-right border-r border-white/10 pr-8">
-               <span className={`text-[10px] font-black tracking-wider uppercase ${dbConnected ? 'text-[#6366F1]' : 'text-red-500'}`}>
-                 {dbConnected ? 'MERCADO ABERTO' : 'MERCADO FECHADO'}
+               <span className={`text-[10px] font-black tracking-wider uppercase ${(marketIsOpen ?? false) ? 'text-[#6366F1]' : 'text-red-500'}`}>
+                 {(marketIsOpen ?? false) ? 'MERCADO ABERTO' : 'MERCADO FECHADO'}
                </span>
                <div className="flex items-center justify-end gap-1.5 mt-1.5">
-                  <span className={`w-2 h-2 rounded-full animate-pulse shadow-lg ${dbConnected ? 'bg-[#6366F1] shadow-[#6366F1]/50' : 'bg-red-500 shadow-red-500/50'}`}></span>
+                  <span className={`w-2 h-2 rounded-full animate-pulse shadow-lg ${(marketIsOpen ?? false) ? 'bg-[#6366F1] shadow-[#6366F1]/50' : 'bg-red-500 shadow-red-500/50'}`}></span>
                   <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">
-                    {dbConnected ? 'Faça sua escalação' : 'Rodada em andamento'}
+                    {(marketIsOpen ?? false) ? 'Faça sua escalação' : 'Rodada em andamento'}
                   </span>
                </div>
-            </div>
+             </div>
           )}
           
           <div 

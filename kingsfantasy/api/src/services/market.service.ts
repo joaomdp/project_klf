@@ -34,18 +34,17 @@ class MarketService {
    */
   async getMarketStatus(): Promise<MarketStatus> {
     try {
-      // Buscar próxima rodada (upcoming ou live)
-      const { data: round, error } = await supabase
+      // Buscar rodadas elegíveis e priorizar a que está realmente com mercado aberto
+      const { data: rounds, error } = await supabase
         .from('rounds')
         .select('*')
         .in('status', this.NEXT_ROUND_STATUSES)
         .order('start_date', { ascending: true })
-        .limit(1)
-        .single();
+        .limit(20);
 
       if (error && error.code !== 'PGRST116') throw error;
 
-      if (!round) {
+      if (!rounds || rounds.length === 0) {
         return {
           isOpen: false,
           message: 'Não há rodadas agendadas no momento'
@@ -53,9 +52,15 @@ class MarketService {
       }
 
       const now = new Date();
-      const marketCloseTime = new Date(round.market_close_time);
+      const roundWithOpenMarket = rounds.find((item: any) => {
+        if (!item.is_market_open) return false;
+        const closeTime = new Date(item.market_close_time);
+        return now < closeTime;
+      });
 
-      const isOpen = round.is_market_open && now < marketCloseTime;
+      const round = roundWithOpenMarket || rounds[0];
+      const marketCloseTime = new Date(round.market_close_time);
+      const isOpen = Boolean(roundWithOpenMarket) && now < marketCloseTime;
 
       return {
         isOpen,

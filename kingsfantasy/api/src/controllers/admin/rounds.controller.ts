@@ -3,6 +3,33 @@ import { adminSupabase, supabase } from '../../config/supabase';
 import { scoringService } from '../../services/scoring.service';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware';
 
+const ROUND_STATUS_INPUT_TO_DB: Record<string, 'pending' | 'open' | 'closed' | 'finished'> = {
+  pending: 'pending',
+  upcoming: 'pending',
+  open: 'open',
+  active: 'open',
+  live: 'open',
+  closed: 'closed',
+  finished: 'finished',
+  completed: 'finished'
+};
+
+const ROUND_STATUS_DB_TO_API: Record<string, 'upcoming' | 'active' | 'completed'> = {
+  pending: 'upcoming',
+  open: 'active',
+  closed: 'completed',
+  finished: 'completed'
+};
+
+function normalizeRoundStatusToDb(status?: string): 'pending' | 'open' | 'closed' | 'finished' | null {
+  if (!status) return null;
+  return ROUND_STATUS_INPUT_TO_DB[status] || null;
+}
+
+function mapRoundStatusToApi(status: string): string {
+  return ROUND_STATUS_DB_TO_API[status] || status;
+}
+
 /**
  * ROUNDS CONTROLLER
  * 
@@ -25,6 +52,8 @@ export async function createRound(req: AuthenticatedRequest, res: Response) {
       is_market_open = true
     } = req.body;
 
+    const normalizedStatus = normalizeRoundStatusToDb(status);
+
     if (!season || !round_number) {
       return res.status(400).json({
         success: false,
@@ -40,8 +69,8 @@ export async function createRound(req: AuthenticatedRequest, res: Response) {
       });
     }
 
-    const validStatuses = ['upcoming', 'active', 'completed'];
-    if (status && !validStatuses.includes(status)) {
+    const validStatuses = Object.keys(ROUND_STATUS_INPUT_TO_DB);
+    if (!normalizedStatus) {
       return res.status(400).json({
         success: false,
         error: 'Status inválido',
@@ -86,7 +115,7 @@ export async function createRound(req: AuthenticatedRequest, res: Response) {
         start_date: resolvedStartDate,
         end_date: end_date || null,
         market_close_time: resolvedMarketCloseTime,
-        status,
+        status: normalizedStatus,
         is_market_open
       })
       .select('*')
@@ -104,7 +133,10 @@ export async function createRound(req: AuthenticatedRequest, res: Response) {
     return res.status(201).json({
       success: true,
       message: 'Rodada criada com sucesso',
-      round
+      round: {
+        ...round,
+        status: mapRoundStatusToApi(round.status)
+      }
     });
   } catch (error) {
     console.error('❌ Exception in createRound:', error);
@@ -194,6 +226,7 @@ export async function updateRoundStatus(req: AuthenticatedRequest, res: Response
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const normalizedStatus = normalizeRoundStatusToDb(status);
 
     if (!status) {
       return res.status(400).json({
@@ -204,8 +237,8 @@ export async function updateRoundStatus(req: AuthenticatedRequest, res: Response
     }
 
     // Validar status
-    const validStatuses = ['upcoming', 'active', 'completed'];
-    if (!validStatuses.includes(status)) {
+    const validStatuses = Object.keys(ROUND_STATUS_INPUT_TO_DB);
+    if (!normalizedStatus) {
       return res.status(400).json({
         success: false,
         error: 'Status inválido',
@@ -231,26 +264,27 @@ export async function updateRoundStatus(req: AuthenticatedRequest, res: Response
 
     // Validar transição de status (opcional - pode remover se quiser permitir qualquer transição)
     const validTransitions: Record<string, string[]> = {
-      'upcoming': ['active'],
-      'active': ['completed'],
-      'completed': [] // Não pode mudar de completed
+      pending: ['open', 'closed', 'finished'],
+      open: ['closed', 'finished'],
+      closed: ['finished'],
+      finished: []
     };
 
     const allowedNextStatuses = validTransitions[currentRound.status] || [];
-    if (currentRound.status !== status && !allowedNextStatuses.includes(status)) {
+    if (currentRound.status !== normalizedStatus && !allowedNextStatuses.includes(normalizedStatus)) {
       return res.status(400).json({
         success: false,
         error: 'Transição de status inválida',
-        current_status: currentRound.status,
+        current_status: mapRoundStatusToApi(currentRound.status),
         attempted_status: status,
-        allowed_transitions: allowedNextStatuses
+        allowed_transitions: allowedNextStatuses.map(mapRoundStatusToApi)
       });
     }
 
     // Atualizar status
     const { data: round, error: updateError } = await supabase
       .from('rounds')
-      .update({ status })
+      .update({ status: normalizedStatus })
       .eq('id', parseInt(id))
       .select()
       .single();
@@ -264,12 +298,17 @@ export async function updateRoundStatus(req: AuthenticatedRequest, res: Response
       });
     }
 
-    console.log(`✅ Round ${id} status changed: ${currentRound.status} → ${status}`);
+    console.log(`✅ Round ${id} status changed: ${currentRound.status} → ${normalizedStatus}`);
 
     return res.json({
       success: true,
-      message: `Status alterado de ${currentRound.status} para ${status}`,
-      round
+      message: `Status alterado de ${mapRoundStatusToApi(currentRound.status)} para ${mapRoundStatusToApi(normalizedStatus)}`,
+      round: round
+        ? {
+            ...round,
+            status: mapRoundStatusToApi(round.status)
+          }
+        : round
     });
 
   } catch (error) {
@@ -303,10 +342,15 @@ export async function listRounds(req: AuthenticatedRequest, res: Response) {
       });
     }
 
+    const mappedRounds = (rounds || []).map((round: any) => ({
+      ...round,
+      status: mapRoundStatusToApi(round.status)
+    }));
+
     return res.json({
       success: true,
-      total: rounds?.length || 0,
-      rounds: rounds || []
+      total: mappedRounds.length,
+      rounds: mappedRounds
     });
 
   } catch (error) {

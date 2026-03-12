@@ -271,8 +271,8 @@ app.get('/api/market/matchups/current', async (req: Request, res: Response) => {
         status,
         team_a_id,
         team_b_id,
-        team_a:teams!matches_team_a_id_fkey(id, name),
-        team_b:teams!matches_team_b_id_fkey(id, name)
+        team_a:teams!matches_team_a_id_fkey(id, name, logo_url),
+        team_b:teams!matches_team_b_id_fkey(id, name, logo_url)
       `)
       .eq('round_id', marketStatus.currentRound.id)
       .order('scheduled_time', { ascending: true });

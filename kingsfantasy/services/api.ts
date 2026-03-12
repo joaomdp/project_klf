@@ -1770,8 +1770,8 @@ export const DataService = {
       status: string;
       team_a_id: string;
       team_b_id: string;
-      team_a?: { id: string; name: string };
-      team_b?: { id: string; name: string };
+      team_a?: { id: string; name: string; logo_url?: string | null };
+      team_b?: { id: string; name: string; logo_url?: string | null };
     }>;
   }> {
     try {

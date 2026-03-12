@@ -30,8 +30,8 @@ type MarketMatch = {
   status: string;
   team_a_id: string;
   team_b_id: string;
-  team_a?: { id: string; name: string };
-  team_b?: { id: string; name: string };
+  team_a?: { id: string; name: string; logo_url?: string | null };
+  team_b?: { id: string; name: string; logo_url?: string | null };
 };
 
 const DEFAULT_USER_TEAM: UserTeam = {
@@ -646,16 +646,31 @@ const AppContent: React.FC = () => {
           <Market
             players={players}
             userTeam={userTeam}
-            teamMatchups={marketMatchups.reduce<Record<string, { label: string; scheduledTime?: string | null }>>((acc, match) => {
+            teamMatchups={marketMatchups.reduce<Record<string, Array<{ opponentName: string; opponentLogoUrl?: string; scheduledTime?: string | null }>>>((acc, match) => {
               const teamAId = String(match.team_a_id);
               const teamBId = String(match.team_b_id);
               const teamAName = match.team_a?.name || teamAId;
               const teamBName = match.team_b?.name || teamBId;
-              const label = `${teamAName} vs ${teamBName}`;
-              acc[teamAId] = { label, scheduledTime: match.scheduled_time };
-              acc[teamBId] = { label, scheduledTime: match.scheduled_time };
+              const teamALogo = match.team_a?.logo_url ? DataService.getStorageUrl('teams', match.team_a.logo_url) : undefined;
+              const teamBLogo = match.team_b?.logo_url ? DataService.getStorageUrl('teams', match.team_b.logo_url) : undefined;
+
+              if (!acc[teamAId]) acc[teamAId] = [];
+              if (!acc[teamBId]) acc[teamBId] = [];
+
+              acc[teamAId].push({
+                opponentName: teamBName,
+                opponentLogoUrl: teamBLogo,
+                scheduledTime: match.scheduled_time
+              });
+
+              acc[teamBId].push({
+                opponentName: teamAName,
+                opponentLogoUrl: teamALogo,
+                scheduledTime: match.scheduled_time
+              });
+
               return acc;
-            }, {})}
+            }, {} as Record<string, Array<{ opponentName: string; opponentLogoUrl?: string; scheduledTime?: string | null }>>)}
             currentRoundLabel={marketRoundLabel}
             onHire={handleOpenChampionSelector}
             onFire={handleFirePlayer}

@@ -9,7 +9,7 @@ import DiversityIndicator from './DiversityIndicator';
 interface MarketProps {
   players: Player[];
   userTeam: UserTeam;
-  teamMatchups?: Record<string, { label: string; scheduledTime?: string | null }>;
+  teamMatchups?: Record<string, Array<{ opponentName: string; opponentLogoUrl?: string; scheduledTime?: string | null }>>;
   currentRoundLabel?: string | null;
   onHire: (player: Player) => void;
   onFire: (role: Role) => void;
@@ -346,7 +346,7 @@ const Market: React.FC<MarketProps> = ({
             const isHired = hiredPlayer?.id === player.id;
             const canAfford = isHired || (userTeam.budget + (hiredPlayer?.price || 0) >= player.price);
             const hiredChamp = isHired ? (hiredPlayer?.selectedChampion || hiredPlayer?.lastChampion) : null;
-            const matchup = player.teamId ? teamMatchups[player.teamId] : null;
+            const matchupList = player.teamId ? (teamMatchups[player.teamId] || []) : [];
 
             return (
               <div key={player.id} className={`relative group bg-black/40 border transition-all duration-500 overflow-hidden ${isHired ? 'border-[#6366F1]/60 shadow-[0_0_30px_rgba(94,108,255,0.1)]' : 'border-white/5 hover:border-white/20'}`}>
@@ -382,9 +382,31 @@ const Market: React.FC<MarketProps> = ({
                      <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em]">{player.team}</span>
                    </div>
                     <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#6366F1] transition-colors">{player.name}</h3>
-                    <p className="mt-2 text-[10px] uppercase tracking-[0.15em] text-gray-500">
-                      {matchup ? `Confronto: ${matchup.label}` : 'Confronto: a definir'}
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {matchupList.length > 0 ? (
+                        matchupList.map((matchup, index) => (
+                          <div
+                            key={`${player.id}-matchup-${matchup.opponentName}-${index}`}
+                            className="w-7 h-7 rounded-full border border-white/20 bg-black/50 overflow-hidden"
+                            title={`Contra: ${matchup.opponentName}`}
+                          >
+                            {matchup.opponentLogoUrl ? (
+                              <img
+                                src={matchup.opponentLogoUrl}
+                                alt={matchup.opponentName}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[9px] font-black text-gray-400 uppercase">
+                                {matchup.opponentName.slice(0, 2)}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-[10px] uppercase tracking-[0.15em] text-gray-500">Confrontos: a definir</p>
+                      )}
+                    </div>
                      </div>
                     <div className="flex items-center gap-10">
                       <div>

@@ -430,12 +430,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     const resolvedStartDate = newRoundForm.market_close_time
       ? newRoundForm.market_close_time
       : new Date().toISOString();
+    const resolvedMarketCloseTime = newRoundForm.market_close_time
+      ? newRoundForm.market_close_time
+      : resolvedStartDate;
     const result = await DataService.createAdminRound({
       season: seasonValue,
       round_number: roundValue,
       status: newRoundForm.status || 'upcoming',
       start_date: resolvedStartDate,
-      market_close_time: newRoundForm.market_close_time || null,
+      market_close_time: resolvedMarketCloseTime,
       is_market_open: newRoundForm.is_market_open
     });
 

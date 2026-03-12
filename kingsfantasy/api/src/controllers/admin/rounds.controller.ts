@@ -76,6 +76,7 @@ export async function createRound(req: AuthenticatedRequest, res: Response) {
     }
 
     const resolvedStartDate = start_date || market_close_time || new Date().toISOString();
+    const resolvedMarketCloseTime = market_close_time || start_date || new Date().toISOString();
 
     const { data: round, error } = await adminSupabase
       .from('rounds')
@@ -84,7 +85,7 @@ export async function createRound(req: AuthenticatedRequest, res: Response) {
         round_number,
         start_date: resolvedStartDate,
         end_date: end_date || null,
-        market_close_time: market_close_time || null,
+        market_close_time: resolvedMarketCloseTime,
         status,
         is_market_open
       })

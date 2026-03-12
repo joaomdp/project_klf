@@ -586,6 +586,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
     await loadRounds();
     window.dispatchEvent(new Event('matches:refresh'));
+    window.dispatchEvent(new Event('market:refresh'));
     setMarketActionLoading(false);
   };
 
@@ -1221,6 +1222,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       } else {
         await loadRounds();
         window.dispatchEvent(new Event('matches:refresh'));
+        window.dispatchEvent(new Event('market:refresh'));
       }
     } catch (error) {
       setMarketError(String(error));

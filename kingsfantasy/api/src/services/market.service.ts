@@ -299,10 +299,29 @@ class MarketService {
    */
   async forceOpenMarket(roundId: number): Promise<void> {
     console.log(`⚠️  ADMIN: Force opening market for round ${roundId}`);
-    
+
+    const { data: round, error: roundError } = await supabase
+      .from('rounds')
+      .select('id, market_close_time')
+      .eq('id', roundId)
+      .single();
+
+    if (roundError || !round) throw roundError || new Error('Rodada não encontrada');
+
+    const now = new Date();
+    const currentCloseTime = round.market_close_time ? new Date(round.market_close_time) : null;
+    const shouldExtendCloseTime = !currentCloseTime || Number.isNaN(currentCloseTime.getTime()) || currentCloseTime <= now;
+    const nextCloseTime = shouldExtendCloseTime
+      ? new Date(now.getTime() + (24 * 60 * 60 * 1000)).toISOString()
+      : round.market_close_time;
+
     const { error } = await supabase
       .from('rounds')
-      .update({ is_market_open: true })
+      .update({
+        is_market_open: true,
+        market_close_time: nextCloseTime,
+        updated_at: now.toISOString()
+      })
       .eq('id', roundId);
 
     if (error) throw error;

@@ -369,6 +369,16 @@ const AppContent: React.FC = () => {
     return () => clearInterval(interval);
   }, [refreshMarketStatus]);
 
+  useEffect(() => {
+    const handleMarketRefresh = () => {
+      refreshMarketStatus();
+      loadCurrentRoundMatchups();
+    };
+
+    window.addEventListener('market:refresh', handleMarketRefresh as EventListener);
+    return () => window.removeEventListener('market:refresh', handleMarketRefresh as EventListener);
+  }, [refreshMarketStatus, loadCurrentRoundMatchups]);
+
   const handleLoginSuccess = async (userData: any) => {
     setIsLoading(true);
     setShowLanding(false);

@@ -1756,6 +1756,70 @@ export const DataService = {
     }
   },
 
+  async extractAdminPerformancesFromImage(payload: {
+    match_id: number;
+    image_data: string;
+  }): Promise<{
+    ok: boolean;
+    error?: string;
+    score?: { team_a: number; team_b: number } | null;
+    rows?: Array<{
+      index: number;
+      player_name: string;
+      champion_name: string;
+      game_number: number;
+      team: 'A' | 'B' | '';
+      mapped_player_id: number | string | null;
+      mapped_player_name: string | null;
+      mapped_champion_id: number | string | null;
+      mapped_champion_name: string | null;
+      kills: number;
+      deaths: number;
+      assists: number;
+      cs: number;
+      status: 'ok' | 'review';
+      message: string;
+    }>;
+    reviewCount?: number;
+  }> {
+    const anonKey = this.getAnonKey();
+    const userToken = this.getUserToken();
+
+    if (!userToken) {
+      return { ok: false, error: 'Usuário não autenticado' };
+    }
+
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/admin/performances/extract-from-image`, {
+        method: 'POST',
+        headers: buildAuthHeaders(anonKey, userToken, {
+          allowAnonFallback: false,
+          includeContentType: true
+        }),
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { ok: false, error: errorText || 'Erro ao extrair dados da imagem' };
+      }
+
+      const data = await response.json().catch(() => null);
+      if (!data?.success) {
+        return { ok: false, error: data?.error || 'Erro ao extrair dados da imagem' };
+      }
+
+      return {
+        ok: true,
+        score: data.score || null,
+        rows: Array.isArray(data.rows) ? data.rows : [],
+        reviewCount: Number(data.reviewCount || 0)
+      };
+    } catch (error) {
+      return { ok: false, error: String(error) };
+    }
+  },
+
   async getCurrentRoundMatchups(): Promise<{
     round: {
       id: number;

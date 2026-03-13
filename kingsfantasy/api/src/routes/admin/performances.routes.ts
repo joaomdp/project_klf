@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   bulkInsertPerformances,
+  extractPerformancesFromImage,
   getMatchPerformances,
   updatePerformance,
   updateRating,
@@ -19,6 +20,9 @@ const router = Router();
 
 // POST /api/admin/performances/bulk - Inserir 10 performances de uma vez
 router.post('/bulk', bulkInsertPerformances);
+
+// POST /api/admin/performances/extract-from-image - Extrair dados de print para preenchimento assistido
+router.post('/extract-from-image', extractPerformancesFromImage);
 
 // GET /api/admin/performances/match/:matchId - Listar performances de uma partida
 router.get('/match/:matchId', getMatchPerformances);

@@ -131,6 +131,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     cs?: string;
   }> | null>(null);
   const [csvPreviewFileName, setCsvPreviewFileName] = useState<string | null>(null);
+  const [imageExtractLoading, setImageExtractLoading] = useState(false);
+  const [imagePreviewFileName, setImagePreviewFileName] = useState<string | null>(null);
+  const [imagePreviewRows, setImagePreviewRows] = useState<Array<{
+    index: number;
+    player_name: string;
+    champion_name: string;
+    game_number: number;
+    team: 'A' | 'B' | '';
+    mapped_player_id: number | string | null;
+    mapped_player_name: string | null;
+    mapped_champion_id: number | string | null;
+    mapped_champion_name: string | null;
+    kills: number;
+    deaths: number;
+    assists: number;
+    cs: number;
+    status: 'ok' | 'review';
+    message: string;
+  }> | null>(null);
+  const [imagePreviewScore, setImagePreviewScore] = useState<{ team_a: number; team_b: number } | null>(null);
   const [recalculatePlayersLoading, setRecalculatePlayersLoading] = useState(false);
   const [marketRoundId, setMarketRoundId] = useState('');
   const [marketCloseTimeInput, setMarketCloseTimeInput] = useState('');
@@ -713,6 +733,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     setPerformanceRoundId(roundId);
     setPerformanceMatchId('');
     setMatchScoreInput({ teamA: '', teamB: '' });
+    setImagePreviewRows(null);
+    setImagePreviewScore(null);
+    setImagePreviewFileName(null);
     setPerformanceGamesCount(1);
     setPerformanceRowsByGame([]);
     setFinalizeCheckResult(null);
@@ -721,6 +744,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const handlePerformanceMatchChange = (matchId: string) => {
     setPerformancesSuccess(null);
     setPerformanceMatchId(matchId);
+    setImagePreviewRows(null);
+    setImagePreviewScore(null);
+    setImagePreviewFileName(null);
     const match = matches.find((item) => String(item.id) === String(matchId));
     if (!match) {
       setMatchScoreInput({ teamA: '', teamB: '' });
@@ -900,6 +926,149 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     setPerformancesError(null);
     setCsvPreviewRows(previewRows);
     setCsvPreviewUpdates(updates);
+  };
+
+  const handleImportPerformancesImage = async (file: File | null) => {
+    if (!file) return;
+    if (!performanceMatchId) {
+      setPerformancesError('Selecione uma partida antes de importar o print.');
+      return;
+    }
+    if (performanceRowsByGame.length === 0) {
+      setPerformancesError('Selecione a partida para carregar os jogadores antes de importar o print.');
+      return;
+    }
+
+    setImageExtractLoading(true);
+    setPerformancesError(null);
+    setPerformancesSuccess(null);
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const result = await DataService.extractAdminPerformancesFromImage({
+        match_id: Number(performanceMatchId),
+        image_data: dataUrl
+      });
+
+      if (!result.ok) {
+        setPerformancesError(result.error || 'Erro ao extrair dados da imagem');
+        return;
+      }
+
+      setImagePreviewFileName(file.name);
+      setImagePreviewRows(result.rows || []);
+      setImagePreviewScore(result.score || null);
+    } catch (error) {
+      setPerformancesError(String(error));
+    } finally {
+      setImageExtractLoading(false);
+    }
+  };
+
+  const handleImagePreviewRowChange = (
+    index: number,
+    field: 'mapped_player_id' | 'mapped_champion_id' | 'kills' | 'deaths' | 'assists' | 'cs',
+    value: string
+  ) => {
+    setImagePreviewRows((prev) => {
+      if (!prev) return prev;
+      return prev.map((row, rowIndex) => {
+        if (rowIndex !== index) return row;
+
+        let nextRow: typeof row = { ...row };
+
+        if (field === 'mapped_player_id') {
+          const selectedPlayer = players.find((player) => String(player.id) === value);
+          nextRow = {
+            ...nextRow,
+            mapped_player_id: value ? value : null,
+            mapped_player_name: selectedPlayer ? selectedPlayer.name : null
+          };
+        }
+
+        if (field === 'mapped_champion_id') {
+          const selectedChampion = champions.find((champion) => String(champion.id) === value);
+          nextRow = {
+            ...nextRow,
+            mapped_champion_id: value ? value : null,
+            mapped_champion_name: selectedChampion ? selectedChampion.name : null
+          };
+        }
+
+        if (field === 'kills' || field === 'deaths' || field === 'assists' || field === 'cs') {
+          const parsed = Number(value);
+          nextRow = {
+            ...nextRow,
+            [field]: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+          };
+        }
+
+        const numericOk = [nextRow.kills, nextRow.deaths, nextRow.assists, nextRow.cs].every(
+          (numberValue) => Number.isFinite(Number(numberValue)) && Number(numberValue) >= 0
+        );
+        const rowOk = Boolean(nextRow.mapped_player_id && nextRow.mapped_champion_id && numericOk);
+
+        return {
+          ...nextRow,
+          status: rowOk ? 'ok' : 'review',
+          message: rowOk ? 'Mapeado com sucesso' : 'Revise jogador/campeão/KDA/CS'
+        };
+      });
+    });
+  };
+
+  const handleApplyImagePreview = async () => {
+    if (!imagePreviewRows || imagePreviewRows.length === 0) return;
+    const hasReview = imagePreviewRows.some((row) => row.status !== 'ok');
+    if (hasReview) {
+      setPerformancesError('Revise as linhas pendentes antes de aplicar os dados do print.');
+      return;
+    }
+
+    const updatedRows = performanceRowsByGame.map((game) => ({
+      ...game,
+      teamA: game.teamA.map((row: any) => ({ ...row })),
+      teamB: game.teamB.map((row: any) => ({ ...row }))
+    }));
+
+    const findRow = (gameNumber: number, playerId: string) => {
+      const gameIndex = updatedRows.findIndex((game) => game.gameNumber === gameNumber);
+      if (gameIndex === -1) return null;
+      const game = updatedRows[gameIndex];
+      const teamARow = game.teamA.find((row: any) => String(row.player_id) === playerId);
+      if (teamARow) return teamARow;
+      const teamBRow = game.teamB.find((row: any) => String(row.player_id) === playerId);
+      if (teamBRow) return teamBRow;
+      return null;
+    };
+
+    for (const row of imagePreviewRows) {
+      const mappedPlayerId = row.mapped_player_id;
+      const mappedChampionId = row.mapped_champion_id;
+      if (!mappedPlayerId || !mappedChampionId) continue;
+      const target = findRow(Number(row.game_number || 1), String(mappedPlayerId));
+      if (!target) continue;
+      target.champion_id = String(mappedChampionId);
+      target.kills = String(row.kills);
+      target.deaths = String(row.deaths);
+      target.assists = String(row.assists);
+      target.cs = String(row.cs);
+    }
+
+    setPerformanceRowsByGame(updatedRows);
+
+    if (imagePreviewScore) {
+      setMatchScoreInput({
+        teamA: String(imagePreviewScore.team_a),
+        teamB: String(imagePreviewScore.team_b)
+      });
+    }
+
+    setImagePreviewRows(null);
+    setImagePreviewScore(null);
+    setImagePreviewFileName(null);
+    setPerformancesError(null);
+    setPerformancesSuccess('Dados do print aplicados. Confira placar/tabela e salve as performances.');
   };
 
   const handleApplyCsvPreview = () => {
@@ -1316,6 +1485,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       setCsvPreviewRows(null);
       setCsvPreviewUpdates(null);
       setCsvPreviewFileName(null);
+      setImagePreviewRows(null);
+      setImagePreviewScore(null);
+      setImagePreviewFileName(null);
       setPerformancesSuccess('Performances salvas com sucesso. Pronto para inserir a proxima partida.');
     } catch (error) {
       setPerformancesError(String(error));
@@ -2656,6 +2828,150 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                             {row.status === 'error' ? 'Erro' : 'OK'}
                           </td>
                           <td className="px-2 py-2 text-gray-400">{row.message}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </details>
+
+        <details className="glass-card border border-white/5 overflow-hidden">
+          <summary className="p-5 cursor-pointer text-[10px] uppercase tracking-[0.3em] text-gray-500">
+            Importacao por print (IA assistida)
+          </summary>
+          <div className="px-5 pb-5 space-y-4 border-t border-white/5">
+            <div className="flex flex-col md:flex-row md:items-center gap-3 text-xs text-gray-500 pt-4">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(event) => handleImportPerformancesImage(event.target.files?.[0] || null)}
+                className="text-[10px] uppercase tracking-[0.2em] text-gray-400"
+              />
+              <span className="text-[10px] uppercase tracking-[0.2em] text-gray-600">
+                Envie o print da tabela de stats da partida
+              </span>
+            </div>
+
+            {imageExtractLoading && (
+              <div className="border border-white/10 bg-black/30 p-3 text-xs text-gray-400">
+                Extraindo dados da imagem...
+              </div>
+            )}
+
+            {imagePreviewRows && (
+              <div className="border border-white/10 bg-black/30 p-4 space-y-3">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div className="text-[10px] uppercase tracking-[0.3em] text-gray-500">
+                    Preview print {imagePreviewFileName ? `- ${imagePreviewFileName}` : ''}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleApplyImagePreview}
+                    className="text-[10px] uppercase tracking-[0.2em] text-gray-200 border border-white/10 px-3 py-2 rounded-lg"
+                  >
+                    Aplicar dados extraidos
+                  </button>
+                </div>
+
+                {imagePreviewScore && (
+                  <div className="text-xs text-gray-400 uppercase tracking-[0.2em]">
+                    Placar detectado: {imagePreviewScore.team_a} x {imagePreviewScore.team_b}
+                  </div>
+                )}
+
+                <div className="max-h-56 overflow-auto">
+                  <table className="min-w-full text-[10px] text-left">
+                    <thead className="text-gray-500 uppercase tracking-[0.3em]">
+                      <tr>
+                        <th className="px-2 py-2">#</th>
+                        <th className="px-2 py-2">Jogador</th>
+                        <th className="px-2 py-2">Mapeado</th>
+                        <th className="px-2 py-2">Campeao</th>
+                        <th className="px-2 py-2">KDA</th>
+                        <th className="px-2 py-2">CS</th>
+                        <th className="px-2 py-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {imagePreviewRows.map((row, rowIndex) => (
+                        <tr key={`img-preview-${row.index}`} className="odd:bg-white/[0.02]">
+                          <td className="px-2 py-2 text-gray-400">{row.index}</td>
+                          <td className="px-2 py-2 text-gray-300">{row.player_name || '-'}</td>
+                          <td className="px-2 py-2 text-gray-300 min-w-[180px]">
+                            <select
+                              value={row.mapped_player_id ? String(row.mapped_player_id) : ''}
+                              onChange={(event) => handleImagePreviewRowChange(rowIndex, 'mapped_player_id', event.target.value)}
+                              className="bg-black/50 border border-white/10 text-[10px] text-gray-200 px-2 py-1 rounded-md w-full"
+                            >
+                              <option value="">Selecionar jogador</option>
+                              {players
+                                .filter((player) => {
+                                  if (!selectedPerformanceMatch) return false;
+                                  return String(player.team_id) === String(selectedPerformanceMatch.team_a_id) || String(player.team_id) === String(selectedPerformanceMatch.team_b_id);
+                                })
+                                .map((player) => (
+                                  <option key={`img-player-${row.index}-${player.id}`} value={player.id}>
+                                    {player.name}
+                                  </option>
+                                ))}
+                            </select>
+                          </td>
+                          <td className="px-2 py-2 text-gray-300 min-w-[160px]">
+                            <select
+                              value={row.mapped_champion_id ? String(row.mapped_champion_id) : ''}
+                              onChange={(event) => handleImagePreviewRowChange(rowIndex, 'mapped_champion_id', event.target.value)}
+                              className="bg-black/50 border border-white/10 text-[10px] text-gray-200 px-2 py-1 rounded-md w-full"
+                            >
+                              <option value="">Selecionar campeao</option>
+                              {champions.map((champion) => (
+                                <option key={`img-champion-${row.index}-${champion.id}`} value={champion.id}>
+                                  {champion.name}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-2 py-2 text-gray-300">
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min={0}
+                                value={row.kills}
+                                onChange={(event) => handleImagePreviewRowChange(rowIndex, 'kills', event.target.value)}
+                                className="bg-black/50 border border-white/10 text-[10px] text-gray-200 px-1 py-1 rounded w-10"
+                              />
+                              <span>/</span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={row.deaths}
+                                onChange={(event) => handleImagePreviewRowChange(rowIndex, 'deaths', event.target.value)}
+                                className="bg-black/50 border border-white/10 text-[10px] text-gray-200 px-1 py-1 rounded w-10"
+                              />
+                              <span>/</span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={row.assists}
+                                onChange={(event) => handleImagePreviewRowChange(rowIndex, 'assists', event.target.value)}
+                                className="bg-black/50 border border-white/10 text-[10px] text-gray-200 px-1 py-1 rounded w-10"
+                              />
+                            </div>
+                          </td>
+                          <td className="px-2 py-2 text-gray-300">
+                            <input
+                              type="number"
+                              min={0}
+                              value={row.cs}
+                              onChange={(event) => handleImagePreviewRowChange(rowIndex, 'cs', event.target.value)}
+                              className="bg-black/50 border border-white/10 text-[10px] text-gray-200 px-1 py-1 rounded w-14"
+                            />
+                          </td>
+                          <td className={`px-2 py-2 ${row.status === 'ok' ? 'text-emerald-300' : 'text-amber-300'}`}>
+                            {row.status === 'ok' ? 'OK' : 'Revisar'}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

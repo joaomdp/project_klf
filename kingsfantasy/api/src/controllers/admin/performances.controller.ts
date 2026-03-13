@@ -1,7 +1,73 @@
 import { Response } from 'express';
+import levenshtein from 'fast-levenshtein';
 import { adminSupabase, supabase } from '../../config/supabase';
 import { scoringService } from '../../services/scoring.service';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware';
+
+type ExtractedImageRow = {
+  player_name: string;
+  champion_name: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  cs: number;
+  game_number?: number;
+  team?: 'A' | 'B' | '';
+};
+
+const normalizeText = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
+const parseJsonFromGemini = (rawText: string) => {
+  const cleanText = rawText
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```$/i, '')
+    .trim();
+  return JSON.parse(cleanText);
+};
+
+const findBestByName = <T extends { id: number | string; name: string; key_name?: string }>(
+  inputName: string,
+  list: T[],
+  options?: { allowKeyName?: boolean }
+): T | null => {
+  const normalizedInput = normalizeText(inputName || '');
+  if (!normalizedInput) return null;
+
+  for (const item of list) {
+    if (normalizeText(item.name) === normalizedInput) {
+      return item;
+    }
+    if (options?.allowKeyName && item.key_name && normalizeText(item.key_name) === normalizedInput) {
+      return item;
+    }
+  }
+
+  let best: T | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const item of list) {
+    const nameDistance = levenshtein.get(normalizedInput, normalizeText(item.name));
+    const keyDistance = options?.allowKeyName && item.key_name
+      ? levenshtein.get(normalizedInput, normalizeText(item.key_name))
+      : Number.POSITIVE_INFINITY;
+    const distance = Math.min(nameDistance, keyDistance);
+
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = item;
+    }
+  }
+
+  if (!best) return null;
+  const maxAllowedDistance = Math.max(2, Math.floor(normalizedInput.length * 0.35));
+  return bestDistance <= maxAllowedDistance ? best : null;
+};
 
 /**
  * PERFORMANCES CONTROLLER
@@ -307,6 +373,211 @@ export async function bulkInsertPerformances(req: AuthenticatedRequest, res: Res
     return res.status(500).json({
       success: false,
       error: 'Erro interno ao inserir performances',
+      message: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+/**
+ * Extrair performances de imagem (OCR assistido por IA)
+ * POST /api/admin/performances/extract-from-image
+ */
+export async function extractPerformancesFromImage(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { match_id, image_data } = req.body || {};
+
+    if (!match_id || !image_data || typeof image_data !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Campos obrigatórios faltando',
+        required: ['match_id', 'image_data(base64/data-url)']
+      });
+    }
+
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      return res.status(500).json({
+        success: false,
+        error: 'GEMINI_API_KEY não configurada no backend'
+      });
+    }
+
+    const { data: match, error: matchError } = await adminSupabase
+      .from('matches')
+      .select('id, team_a_id, team_b_id, games_count, team_a:teams!matches_team_a_id_fkey(id, name), team_b:teams!matches_team_b_id_fkey(id, name)')
+      .eq('id', Number(match_id))
+      .single();
+
+    if (matchError || !match) {
+      return res.status(404).json({
+        success: false,
+        error: 'Partida não encontrada',
+        match_id
+      });
+    }
+
+    const { data: players, error: playersError } = await adminSupabase
+      .from('players')
+      .select('id, name, team_id, role')
+      .in('team_id', [match.team_a_id, match.team_b_id]);
+
+    if (playersError || !players || players.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Jogadores da partida não encontrados'
+      });
+    }
+
+    const { data: champions, error: championsError } = await adminSupabase
+      .from('champions')
+      .select('id, name, key_name');
+
+    if (championsError || !champions || champions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lista de campeões não encontrada'
+      });
+    }
+
+    let mimeType = 'image/png';
+    let base64 = image_data.trim();
+    const dataUrlMatch = image_data.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+    if (dataUrlMatch) {
+      mimeType = dataUrlMatch[1];
+      base64 = dataUrlMatch[2];
+    }
+
+    const prompt = [
+      'Extraia os dados da tabela de uma partida de League of Legends presente na imagem.',
+      'Retorne APENAS JSON válido, sem markdown, sem texto adicional, com este formato exato:',
+      '{"score":{"team_a":number,"team_b":number},"rows":[{"player_name":"string","champion_name":"string","kills":number,"deaths":number,"assists":number,"cs":number,"team":"A|B","game_number":1}]}',
+      'Regras:',
+      '- rows deve conter os 10 jogadores visíveis (5 por time) quando possível.',
+      '- Se houver dúvida em algum campo, preencha com o melhor valor provável (não deixe null).',
+      '- Não inventar jogadores que não aparecem na imagem.',
+      '- Não incluir outros campos além dos solicitados.'
+    ].join('\n');
+
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType,
+                    data: base64
+                  }
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: 'application/json'
+          }
+        })
+      }
+    );
+
+    if (!geminiResponse.ok) {
+      const err = await geminiResponse.text();
+      return res.status(502).json({
+        success: false,
+        error: 'Falha ao extrair dados da imagem via IA',
+        details: err
+      });
+    }
+
+    const geminiData: any = await geminiResponse.json();
+    const rawText = geminiData?.candidates?.[0]?.content?.parts?.map((part: any) => part.text || '').join('') || '';
+    if (!rawText) {
+      return res.status(502).json({
+        success: false,
+        error: 'IA não retornou conteúdo para extração'
+      });
+    }
+
+    const parsed = parseJsonFromGemini(rawText);
+    const extractedRows: ExtractedImageRow[] = Array.isArray(parsed?.rows) ? parsed.rows : [];
+    const extractedScore = parsed?.score || null;
+
+    if (extractedRows.length === 0) {
+      return res.status(422).json({
+        success: false,
+        error: 'Não foi possível extrair linhas da imagem'
+      });
+    }
+
+    const teamAPlayers = players.filter((player: any) => String(player.team_id) === String(match.team_a_id));
+    const teamBPlayers = players.filter((player: any) => String(player.team_id) === String(match.team_b_id));
+    const allPlayers = [...teamAPlayers, ...teamBPlayers];
+    const usedPlayerIds = new Set<string>();
+
+    const mappedRows = extractedRows.map((row, index) => {
+      const pool = row.team === 'A' ? teamAPlayers : row.team === 'B' ? teamBPlayers : allPlayers;
+      const availablePool = pool.filter((player: any) => !usedPlayerIds.has(String(player.id)));
+      const bestPlayer = findBestByName(String(row.player_name || ''), availablePool);
+      if (bestPlayer) {
+        usedPlayerIds.add(String(bestPlayer.id));
+      }
+
+      const bestChampion = findBestByName(String(row.champion_name || ''), champions, { allowKeyName: true });
+      const kills = Number(row.kills ?? 0);
+      const deaths = Number(row.deaths ?? 0);
+      const assists = Number(row.assists ?? 0);
+      const cs = Number(row.cs ?? 0);
+
+      return {
+        index: index + 1,
+        player_name: String(row.player_name || ''),
+        champion_name: String(row.champion_name || ''),
+        game_number: Number(row.game_number || 1),
+        team: row.team || '',
+        mapped_player_id: bestPlayer ? bestPlayer.id : null,
+        mapped_player_name: bestPlayer ? bestPlayer.name : null,
+        mapped_champion_id: bestChampion ? bestChampion.id : null,
+        mapped_champion_name: bestChampion ? bestChampion.name : null,
+        kills: Number.isFinite(kills) ? kills : 0,
+        deaths: Number.isFinite(deaths) ? deaths : 0,
+        assists: Number.isFinite(assists) ? assists : 0,
+        cs: Number.isFinite(cs) ? cs : 0,
+        status: bestPlayer && bestChampion ? 'ok' : 'review',
+        message: bestPlayer && bestChampion
+          ? 'Mapeado com sucesso'
+          : !bestPlayer && !bestChampion
+            ? 'Jogador e campeão precisam de revisão'
+            : !bestPlayer
+              ? 'Jogador precisa de revisão'
+              : 'Campeão precisa de revisão'
+      };
+    });
+
+    return res.json({
+      success: true,
+      match_id: Number(match_id),
+      score: extractedScore && Number.isFinite(Number(extractedScore.team_a)) && Number.isFinite(Number(extractedScore.team_b))
+        ? {
+            team_a: Number(extractedScore.team_a),
+            team_b: Number(extractedScore.team_b)
+          }
+        : null,
+      rows: mappedRows,
+      reviewCount: mappedRows.filter((row) => row.status !== 'ok').length
+    });
+  } catch (error) {
+    console.error('❌ Exception in extractPerformancesFromImage:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro interno ao extrair dados da imagem',
       message: error instanceof Error ? error.message : 'Erro desconhecido'
     });
   }

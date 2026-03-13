@@ -123,7 +123,6 @@ const AppContent: React.FC = () => {
       return true;
     }
   });
-  const isMarketOpen = true;
   const [dbConnected, setDbConnected] = useState(false);
   const [marketIsOpen, setMarketIsOpen] = useState<boolean | null>(null);
   const [isCreateLeagueOpen, setIsCreateLeagueOpen] = useState(false);
@@ -140,6 +139,7 @@ const AppContent: React.FC = () => {
   const [userTeam, setUserTeam] = useState<UserTeam>(DEFAULT_USER_TEAM);
 
   const [pendingPlayer, setPendingPlayer] = useState<Player | null>(null);
+  const canEditMarket = marketIsOpen === true;
 
   const mergeLineupWithLatest = useCallback((team: UserTeam, roster: Player[]) => {
     if (!roster.length) return team;
@@ -572,7 +572,15 @@ const AppContent: React.FC = () => {
   ]);
 
   const handleOpenChampionSelector = (player: Player) => {
-    if (!isMarketOpen) return;
+    if (!canEditMarket) {
+      showToast({
+        type: 'warning',
+        title: 'Mercado Fechado',
+        message: 'Nao e possivel escalar jogadores enquanto o mercado estiver fechado.',
+        duration: 4000
+      });
+      return;
+    }
     const currentPlayerInRole = userTeam.players[player.role];
     const availableFunds = userTeam.budget + (currentPlayerInRole?.price || 0);
     if (availableFunds < player.price) return; 
@@ -608,7 +616,15 @@ const AppContent: React.FC = () => {
   };
 
   const handleFirePlayer = (role: Role) => {
-    if (!isMarketOpen) return;
+    if (!canEditMarket) {
+      showToast({
+        type: 'warning',
+        title: 'Mercado Fechado',
+        message: 'Nao e possivel remover jogadores enquanto o mercado estiver fechado.',
+        duration: 4000
+      });
+      return;
+    }
     const playerToFire = userTeam.players[role];
     if (!playerToFire) return;
     
@@ -641,6 +657,16 @@ const AppContent: React.FC = () => {
   };
 
   const handleConfirmLineup = async () => {
+    if (!canEditMarket) {
+      showToast({
+        type: 'warning',
+        title: 'Mercado Fechado',
+        message: 'A escalacao nao pode ser confirmada com o mercado fechado.',
+        duration: 4000
+      });
+      return;
+    }
+
     try {
       // Salva a escalação no banco de dados
       const success = await DataService.saveUserTeam(userTeam);
@@ -696,9 +722,21 @@ const AppContent: React.FC = () => {
               return acc;
             }, {} as Record<string, Array<{ opponentName: string; opponentLogoUrl?: string; scheduledTime?: string | null }>>)}
             currentRoundLabel={marketRoundLabel}
+            isMarketOpen={canEditMarket}
             onHire={handleOpenChampionSelector}
             onFire={handleFirePlayer}
-            onClear={() => isMarketOpen && resetTeam()}
+            onClear={() => {
+              if (!canEditMarket) {
+                showToast({
+                  type: 'warning',
+                  title: 'Mercado Fechado',
+                  message: 'Nao e possivel limpar a escalacao com o mercado fechado.',
+                  duration: 4000
+                });
+                return;
+              }
+              resetTeam();
+            }}
             onConfirm={handleConfirmLineup}
             onRefresh={fetchPlayers}
           />

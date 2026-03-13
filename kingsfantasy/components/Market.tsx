@@ -9,6 +9,7 @@ import DiversityIndicator from './DiversityIndicator';
 interface MarketProps {
   players: Player[];
   userTeam: UserTeam;
+  isMarketOpen: boolean;
   teamMatchups?: Record<string, Array<{ opponentName: string; opponentLogoUrl?: string; scheduledTime?: string | null }>>;
   currentRoundLabel?: string | null;
   onHire: (player: Player) => void;
@@ -21,6 +22,7 @@ interface MarketProps {
 const Market: React.FC<MarketProps> = ({
   players,
   userTeam,
+  isMarketOpen,
   teamMatchups = {},
   currentRoundLabel,
   onHire,
@@ -151,7 +153,10 @@ const Market: React.FC<MarketProps> = ({
                const p = userTeam.players[role.id];
                return (
                    <div key={role.id} className="absolute -translate-x-1/2 -translate-y-1/2 z-20" style={{ top: role.top, left: role.left }}>
-                     <div className="relative group/pin cursor-pointer flex flex-col items-center gap-0.5" onClick={() => p && onFire(role.id)}>
+                      <div
+                        className={`relative group/pin flex flex-col items-center gap-0.5 ${isMarketOpen ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
+                        onClick={() => isMarketOpen && p && onFire(role.id)}
+                      >
                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 transition-all duration-500 flex items-center justify-center overflow-hidden ${
                           p ? 'border-[#6366F1] bg-black shadow-[0_0_20px_rgba(94,108,255,0.5)] scale-110' : 'border-white/10 bg-black/80 hover:border-white/40'
                         }`}>
@@ -244,10 +249,11 @@ const Market: React.FC<MarketProps> = ({
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-3">
+             <div className="grid grid-cols-2 gap-3">
               <button 
                 onClick={onClear}
-                className="py-3.5 bg-white/5 border border-white/10 text-gray-400 text-[9px] font-black uppercase tracking-widest hover:text-white transition-all"
+                disabled={!isMarketOpen}
+                className={`py-3.5 border text-[9px] font-black uppercase tracking-widest transition-all ${isMarketOpen ? 'bg-white/5 border-white/10 text-gray-400 hover:text-white' : 'bg-white/5 border-white/10 text-gray-600 cursor-not-allowed opacity-60'}`}
               >
                 LIMPAR
               </button>
@@ -284,7 +290,8 @@ const Market: React.FC<MarketProps> = ({
                     setShowConfirmCheck(false);
                   }, 800);
                 }}
-                className="py-3.5 bg-[#6366F1] text-black text-[9px] font-black uppercase tracking-widest hover:scale-[1.02] transition-all shadow-[0_0_20px_rgba(94,108,255,0.4)]"
+                disabled={!isMarketOpen}
+                className={`py-3.5 text-[9px] font-black uppercase tracking-widest transition-all ${isMarketOpen ? 'bg-[#6366F1] text-black hover:scale-[1.02] shadow-[0_0_20px_rgba(94,108,255,0.4)]' : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-70'}`}
               >
                 CONFIRMAR
               </button>
@@ -431,10 +438,10 @@ const Market: React.FC<MarketProps> = ({
                       </div>
                     </div>
                     <button 
-                      onClick={() => isHired ? onFire(player.role) : onHire(player)} 
-                      disabled={!canAfford}
-                      className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all ${isHired ? 'border border-red-500/40 text-red-500 hover:bg-red-500 hover:text-white' : !canAfford ? 'bg-gray-800 text-gray-600 cursor-not-allowed opacity-50' : 'bg-[#6366F1] text-black hover:scale-[1.02] shadow-[0_0_20px_rgba(94,108,255,0.3)]'}`}>
-                      {isHired ? 'DISPENSAR' : !canAfford ? 'SEM SALDO' : 'ESCALAR'}
+                      onClick={() => isMarketOpen && (isHired ? onFire(player.role) : onHire(player))}
+                      disabled={!isMarketOpen || !canAfford}
+                      className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all ${!isMarketOpen ? 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-70' : isHired ? 'border border-red-500/40 text-red-500 hover:bg-red-500 hover:text-white' : !canAfford ? 'bg-gray-800 text-gray-600 cursor-not-allowed opacity-50' : 'bg-[#6366F1] text-black hover:scale-[1.02] shadow-[0_0_20px_rgba(94,108,255,0.3)]'}`}>
+                      {!isMarketOpen ? 'MERCADO FECHADO' : isHired ? 'DISPENSAR' : !canAfford ? 'SEM SALDO' : 'ESCALAR'}
                     </button>
                   </div>
                 </div>

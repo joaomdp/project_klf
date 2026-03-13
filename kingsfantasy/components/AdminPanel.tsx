@@ -71,6 +71,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [roundsError, setRoundsError] = useState<string | null>(null);
   const [matchesError, setMatchesError] = useState<string | null>(null);
   const [performancesError, setPerformancesError] = useState<string | null>(null);
+  const [performancesSuccess, setPerformancesSuccess] = useState<string | null>(null);
   const [marketError, setMarketError] = useState<string | null>(null);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [leaguesError, setLeaguesError] = useState<string | null>(null);
@@ -708,6 +709,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   };
 
   const handlePerformanceRoundChange = (roundId: string) => {
+    setPerformancesSuccess(null);
     setPerformanceRoundId(roundId);
     setPerformanceMatchId('');
     setMatchScoreInput({ teamA: '', teamB: '' });
@@ -717,6 +719,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   };
 
   const handlePerformanceMatchChange = (matchId: string) => {
+    setPerformancesSuccess(null);
     setPerformanceMatchId(matchId);
     const match = matches.find((item) => String(item.id) === String(matchId));
     if (!match) {
@@ -1046,6 +1049,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     field: string,
     value: string
   ) => {
+    setPerformancesSuccess(null);
     setPerformanceRowsByGame((prev) =>
       prev.map((game, idx) => {
         if (idx !== gameIndex) return game;
@@ -1135,6 +1139,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
     setSaveMatchScoreLoading(true);
     setPerformancesError(null);
+    setPerformancesSuccess(null);
 
     try {
       const anonKey = DataService.getAnonKey();
@@ -1176,6 +1181,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
 
   const handleSubmitPerformances = async () => {
+    setPerformancesSuccess(null);
     const matchId = Number(performanceMatchId);
     if (!matchId) {
       setPerformancesError('Selecione uma partida valida.');
@@ -1304,6 +1310,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       window.dispatchEvent(new Event('players:refresh'));
       window.dispatchEvent(new Event('leagues:refresh'));
       await handleFinalizeCheck();
+      setPerformanceRowsByGame([]);
+      setPerformanceMatchId('');
+      setMatchScoreInput({ teamA: '', teamB: '' });
+      setCsvPreviewRows(null);
+      setCsvPreviewUpdates(null);
+      setCsvPreviewFileName(null);
+      setPerformancesSuccess('Performances salvas com sucesso. Pronto para inserir a proxima partida.');
     } catch (error) {
       setPerformancesError(String(error));
     }
@@ -2305,6 +2318,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
           </div>
 
           <div className="p-5 space-y-4">
+            {performancesSuccess && (
+              <div className="border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200">
+                {performancesSuccess}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-xs text-gray-500">Rodada</label>

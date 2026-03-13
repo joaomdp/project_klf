@@ -249,13 +249,19 @@ export async function getMatch(req: AuthenticatedRequest, res: Response) {
 export async function updateMatch(req: AuthenticatedRequest, res: Response) {
   try {
     const { id } = req.params;
-    const { winner_id, scheduled_time, status } = req.body;
+    const { winner_id, scheduled_time, status, team_a_score, team_b_score } = req.body;
 
-    if (!winner_id && !scheduled_time && !status) {
+    const hasWinnerId = Object.prototype.hasOwnProperty.call(req.body, 'winner_id');
+    const hasScheduledTime = Object.prototype.hasOwnProperty.call(req.body, 'scheduled_time');
+    const hasStatus = Object.prototype.hasOwnProperty.call(req.body, 'status');
+    const hasTeamAScore = Object.prototype.hasOwnProperty.call(req.body, 'team_a_score');
+    const hasTeamBScore = Object.prototype.hasOwnProperty.call(req.body, 'team_b_score');
+
+    if (!hasWinnerId && !hasScheduledTime && !hasStatus && !hasTeamAScore && !hasTeamBScore) {
       return res.status(400).json({
         success: false,
         error: 'Nenhum campo para atualizar fornecido',
-        allowed_fields: ['winner_id', 'scheduled_time', 'status']
+        allowed_fields: ['winner_id', 'scheduled_time', 'status', 'team_a_score', 'team_b_score']
       });
     }
 
@@ -275,7 +281,7 @@ export async function updateMatch(req: AuthenticatedRequest, res: Response) {
     }
 
     // Validar winner_id se fornecido
-    if (winner_id && winner_id !== existingMatch.team_a_id && winner_id !== existingMatch.team_b_id) {
+    if (hasWinnerId && winner_id !== null && winner_id !== existingMatch.team_a_id && winner_id !== existingMatch.team_b_id) {
       return res.status(400).json({
         success: false,
         error: 'winner_id deve ser um dos times da partida',
@@ -284,11 +290,27 @@ export async function updateMatch(req: AuthenticatedRequest, res: Response) {
       });
     }
 
+    if (hasTeamAScore && team_a_score !== null && Number.isNaN(Number(team_a_score))) {
+      return res.status(400).json({
+        success: false,
+        error: 'team_a_score inválido'
+      });
+    }
+
+    if (hasTeamBScore && team_b_score !== null && Number.isNaN(Number(team_b_score))) {
+      return res.status(400).json({
+        success: false,
+        error: 'team_b_score inválido'
+      });
+    }
+
     // Montar objeto de atualização
     const updateData: any = {};
-    if (winner_id) updateData.winner_id = winner_id;
-    if (scheduled_time) updateData.scheduled_time = scheduled_time;
-    if (status) updateData.status = status;
+    if (hasWinnerId) updateData.winner_id = winner_id;
+    if (hasScheduledTime) updateData.scheduled_time = scheduled_time;
+    if (hasStatus) updateData.status = status;
+    if (hasTeamAScore) updateData.team_a_score = team_a_score;
+    if (hasTeamBScore) updateData.team_b_score = team_b_score;
 
     // Atualizar
     const { data: match, error: updateError } = await supabase

@@ -103,6 +103,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   });
   const [performanceRoundId, setPerformanceRoundId] = useState('');
   const [performanceMatchId, setPerformanceMatchId] = useState('');
+  const [matchScoreInput, setMatchScoreInput] = useState({ teamA: '', teamB: '' });
+  const [saveMatchScoreLoading, setSaveMatchScoreLoading] = useState(false);
   const [performanceGamesCount, setPerformanceGamesCount] = useState(1);
   const [performanceRowsByGame, setPerformanceRowsByGame] = useState<Array<{
     gameNumber: number;
@@ -708,6 +710,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const handlePerformanceRoundChange = (roundId: string) => {
     setPerformanceRoundId(roundId);
     setPerformanceMatchId('');
+    setMatchScoreInput({ teamA: '', teamB: '' });
     setPerformanceGamesCount(1);
     setPerformanceRowsByGame([]);
     setFinalizeCheckResult(null);
@@ -717,6 +720,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     setPerformanceMatchId(matchId);
     const match = matches.find((item) => String(item.id) === String(matchId));
     if (!match) {
+      setMatchScoreInput({ teamA: '', teamB: '' });
       setPerformanceGamesCount(1);
       setPerformanceRowsByGame([]);
       return;
@@ -732,6 +736,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       .filter((player) => String(player.team_id) === String(match.team_b_id))
       .sort(sortByRole);
     const gamesCount = Number(match.games_count || 1);
+    setMatchScoreInput({
+      teamA: match.team_a_score === null || match.team_a_score === undefined ? '' : String(match.team_a_score),
+      teamB: match.team_b_score === null || match.team_b_score === undefined ? '' : String(match.team_b_score)
+    });
     setPerformanceGamesCount(gamesCount);
     setPerformanceRowsByGame(
       Array.from({ length: gamesCount }).map((_, index) => {
@@ -1054,6 +1062,118 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     );
   };
 
+  const selectedPerformanceMatch = useMemo(
+    () => matches.find((item) => String(item.id) === String(performanceMatchId)) || null,
+    [matches, performanceMatchId]
+  );
+
+  const performanceFlowSteps = useMemo(() => {
+    const hasRound = Boolean(performanceRoundId);
+    const hasMatch = Boolean(selectedPerformanceMatch);
+
+    const hasSavedScore = Boolean(
+      selectedPerformanceMatch &&
+      selectedPerformanceMatch.team_a_score !== null &&
+      selectedPerformanceMatch.team_a_score !== undefined &&
+      selectedPerformanceMatch.team_b_score !== null &&
+      selectedPerformanceMatch.team_b_score !== undefined &&
+      selectedPerformanceMatch.winner_id
+    );
+
+    const rows = performanceRowsByGame.flatMap((game) => [...game.teamA, ...game.teamB]);
+    const hasRows = rows.length > 0;
+    const isNumericFieldFilled = (value: unknown) => {
+      const normalized = String(value ?? '').trim();
+      if (!normalized) return false;
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) && parsed >= 0;
+    };
+
+    const performancesReady =
+      hasRows &&
+      rows.every((row) =>
+        String(row.champion_id || '').trim() &&
+        isNumericFieldFilled(row.kills) &&
+        isNumericFieldFilled(row.deaths) &&
+        isNumericFieldFilled(row.assists) &&
+        isNumericFieldFilled(row.cs)
+      );
+
+    const checklistReady = Boolean(finalizeCheckResult?.canFinalize);
+
+    return [
+      { id: 'round', label: 'Rodada selecionada', done: hasRound },
+      { id: 'match', label: 'Partida selecionada', done: hasMatch },
+      { id: 'score', label: 'Placar salvo', done: hasSavedScore },
+      { id: 'performances', label: 'Tabela completa', done: performancesReady },
+      { id: 'checklist', label: 'Checklist validado', done: checklistReady }
+    ];
+  }, [performanceRoundId, selectedPerformanceMatch, performanceRowsByGame, finalizeCheckResult]);
+
+  const canFinalizeFlow = performanceFlowSteps.every((step) => step.done);
+
+  const handleSaveMatchScore = async () => {
+    if (!selectedPerformanceMatch) {
+      setPerformancesError('Selecione uma partida valida para salvar o placar.');
+      return;
+    }
+
+    const teamAScore = Number(matchScoreInput.teamA);
+    const teamBScore = Number(matchScoreInput.teamB);
+
+    if (!Number.isFinite(teamAScore) || teamAScore < 0 || !Number.isFinite(teamBScore) || teamBScore < 0) {
+      setPerformancesError('Informe um placar valido. Use numeros inteiros maiores ou iguais a zero.');
+      return;
+    }
+
+    const winnerId =
+      teamAScore > teamBScore
+        ? selectedPerformanceMatch.team_a_id
+        : teamBScore > teamAScore
+          ? selectedPerformanceMatch.team_b_id
+          : null;
+
+    setSaveMatchScoreLoading(true);
+    setPerformancesError(null);
+
+    try {
+      const anonKey = DataService.getAnonKey();
+      const userToken = DataService.getUserToken();
+      if (!userToken) {
+        setPerformancesError('Usuario nao autenticado.');
+        return;
+      }
+
+      const response = await fetch(`${DataService.API_BASE_URL}/admin/matches/${selectedPerformanceMatch.id}`, {
+        method: 'PUT',
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${userToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          team_a_score: teamAScore,
+          team_b_score: teamBScore,
+          winner_id: winnerId,
+          status: 'completed'
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        setPerformancesError(errorText || 'Erro ao salvar placar da partida');
+        return;
+      }
+
+      await loadMatches(performanceRoundId ? Number(performanceRoundId) : undefined);
+      await handleFinalizeCheck();
+    } catch (error) {
+      setPerformancesError(String(error));
+    } finally {
+      setSaveMatchScoreLoading(false);
+    }
+  };
+
 
   const handleSubmitPerformances = async () => {
     const matchId = Number(performanceMatchId);
@@ -1183,8 +1303,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
       window.dispatchEvent(new Event('players:refresh'));
       window.dispatchEvent(new Event('leagues:refresh'));
-      setPerformanceRowsByGame([]);
-      setPerformanceMatchId('');
+      await handleFinalizeCheck();
     } catch (error) {
       setPerformancesError(String(error));
     }
@@ -2175,184 +2294,137 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     }
 
     return (
+      <div className="space-y-6">
         <div className="glass-card border border-white/5 overflow-hidden">
-          <div className="p-5 border-b border-white/5 flex flex-col gap-4">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">Performances</p>
-              <h3 className="mt-2 text-xl font-orbitron font-black text-white uppercase tracking-tight">
-                Inserir estatisticas por time
-              </h3>
-              <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">Tabela: performances</p>
+          <div className="p-5 border-b border-white/5">
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">Performances</p>
+            <h3 className="mt-2 text-xl font-orbitron font-black text-white uppercase tracking-tight">
+              Lancamento simplificado por partida
+            </h3>
+            <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">Fluxo: rodada - partida - placar - desempenho - checklist</p>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">Rodada</label>
+                <select
+                  value={performanceRoundId}
+                  onChange={(event) => handlePerformanceRoundChange(event.target.value)}
+                  className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
+                >
+                  <option value="">Selecione a rodada</option>
+                  {rounds.map((round) => (
+                    <option key={round.id} value={round.id}>
+                      Season {round.season} - Rodada {round.round_number}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">Partida</label>
+                <select
+                  value={performanceMatchId}
+                  onChange={(event) => handlePerformanceMatchChange(event.target.value)}
+                  className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
+                >
+                  <option value="">Selecione a partida</option>
+                  {matches
+                    .filter((match) => !performanceRoundId || String(match.round_id) === String(performanceRoundId))
+                    .map((match) => (
+                      <option key={match.id} value={match.id}>
+                        {match.team_a?.name || match.team_a_id} vs {match.team_b?.name || match.team_b_id}
+                      </option>
+                    ))}
+                </select>
+              </div>
             </div>
-            <div className="grid grid-cols-1 gap-3">
-              <div className="flex flex-col md:flex-row md:items-center gap-3 text-xs text-gray-500">
-                <label className="text-[10px] uppercase tracking-[0.3em] text-gray-500">
-                  Importar CSV
-                </label>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={(event) => handleImportPerformancesCsv(event.target.files?.[0] || null)}
-                  className="text-[10px] uppercase tracking-[0.2em] text-gray-400"
-                />
-                <button
-                  type="button"
-                  onClick={handleDownloadPerformanceTemplate}
-                  className="text-[10px] uppercase tracking-[0.2em] text-gray-300 border border-white/10 px-3 py-2 rounded-lg"
-                >
-                  Baixar modelo
-                </button>
-                <span className="text-[10px] uppercase tracking-[0.2em] text-gray-600">
-                  Colunas: game_number, player_id ou player_name, champion_id ou champion_name, kills, deaths, assists, cs
-                </span>
-              </div>
-              <div className="flex flex-col md:flex-row md:items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleRecalculatePlayers}
-                  className="text-[10px] uppercase tracking-[0.2em] text-gray-200 border border-white/10 px-3 py-2 rounded-lg"
-                  disabled={recalculatePlayersLoading}
-                >
-                  {recalculatePlayersLoading ? 'Recalculando...' : 'Recalcular pontos dos jogadores'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleFinalizeCheck}
-                  className="text-[10px] uppercase tracking-[0.2em] text-amber-200 border border-amber-500/30 px-3 py-2 rounded-lg"
-                  disabled={finalizeCheckLoading}
-                >
-                  {finalizeCheckLoading ? 'Verificando...' : 'Verificar checklist da rodada'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleFinalizeRound}
-                  className="text-[10px] uppercase tracking-[0.2em] text-emerald-200 border border-emerald-500/30 px-3 py-2 rounded-lg"
-                  disabled={finalizeRoundLoading || !finalizeCheckResult?.canFinalize}
-                >
-                  {finalizeRoundLoading ? 'Finalizando...' : 'Finalizar rodada'}
-                </button>
-              </div>
-              {finalizeCheckResult && (
-                <div className="border border-white/10 bg-black/30 p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500">Checklist de finalização</p>
-                    <span
-                      className={`text-[10px] uppercase tracking-[0.2em] ${finalizeCheckResult.canFinalize ? 'text-emerald-300' : 'text-amber-300'}`}
-                    >
-                      {finalizeCheckResult.canFinalize ? 'Pronto para finalizar' : 'Existem pendências'}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[10px] uppercase tracking-[0.18em] text-gray-400">
-                    <div>Partidas: <span className="text-white">{finalizeCheckResult.totalMatches}</span></div>
-                    <div>Sem resultado: <span className="text-white">{finalizeCheckResult.matchesMissingResults}</span></div>
-                    <div>Perf. esperadas: <span className="text-white">{finalizeCheckResult.expectedPerformances}</span></div>
-                    <div>Perf. lançadas: <span className="text-white">{finalizeCheckResult.totalPerformances}</span></div>
-                  </div>
-                  {finalizeCheckResult.pendingItems?.length > 0 && (
-                    <div className="space-y-2">
-                      {finalizeCheckResult.pendingItems.map((item: string) => (
-                        <p key={item} className="text-xs text-amber-200">- {item}</p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            {csvPreviewRows && (
-              <div className="border border-white/10 bg-black/30 p-4 space-y-3">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <div className="text-[10px] uppercase tracking-[0.3em] text-gray-500">
-                    Preview CSV {csvPreviewFileName ? `- ${csvPreviewFileName}` : ''}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleApplyCsvPreview}
-                    className="text-[10px] uppercase tracking-[0.2em] text-gray-200 border border-white/10 px-3 py-2 rounded-lg"
-                  >
-                    Aplicar CSV
-                  </button>
-                </div>
-                <div className="max-h-56 overflow-auto">
-                  <table className="min-w-full text-[10px] text-left">
-                    <thead className="text-gray-500 uppercase tracking-[0.3em]">
-                      <tr>
-                        <th className="px-2 py-2">#</th>
-                        <th className="px-2 py-2">Jogo</th>
-                        <th className="px-2 py-2">Jogador</th>
-                        <th className="px-2 py-2">Campeao</th>
-                        <th className="px-2 py-2">Status</th>
-                        <th className="px-2 py-2">Mensagem</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {csvPreviewRows.map((row) => (
-                        <tr key={`csv-preview-${row.index}`} className="odd:bg-white/[0.02]">
-                          <td className="px-2 py-2 text-gray-400">{row.index}</td>
-                          <td className="px-2 py-2 text-gray-300">{row.gameNumber ?? '-'}</td>
-                          <td className="px-2 py-2 text-gray-300">{row.playerName || row.playerId || '-'}</td>
-                          <td className="px-2 py-2 text-gray-300">{row.championName || '-'}</td>
-                          <td className={`px-2 py-2 ${row.status === 'error' ? 'text-red-300' : 'text-emerald-300'}`}>
-                            {row.status === 'error' ? 'Erro' : 'OK'}
-                          </td>
-                          <td className="px-2 py-2 text-gray-400">{row.message}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+
             {performanceMatchId && (
               <div className="text-[10px] uppercase tracking-[0.3em] text-gray-500">
-                Partidas no confronto: {performanceGamesCount}
+                Series previstas neste confronto: {performanceGamesCount}
               </div>
             )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label className="text-xs text-gray-500">Rodada</label>
-              <select
-                value={performanceRoundId}
-                onChange={(event) => handlePerformanceRoundChange(event.target.value)}
-                className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg"
-              >
-                <option value="">Selecione a rodada</option>
-                {rounds.map((round) => (
-                  <option key={round.id} value={round.id}>
-                    Season {round.season} - Rodada {round.round_number}
-                  </option>
+            <div className="border border-white/10 bg-black/30 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500">Progresso da finalizacao</p>
+                <span className={`text-[10px] uppercase tracking-[0.2em] ${canFinalizeFlow ? 'text-emerald-300' : 'text-amber-300'}`}>
+                  {performanceFlowSteps.filter((step) => step.done).length}/{performanceFlowSteps.length} etapas
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {performanceFlowSteps.map((step, index) => (
+                  <div
+                    key={step.id}
+                    className={`flex items-center gap-2 text-xs uppercase tracking-[0.16em] px-3 py-2 border ${step.done ? 'border-emerald-500/40 text-emerald-200 bg-emerald-500/5' : 'border-white/10 text-gray-400 bg-black/20'}`}
+                  >
+                    <span className={`w-5 h-5 rounded-full border flex items-center justify-center text-[10px] ${step.done ? 'border-emerald-400 text-emerald-300' : 'border-gray-600 text-gray-500'}`}>
+                      {step.done ? '✓' : index + 1}
+                    </span>
+                    <span>{step.label}</span>
+                  </div>
                 ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs text-gray-500">Partida</label>
-              <select
-                value={performanceMatchId}
-                onChange={(event) => handlePerformanceMatchChange(event.target.value)}
-                className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg"
-              >
-                <option value="">Selecione a partida</option>
-                {matches
-                  .filter((match) => !performanceRoundId || String(match.round_id) === String(performanceRoundId))
-                  .map((match) => (
-                    <option key={match.id} value={match.id}>
-                      {match.team_a?.name || match.team_a_id} vs {match.team_b?.name || match.team_b_id}
-                    </option>
-                  ))}
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={handleSubmitPerformances}
-                className="btn-primary text-xs uppercase tracking-wider w-full"
-              >
-                Salvar performances
-              </button>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="p-5 space-y-8">
+        {selectedPerformanceMatch && (
+          <div className="glass-card border border-white/5 overflow-hidden">
+            <div className="p-5 border-b border-white/5">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500">Resultado da partida</p>
+            </div>
+            <div className="p-5 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto] gap-4 items-end">
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">{selectedPerformanceMatch.team_a?.name || 'Time A'}</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={matchScoreInput.teamA}
+                  onChange={(event) => setMatchScoreInput((prev) => ({ ...prev, teamA: event.target.value }))}
+                  className="bg-black/40 border border-white/10 text-sm text-gray-200 px-3 py-2 rounded-lg w-full"
+                  placeholder="0"
+                />
+              </div>
+              <div className="text-sm font-black text-gray-500 uppercase tracking-wider pb-2">x</div>
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">{selectedPerformanceMatch.team_b?.name || 'Time B'}</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={matchScoreInput.teamB}
+                  onChange={(event) => setMatchScoreInput((prev) => ({ ...prev, teamB: event.target.value }))}
+                  className="bg-black/40 border border-white/10 text-sm text-gray-200 px-3 py-2 rounded-lg w-full"
+                  placeholder="0"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveMatchScore}
+                disabled={saveMatchScoreLoading}
+                className="btn-secondary text-xs uppercase tracking-wider"
+              >
+                {saveMatchScoreLoading ? 'Salvando...' : 'Salvar placar'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="glass-card border border-white/5 overflow-hidden">
+          <div className="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500">Tabela de performances</p>
+            <button
+              onClick={handleSubmitPerformances}
+              className="btn-primary text-xs uppercase tracking-wider"
+              disabled={!performanceMatchId || performanceRowsByGame.length === 0}
+            >
+              Salvar performances
+            </button>
+          </div>
+
+          <div className="p-5 space-y-8">
           {performanceRowsByGame.length === 0 ? (
             <div className="border border-white/5 bg-black/30 p-4 text-xs text-gray-500">
               Selecione a partida para carregar os jogadores.
@@ -2446,8 +2518,134 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
               </div>
             ))
           )}
+          </div>
         </div>
 
+        <div className="glass-card border border-white/5 overflow-hidden">
+          <div className="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500">Checklist e finalizacao</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleFinalizeCheck}
+                className="text-[10px] uppercase tracking-[0.2em] text-amber-200 border border-amber-500/30 px-3 py-2 rounded-lg"
+                disabled={finalizeCheckLoading}
+              >
+                {finalizeCheckLoading ? 'Verificando...' : 'Atualizar checklist'}
+              </button>
+              <button
+                type="button"
+                onClick={handleFinalizeRound}
+                className="text-[10px] uppercase tracking-[0.2em] text-emerald-200 border border-emerald-500/30 px-3 py-2 rounded-lg"
+                disabled={finalizeRoundLoading || !canFinalizeFlow}
+              >
+                {finalizeRoundLoading ? 'Finalizando...' : 'Finalizar rodada e atualizar sistema'}
+              </button>
+            </div>
+          </div>
+
+          <div className="p-5 space-y-4">
+            {finalizeCheckResult ? (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[10px] uppercase tracking-[0.18em] text-gray-400">
+                  <div>Partidas: <span className="text-white">{finalizeCheckResult.totalMatches}</span></div>
+                  <div>Sem resultado: <span className="text-white">{finalizeCheckResult.matchesMissingResults}</span></div>
+                  <div>Perf. esperadas: <span className="text-white">{finalizeCheckResult.expectedPerformances}</span></div>
+                  <div>Perf. lancadas: <span className="text-white">{finalizeCheckResult.totalPerformances}</span></div>
+                </div>
+                {finalizeCheckResult.pendingItems?.length > 0 ? (
+                  <div className="border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
+                    {finalizeCheckResult.pendingItems.map((item: string) => (
+                      <p key={item} className="text-xs text-amber-200">- {item}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border border-emerald-500/30 bg-emerald-500/5 p-4 text-xs text-emerald-200">
+                    Tudo certo. A rodada pode ser finalizada.
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-gray-500">Clique em "Atualizar checklist" para validar os dados da rodada.</p>
+            )}
+          </div>
+        </div>
+
+        <details className="glass-card border border-white/5 overflow-hidden">
+          <summary className="p-5 cursor-pointer text-[10px] uppercase tracking-[0.3em] text-gray-500">
+            Importacao CSV (opcional)
+          </summary>
+          <div className="px-5 pb-5 space-y-4 border-t border-white/5">
+            <div className="flex flex-col md:flex-row md:items-center gap-3 text-xs text-gray-500 pt-4">
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(event) => handleImportPerformancesCsv(event.target.files?.[0] || null)}
+                className="text-[10px] uppercase tracking-[0.2em] text-gray-400"
+              />
+              <button
+                type="button"
+                onClick={handleDownloadPerformanceTemplate}
+                className="text-[10px] uppercase tracking-[0.2em] text-gray-300 border border-white/10 px-3 py-2 rounded-lg"
+              >
+                Baixar modelo
+              </button>
+              <button
+                type="button"
+                onClick={handleRecalculatePlayers}
+                className="text-[10px] uppercase tracking-[0.2em] text-gray-200 border border-white/10 px-3 py-2 rounded-lg"
+                disabled={recalculatePlayersLoading}
+              >
+                {recalculatePlayersLoading ? 'Recalculando...' : 'Recalcular pontos dos jogadores'}
+              </button>
+            </div>
+
+            {csvPreviewRows && (
+              <div className="border border-white/10 bg-black/30 p-4 space-y-3">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div className="text-[10px] uppercase tracking-[0.3em] text-gray-500">
+                    Preview CSV {csvPreviewFileName ? `- ${csvPreviewFileName}` : ''}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleApplyCsvPreview}
+                    className="text-[10px] uppercase tracking-[0.2em] text-gray-200 border border-white/10 px-3 py-2 rounded-lg"
+                  >
+                    Aplicar CSV
+                  </button>
+                </div>
+                <div className="max-h-56 overflow-auto">
+                  <table className="min-w-full text-[10px] text-left">
+                    <thead className="text-gray-500 uppercase tracking-[0.3em]">
+                      <tr>
+                        <th className="px-2 py-2">#</th>
+                        <th className="px-2 py-2">Jogo</th>
+                        <th className="px-2 py-2">Jogador</th>
+                        <th className="px-2 py-2">Campeao</th>
+                        <th className="px-2 py-2">Status</th>
+                        <th className="px-2 py-2">Mensagem</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {csvPreviewRows.map((row) => (
+                        <tr key={`csv-preview-${row.index}`} className="odd:bg-white/[0.02]">
+                          <td className="px-2 py-2 text-gray-400">{row.index}</td>
+                          <td className="px-2 py-2 text-gray-300">{row.gameNumber ?? '-'}</td>
+                          <td className="px-2 py-2 text-gray-300">{row.playerName || row.playerId || '-'}</td>
+                          <td className="px-2 py-2 text-gray-300">{row.championName || '-'}</td>
+                          <td className={`px-2 py-2 ${row.status === 'error' ? 'text-red-300' : 'text-emerald-300'}`}>
+                            {row.status === 'error' ? 'Erro' : 'OK'}
+                          </td>
+                          <td className="px-2 py-2 text-gray-400">{row.message}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </details>
       </div>
     );
   };

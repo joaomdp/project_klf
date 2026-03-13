@@ -313,7 +313,7 @@ export async function updateMatch(req: AuthenticatedRequest, res: Response) {
     if (hasTeamBScore) updateData.team_b_score = team_b_score;
 
     // Atualizar
-    const { data: match, error: updateError } = await supabase
+    const { data: match, error: updateError } = await adminSupabase
       .from('matches')
       .update(updateData)
       .eq('id', parseInt(id))
@@ -324,7 +324,7 @@ export async function updateMatch(req: AuthenticatedRequest, res: Response) {
         team_b:teams!matches_team_b_id_fkey(id, name, logo_url),
         winner:teams!matches_winner_id_fkey(id, name, logo_url)
       `)
-      .single();
+      .maybeSingle();
 
     if (updateError) {
       console.error('❌ Error updating match:', updateError);
@@ -332,6 +332,14 @@ export async function updateMatch(req: AuthenticatedRequest, res: Response) {
         success: false,
         error: 'Erro ao atualizar partida',
         details: updateError.message
+      });
+    }
+
+    if (!match) {
+      return res.status(404).json({
+        success: false,
+        error: 'Partida não encontrada para atualização',
+        match_id: id
       });
     }
 

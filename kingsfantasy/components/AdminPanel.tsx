@@ -1291,6 +1291,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   }, [performanceRoundId, selectedPerformanceMatch, performanceRowsByGame, finalizeCheckResult]);
 
   const canFinalizeFlow = performanceFlowSteps.every((step) => step.done);
+  const canFinalizeAction = Boolean(performanceRoundId);
 
   const handleSaveMatchScore = async () => {
     if (!selectedPerformanceMatch) {
@@ -2735,7 +2736,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                 type="button"
                 onClick={handleFinalizeRound}
                 className="text-[10px] uppercase tracking-[0.2em] text-emerald-200 border border-emerald-500/30 px-3 py-2 rounded-lg"
-                disabled={finalizeRoundLoading || !canFinalizeFlow}
+                disabled={finalizeRoundLoading || !canFinalizeAction}
               >
                 {finalizeRoundLoading ? 'Finalizando...' : 'Finalizar rodada e atualizar sistema'}
               </button>

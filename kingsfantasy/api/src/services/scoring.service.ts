@@ -32,6 +32,112 @@ interface SystemConfig {
 class ScoringService {
   private config: SystemConfig | null = null;
 
+  private async refreshPlayerAggregates(playerIds: string[], latestRoundId?: number): Promise<number> {
+    if (playerIds.length === 0) return 0;
+
+    const uniquePlayerIds = Array.from(new Set(playerIds.map((id) => String(id)).filter(Boolean)));
+    if (uniquePlayerIds.length === 0) return 0;
+
+    const { data: perfRows, error: perfRowsError } = await adminSupabase
+      .from('player_performances')
+      .select('player_id, fantasy_points, match_id')
+      .in('player_id', uniquePlayerIds);
+
+    if (perfRowsError) throw perfRowsError;
+    if (!perfRows || perfRows.length === 0) return 0;
+
+    const matchIds = Array.from(new Set(perfRows.map((perf: any) => Number(perf.match_id)).filter(Number.isFinite)));
+    const { data: matches, error: matchesError } = await adminSupabase
+      .from('matches')
+      .select('id, games_count')
+      .in('id', matchIds);
+
+    if (matchesError) throw matchesError;
+
+    const matchGamesMap = new Map(
+      (matches || []).map((match: any) => [Number(match.id), Number(match.games_count || 1)])
+    );
+
+    let latestRoundMatchIds = new Set<number>();
+    if (Number.isFinite(latestRoundId)) {
+      const { data: latestRoundMatches, error: latestRoundMatchesError } = await adminSupabase
+        .from('matches')
+        .select('id')
+        .eq('round_id', Number(latestRoundId));
+
+      if (latestRoundMatchesError) throw latestRoundMatchesError;
+      latestRoundMatchIds = new Set((latestRoundMatches || []).map((match: any) => Number(match.id)));
+    }
+
+    const playerMatchPoints = new Map<string, Map<number, number>>();
+    const playerGameStats = new Map<string, { totalPoints: number; count: number }>();
+
+    for (const perf of perfRows) {
+      const points = Number(perf.fantasy_points || 0);
+      const playerId = String(perf.player_id);
+      const matchId = Number(perf.match_id);
+
+      if (!playerMatchPoints.has(playerId)) {
+        playerMatchPoints.set(playerId, new Map());
+      }
+
+      const matchMap = playerMatchPoints.get(playerId)!;
+      matchMap.set(matchId, (matchMap.get(matchId) || 0) + points);
+
+      const gameStats = playerGameStats.get(playerId) || { totalPoints: 0, count: 0 };
+      gameStats.totalPoints += points;
+      gameStats.count += 1;
+      playerGameStats.set(playerId, gameStats);
+    }
+
+    let updated = 0;
+    for (const playerId of uniquePlayerIds) {
+      const matchMap = playerMatchPoints.get(playerId) || new Map<number, number>();
+      let matchSum = 0;
+      let matchCount = 0;
+
+      for (const [matchId, matchPoints] of matchMap) {
+        const gamesCount = Number(matchGamesMap.get(matchId) || 1);
+        matchSum += Number(matchPoints) / gamesCount;
+        matchCount += 1;
+      }
+
+      const gameStats = playerGameStats.get(playerId) || { totalPoints: 0, count: 0 };
+      const pointsPerMatch = matchCount > 0 ? matchSum / matchCount : 0;
+      const avgPointsPerGame = gameStats.count > 0 ? gameStats.totalPoints / gameStats.count : 0;
+
+      let latestRoundPoints = pointsPerMatch;
+      if (latestRoundMatchIds.size > 0) {
+        let latestRoundMatchSum = 0;
+        let latestRoundMatchCount = 0;
+
+        for (const [matchId, matchPoints] of matchMap) {
+          if (!latestRoundMatchIds.has(Number(matchId))) continue;
+          const gamesCount = Number(matchGamesMap.get(matchId) || 1);
+          latestRoundMatchSum += Number(matchPoints) / gamesCount;
+          latestRoundMatchCount += 1;
+        }
+
+        if (latestRoundMatchCount > 0) {
+          latestRoundPoints = latestRoundMatchSum / latestRoundMatchCount;
+        }
+      }
+
+      const { error: updateError } = await adminSupabase
+        .from('players')
+        .update({
+          points: parseFloat(latestRoundPoints.toFixed(2)),
+          avg_points: parseFloat(avgPointsPerGame.toFixed(2)),
+          games_played: gameStats.count
+        })
+        .eq('id', playerId);
+
+      if (!updateError) updated++;
+    }
+
+    return updated;
+  }
+
   clearConfigCache() {
     this.config = null;
   }
@@ -125,40 +231,12 @@ class ScoringService {
       }
     }
 
-    const { data: playerRows, error: playersError } = await adminSupabase
-      .from('players')
-      .select('id, price')
-      .in('id', (performances || []).map((perf: any) => perf.player_id));
-
-    if (playersError) throw playersError;
-
-    const playerPriceMap = new Map(
-      (playerRows || []).map((player: any) => [String(player.id), Number(player.price || 0)])
+    const updatedPlayers = await this.refreshPlayerAggregates(
+      (performances || []).map((perf: any) => String(perf.player_id)),
+      roundId
     );
 
-    const playerPoints = (performances || []).reduce((map: Map<string, number>, perf: any) => {
-      const id = String(perf.player_id);
-      const total = map.get(id) || 0;
-      map.set(id, total + (perf.fantasy_points || 0));
-      return map;
-    }, new Map<string, number>());
-
-    let updatedPlayers = 0;
-    for (const [playerId, points] of playerPoints) {
-      const currentPrice = playerPriceMap.get(playerId) || 0;
-      const delta = Math.max(-3, Math.min(3, points * 0.03));
-      const nextPrice = parseFloat((currentPrice + delta).toFixed(2));
-
-      const { error } = await adminSupabase
-        .from('players')
-        .update({ price: nextPrice })
-        .eq('id', playerId);
-
-      if (!error) {
-        updatedPlayers++;
-        playerPriceMap.set(playerId, nextPrice);
-      }
-    }
+    const playerPriceMap = new Map<string, number>();
 
     const { data: userTeams, error: teamsError } = await adminSupabase
       .from('user_teams')
@@ -234,7 +312,7 @@ class ScoringService {
     if (error) throw error;
 
     const config: any = {};
-    data?.forEach((item) => {
+    data?.forEach((item: any) => {
       let value = item.value;
       if (item.value_type === 'number') {
         value = parseFloat(item.value);
@@ -490,11 +568,11 @@ class ScoringService {
         };
       }
 
-      const matchIds = matches.map(m => m.id);
-      const matchGamesCount = new Map(
-        matches.map((match) => [
-          match.id,
-          match.games_count && match.games_count > 0 ? match.games_count : 1
+      const matchIds = matches.map((m: any) => m.id);
+      const matchGamesCount = new Map<number, number>(
+        matches.map((match: any) => [
+          Number(match.id),
+          match.games_count && Number(match.games_count) > 0 ? Number(match.games_count) : 1
         ])
       );
 
@@ -523,8 +601,8 @@ class ScoringService {
       const playersData: Array<{ team_id: string }> = [];
 
       for (const perf of performances) {
-        const gamesCount = matchGamesCount.get(perf.match_id) || 1;
-        basePoints += (perf.fantasy_points || 0) / gamesCount;
+        const gamesCount = Number(matchGamesCount.get(Number(perf.match_id)) || 1);
+        basePoints += Number(perf.fantasy_points || 0) / gamesCount;
         playersData.push({ team_id: (perf.players as any).team_id });
       }
 
@@ -583,7 +661,7 @@ class ScoringService {
 
       if (totalsError) throw totalsError;
 
-      const totalPoints = (totals || []).reduce((sum, row: any) => sum + (row.total_points || 0), 0);
+      const totalPoints = (totals || []).reduce((sum: number, row: any) => sum + Number(row.total_points || 0), 0);
 
       const { error: updateError } = await adminSupabase
         .from('user_teams')
@@ -662,7 +740,7 @@ class ScoringService {
     const minPrice = typeof config.min_player_price === 'number' ? config.min_player_price : 8;
     const maxPrice = typeof config.max_player_price === 'number' ? config.max_player_price : 15;
 
-    const { data: matches } = await supabase
+    const { data: matches } = await adminSupabase
       .from('matches')
       .select('id, games_count')
       .eq('round_id', roundId);
@@ -672,15 +750,15 @@ class ScoringService {
       return { updated: 0 };
     }
 
-    const matchIds = matches.map((match) => match.id);
-    const matchGamesCount = new Map(
-      matches.map((match) => [
-        match.id,
-        match.games_count && match.games_count > 0 ? match.games_count : 1
+    const matchIds = matches.map((match: any) => match.id);
+    const matchGamesCount = new Map<number, number>(
+      matches.map((match: any) => [
+        Number(match.id),
+        match.games_count && Number(match.games_count) > 0 ? Number(match.games_count) : 1
       ])
     );
 
-    const { data: performances, error: perfError } = await supabase
+    const { data: performances, error: perfError } = await adminSupabase
       .from('player_performances')
       .select('player_id, fantasy_points, match_id')
       .in('match_id', matchIds);
@@ -695,16 +773,17 @@ class ScoringService {
     const playerStats = new Map<string, { totalPoints: number; count: number }>();
 
     for (const perf of performances) {
-      const gamesCount = matchGamesCount.get(perf.match_id) || 1;
-      const normalizedPoints = (perf.fantasy_points || 0) / gamesCount;
-      const existing = playerStats.get(perf.player_id) || { totalPoints: 0, count: 0 };
+      const gamesCount = Number(matchGamesCount.get(Number(perf.match_id)) || 1);
+      const normalizedPoints = Number(perf.fantasy_points || 0) / Math.max(gamesCount, 1);
+      const playerId = String(perf.player_id);
+      const existing = playerStats.get(playerId) || { totalPoints: 0, count: 0 };
       existing.totalPoints += normalizedPoints;
       existing.count += 1;
-      playerStats.set(perf.player_id, existing);
+      playerStats.set(playerId, existing);
     }
 
     const playerIds = Array.from(playerStats.keys());
-    const { data: players, error: playersError } = await supabase
+    const { data: players, error: playersError } = await adminSupabase
       .from('players')
       .select('id, price')
       .in('id', playerIds);
@@ -725,10 +804,14 @@ class ScoringService {
       const avgPoints = stats.totalPoints / stats.count;
       let delta = 0;
 
-      if (avgPoints > 20) {
-        delta = 0.5;
-      } else if (avgPoints < 10) {
-        delta = -0.5;
+      if (avgPoints >= 22) {
+        delta = 0.6;
+      } else if (avgPoints >= 16) {
+        delta = 0.3;
+      } else if (avgPoints <= 6) {
+        delta = -0.6;
+      } else if (avgPoints <= 10) {
+        delta = -0.3;
       }
 
       if (delta === 0) continue;
@@ -739,7 +822,7 @@ class ScoringService {
 
       if (roundedPrice === currentPrice) continue;
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await adminSupabase
         .from('players')
         .update({ price: roundedPrice })
         .eq('id', player.id);

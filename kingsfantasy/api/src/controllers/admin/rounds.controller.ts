@@ -659,11 +659,17 @@ export async function finalizeRound(req: AuthenticatedRequest, res: Response) {
       .eq('id', roundId);
 
     let marketReopened = false;
+    let marketRoundId: number | null = null;
     let marketWarning: string | null = null;
 
     try {
-      await marketService.openMarket();
-      marketReopened = true;
+      const reopenResult = await marketService.openMarket();
+      marketReopened = Boolean(reopenResult?.opened);
+      marketRoundId = reopenResult?.roundId ? Number(reopenResult.roundId) : null;
+
+      if (!marketReopened && reopenResult?.reason) {
+        marketWarning = `Rodada finalizada, mas o mercado nao foi reaberto: ${reopenResult.reason}.`;
+      }
     } catch (marketError) {
       console.error('⚠️ Error reopening market after round finalization:', marketError);
       marketWarning = 'Rodada finalizada, mas nao foi possivel reabrir o mercado automaticamente.';
@@ -676,6 +682,7 @@ export async function finalizeRound(req: AuthenticatedRequest, res: Response) {
         : 'Rodada finalizada com sucesso',
       result,
       marketReopened,
+      marketRoundId,
       marketWarning
     });
   } catch (error) {

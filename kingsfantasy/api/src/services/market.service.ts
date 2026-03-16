@@ -27,7 +27,7 @@ export interface MarketStatus {
 class MarketService {
   private readonly NEXT_ROUND_STATUSES = ['upcoming', 'pending', 'active', 'open', 'live'];
 
-  private readonly SCHEDULABLE_ROUND_STATUSES = ['upcoming', 'pending'];
+  private readonly SCHEDULABLE_ROUND_STATUSES = ['upcoming', 'pending', 'active', 'open', 'live'];
 
   /**
    * Verifica status atual do mercado
@@ -146,14 +146,14 @@ class MarketService {
   /**
    * Abre o mercado (executado automaticamente às terças 00h)
    */
-  async openMarket(): Promise<void> {
+  async openMarket(): Promise<{ opened: boolean; roundId?: number; reason?: string }> {
     try {
       console.log(`🔓 Opening market...`);
 
       // 1. Buscar próxima rodada upcoming
       const { data: nextRound, error: roundError } = await adminSupabase
         .from('rounds')
-        .select('id')
+        .select('id, market_close_time')
         .in('status', this.SCHEDULABLE_ROUND_STATUSES)
         .order('start_date', { ascending: true })
         .limit(1)
@@ -163,14 +163,24 @@ class MarketService {
 
       if (!nextRound) {
         console.log('⚠️  No upcoming rounds found, market remains closed');
-        return;
+        return { opened: false, reason: 'Nenhuma rodada elegível para abrir mercado' };
       }
+
+      const now = new Date();
+      const currentCloseTime = (nextRound as any).market_close_time
+        ? new Date((nextRound as any).market_close_time)
+        : null;
+      const shouldExtendCloseTime = !currentCloseTime || Number.isNaN(currentCloseTime.getTime()) || currentCloseTime <= now;
+      const nextCloseTime = shouldExtendCloseTime
+        ? new Date(now.getTime() + (24 * 60 * 60 * 1000)).toISOString()
+        : (nextRound as any).market_close_time;
 
       // 2. Abrir mercado
       const { error: updateError } = await adminSupabase
         .from('rounds')
         .update({ 
           is_market_open: true,
+          market_close_time: nextCloseTime,
           updated_at: new Date().toISOString()
         })
         .eq('id', nextRound.id);
@@ -187,6 +197,7 @@ class MarketService {
       if (unlockError) throw unlockError;
 
       console.log(`✅ Market opened for round ${nextRound.id} and all teams unlocked`);
+      return { opened: true, roundId: nextRound.id };
 
     } catch (error) {
       console.error('❌ Error opening market:', error);

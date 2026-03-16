@@ -480,6 +480,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     if (!confirmed) return;
 
     setPerformancesError(null);
+    setPerformancesSuccess(null);
     setFinalizeRoundLoading(true);
 
     try {
@@ -491,9 +492,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
         return;
       }
 
+      const finalizeMessage = result.data?.marketWarning
+        ? `Rodada finalizada com sucesso. ${result.data.marketWarning}`
+        : (result.data?.message || 'Rodada finalizada com sucesso. Mercado aberto novamente.');
+      setPerformancesSuccess(finalizeMessage);
+
       setFinalizeCheckResult(null);
       await loadRounds();
       await loadPlayers();
+      window.dispatchEvent(new Event('market:refresh'));
       window.dispatchEvent(new Event('players:refresh'));
       window.dispatchEvent(new Event('leagues:refresh'));
     } finally {

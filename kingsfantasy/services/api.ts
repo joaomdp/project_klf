@@ -1413,12 +1413,23 @@ export const DataService = {
         headers: buildAuthHeaders(anonKey, userToken, { includeContentType: true, allowAnonFallback: false })
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        return { ok: false, error: errorText || 'Erro ao finalizar rodada' };
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch (error) {
+        data = null;
       }
 
-      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        const pendingItems = Array.isArray(data?.check?.pendingItems)
+          ? data.check.pendingItems.filter(Boolean).join(', ')
+          : '';
+        const errorMessage = pendingItems
+          ? `${data?.error || 'Rodada com pendencias para finalizacao'}: ${pendingItems}`
+          : (data?.error || 'Erro ao finalizar rodada');
+        return { ok: false, error: errorMessage, data };
+      }
+
       if (data?.success === false) {
         return { ok: false, error: data?.error || 'Erro ao finalizar rodada', data };
       }

@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { adminSupabase, supabase } from '../../config/supabase';
 import { scoringService } from '../../services/scoring.service';
+import { marketService } from '../../services/market.service';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware';
 
 const ROUND_STATUS_INPUT_TO_DB: Record<string, 'pending' | 'open' | 'closed' | 'finished'> = {
@@ -657,10 +658,25 @@ export async function finalizeRound(req: AuthenticatedRequest, res: Response) {
       })
       .eq('id', roundId);
 
+    let marketReopened = false;
+    let marketWarning: string | null = null;
+
+    try {
+      await marketService.openMarket();
+      marketReopened = true;
+    } catch (marketError) {
+      console.error('⚠️ Error reopening market after round finalization:', marketError);
+      marketWarning = 'Rodada finalizada, mas nao foi possivel reabrir o mercado automaticamente.';
+    }
+
     return res.json({
       success: true,
-      message: 'Rodada finalizada com sucesso',
-      result
+      message: marketReopened
+        ? 'Rodada finalizada com sucesso e mercado reaberto'
+        : 'Rodada finalizada com sucesso',
+      result,
+      marketReopened,
+      marketWarning
     });
   } catch (error) {
     console.error('❌ Exception in finalizeRound:', error);

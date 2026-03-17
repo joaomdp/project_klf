@@ -613,6 +613,49 @@ export const DataService = {
       if (data.length === 0) return null;
 
       const dbTeam = data[0];
+
+      let derivedTotalPoints: number | null = null;
+      let derivedCurrentRoundPoints: number | null = null;
+
+      try {
+        const scoresResponse = await fetch(
+          `${SUPABASE_URL}/rest/v1/round_scores?user_team_id=eq.${dbTeam.id}&select=round_id,total_points,updated_at`,
+          {
+            headers: buildAuthHeaders(anonKey, userToken, { includeContentType: true })
+          }
+        );
+
+        if (scoresResponse.ok) {
+          const scores = await scoresResponse.json();
+          const latestByRound = new Map<number, { totalPoints: number; updatedAt: number }>();
+
+          (scores || []).forEach((row: any) => {
+            const roundId = Number(row.round_id);
+            if (!Number.isFinite(roundId)) return;
+
+            const updatedAt = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+            const current = latestByRound.get(roundId);
+
+            if (!current || updatedAt >= current.updatedAt) {
+              latestByRound.set(roundId, {
+                totalPoints: Number(row.total_points || 0),
+                updatedAt
+              });
+            }
+          });
+
+          if (latestByRound.size > 0) {
+            derivedTotalPoints = Array.from(latestByRound.values())
+              .reduce((sum, row) => sum + row.totalPoints, 0);
+
+            const latestRoundId = Math.max(...Array.from(latestByRound.keys()));
+            derivedCurrentRoundPoints = latestByRound.get(latestRoundId)?.totalPoints ?? 0;
+          }
+        }
+      } catch (scoreError) {
+        console.warn('⚠️ Não foi possível derivar pontuação via round_scores:', scoreError);
+      }
+
       return {
         id: dbTeam.id?.toString() || 'u1',
         userId: dbTeam.user_id,
@@ -623,8 +666,8 @@ export const DataService = {
         honor: 1,
         players: dbTeam.lineup || {},
         budget: dbTeam.budget ?? INITIAL_BUDGET,
-        currentRoundPoints: Number(dbTeam.current_round_points || 0),
-        totalPoints: dbTeam.total_points || 0,
+        currentRoundPoints: derivedCurrentRoundPoints ?? Number(dbTeam.current_round_points || 0),
+        totalPoints: derivedTotalPoints ?? Number(dbTeam.total_points || 0),
         favoriteTeam: dbTeam.favorite_team,
         preferences: {
           publicProfile: true,

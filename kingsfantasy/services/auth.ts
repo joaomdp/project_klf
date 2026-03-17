@@ -176,6 +176,127 @@ export const AuthService = {
     }
   },
 
+  async requestPasswordReset(email: string) {
+    const anonKey = DataService.getAnonKey();
+    const redirectTo = `${window.location.origin.replace(/\/$/, '')}?reset_password=1`;
+
+    try {
+      const res = await fetch(`${DataService.SUPABASE_URL}/auth/v1/recover`, {
+        method: 'POST',
+        headers: {
+          apikey: anonKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          redirect_to: redirectTo
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const msg = data?.msg || data?.error_description || data?.error || 'Erro ao enviar recuperação de senha.';
+        throw new Error(msg);
+      }
+
+      return { ok: true, error: null as string | null };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'Erro ao enviar recuperação de senha.' };
+    }
+  },
+
+  async requestEmailOtp(email: string) {
+    const anonKey = DataService.getAnonKey();
+
+    try {
+      const res = await fetch(`${DataService.SUPABASE_URL}/auth/v1/otp`, {
+        method: 'POST',
+        headers: {
+          apikey: anonKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          create_user: false
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const msg = data?.msg || data?.error_description || data?.error || 'Erro ao enviar código de verificação.';
+        throw new Error(msg);
+      }
+
+      return { ok: true, error: null as string | null };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'Erro ao enviar código de verificação.' };
+    }
+  },
+
+  async verifyEmailOtp(email: string, token: string) {
+    const anonKey = DataService.getAnonKey();
+
+    try {
+      const res = await fetch(`${DataService.SUPABASE_URL}/auth/v1/verify`, {
+        method: 'POST',
+        headers: {
+          apikey: anonKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          token,
+          type: 'email'
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const msg = data?.msg || data?.error_description || data?.error || 'Código inválido ou expirado.';
+        throw new Error(msg);
+      }
+
+      return { ok: true, error: null as string | null };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'Código inválido ou expirado.' };
+    }
+  },
+
+  async updatePassword(newPassword: string, token?: string | null) {
+    const anonKey = DataService.getAnonKey();
+    const sessionToken = token || this.getSession()?.access_token;
+
+    if (!sessionToken) {
+      return { ok: false, error: 'Sessão de recuperação inválida.' };
+    }
+
+    try {
+      const res = await fetch(`${DataService.SUPABASE_URL}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password: newPassword })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const msg = data?.msg || data?.error_description || data?.error || 'Erro ao atualizar senha.';
+        throw new Error(msg);
+      }
+
+      return { ok: true, error: null as string | null };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'Erro ao atualizar senha.' };
+    }
+  },
+
   /**
    * Initiates OAuth flow with social provider
    * @param provider - 'google' or 'discord'
@@ -212,8 +333,16 @@ export const AuthService = {
     try {
       const params = new URLSearchParams(hash.substring(1));
       const accessToken = params.get('access_token');
+      const callbackType = params.get('type');
       
       if (!accessToken) return null;
+
+      if (callbackType === 'recovery') {
+        localStorage.setItem('nexus_recovery_token', accessToken);
+        localStorage.setItem('nexus_recovery_pending', 'true');
+        window.history.replaceState(null, '', window.location.origin);
+        return { recovery: true };
+      }
 
       const decodedToken = decodeJWT(accessToken);
       
@@ -238,6 +367,19 @@ export const AuthService = {
       console.error("❌ Erro ao processar tokens:", e);
     }
     return null;
+  },
+
+  getRecoveryToken() {
+    return localStorage.getItem('nexus_recovery_token');
+  },
+
+  isRecoveryPending() {
+    return localStorage.getItem('nexus_recovery_pending') === 'true';
+  },
+
+  clearRecoveryState() {
+    localStorage.removeItem('nexus_recovery_token');
+    localStorage.removeItem('nexus_recovery_pending');
   },
 
   /**

@@ -113,6 +113,11 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, onNavigate }) => {
     return val.toFixed(1).replace(',', '.');
   };
 
+  const formatPoints = (val: number) => {
+    if (Number.isInteger(val)) return val.toString();
+    return val.toFixed(2);
+  };
+
   const trending = [...MOCK_PLAYERS]
     .filter(p => pickedFilter === 'TODOS' || p.role === pickedFilter)
     .sort((a, b) => b.points - a.points)
@@ -275,7 +280,13 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, onNavigate }) => {
                       )}
                     </div>
                   </div>
-                  <i className="fa-solid fa-chevron-right text-[10px] text-gray-700 group-hover:text-white group-hover:translate-x-1 transition-all"></i>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest">PONTOS</p>
+                      <p className="font-orbitron font-black text-sm text-white">{formatPoints(userTeam.totalPoints)}</p>
+                    </div>
+                    <i className="fa-solid fa-chevron-right text-[10px] text-gray-700 group-hover:text-white group-hover:translate-x-1 transition-all"></i>
+                  </div>
                 </div>
               ))}
               {userLeagues.length > 5 && (

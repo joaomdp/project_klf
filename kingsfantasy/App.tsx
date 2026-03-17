@@ -182,18 +182,6 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
-  // Função para calcular pontos totais do time
-  const calculateTotalPoints = useCallback((teamPlayers: UserTeam['players']): number => {
-    return Object.values(teamPlayers)
-      .filter((p): p is Player => !!p)
-      .reduce((sum, p) => sum + p.points, 0);
-  }, []);
-
-  const withRecalculatedPoints = useCallback((team: UserTeam) => ({
-    ...team,
-    totalPoints: calculateTotalPoints(team.players)
-  }), [calculateTotalPoints]);
-
   const persistTeam = useCallback((team: UserTeam) => {
     setUserTeam(team);
     DataService.saveUserTeam(team);
@@ -206,7 +194,6 @@ const AppContent: React.FC = () => {
         .filter((p): p is Player => !!p)
         .reduce((sum, p) => sum + (p.price || 0), 0),
       players: {},
-      totalPoints: 0
     }));
   }, []);
 
@@ -297,10 +284,7 @@ const AppContent: React.FC = () => {
         if (existingTeam) {
           // Usuário já tem dados no banco - carrega e não precisa fazer onboarding
           console.log('✅ Usuário existente encontrado no banco:', existingTeam.userName);
-          // Recalcula os pontos totais baseado nos jogadores escalados
-          const teamWithUpdatedPoints = withRecalculatedPoints(existingTeam);
-          
-          setUserTeam(teamWithUpdatedPoints);
+          setUserTeam(existingTeam);
           setIsAuthenticated(true);
           setNeedsOnboarding(false);
           
@@ -335,16 +319,16 @@ const AppContent: React.FC = () => {
       };
 
     initApp();
-  }, [fetchPlayers, calculateTotalPoints, checkAdminAccess, loadCurrentRoundMatchups, refreshMarketStatus]);
+  }, [fetchPlayers, checkAdminAccess, loadCurrentRoundMatchups, refreshMarketStatus]);
 
   useEffect(() => {
     if (!players.length) return;
     setUserTeam((prev) => {
       const merged = mergeLineupWithLatest(prev, players);
       if (merged === prev) return prev;
-      return withRecalculatedPoints(merged);
+      return merged;
     });
-  }, [players, mergeLineupWithLatest, withRecalculatedPoints]);
+  }, [players, mergeLineupWithLatest]);
 
   useEffect(() => {
     const handlePlayersRefresh = () => {
@@ -399,9 +383,7 @@ const AppContent: React.FC = () => {
            if (existingTeam) {
             // Usuário já existe - carrega os dados e pula onboarding
             console.log('✅ handleLoginSuccess - Usuário existente:', existingTeam.userName);
-            const teamWithUpdatedPoints = withRecalculatedPoints(existingTeam);
-          
-          setUserTeam(teamWithUpdatedPoints);
+            setUserTeam(existingTeam);
           setNeedsOnboarding(false);
           localStorage.setItem(`setup_complete_${session.user.id}`, 'true');
           console.log('✅ handleLoginSuccess - Setup marcado como completo');
@@ -596,13 +578,11 @@ const AppContent: React.FC = () => {
     newBudget -= playerToHire.price;
     
     const newPlayers = { ...userTeam.players, [playerToHire.role]: playerToHire };
-    const newTotalPoints = calculateTotalPoints(newPlayers);
     
     const updatedTeam = {
       ...userTeam,
       players: newPlayers,
       budget: newBudget,
-      totalPoints: newTotalPoints,
     };
     persistTeam(updatedTeam);
     setPendingPlayer(null);
@@ -629,13 +609,11 @@ const AppContent: React.FC = () => {
     if (!playerToFire) return;
     
     const newPlayers = { ...userTeam.players, [role]: undefined };
-    const newTotalPoints = calculateTotalPoints(newPlayers);
     
     const updatedTeam = {
       ...userTeam,
       budget: userTeam.budget + playerToFire.price,
       players: newPlayers,
-      totalPoints: newTotalPoints,
     };
     persistTeam(updatedTeam);
     
@@ -746,14 +724,14 @@ const AppContent: React.FC = () => {
       case 'ai-coach': return <AICoach userTeam={userTeam} availablePlayers={players} />;
       case 'profile':
         return (
-          <Profile
-            userTeam={userTeam}
-            onUpdate={(data) => {
-              const updated = withRecalculatedPoints({ ...userTeam, ...data, players: data.players || userTeam.players });
-              persistTeam(updated);
-            }}
-            onLogout={handleLogout}
-          />
+            <Profile
+              userTeam={userTeam}
+              onUpdate={(data) => {
+                const updated = { ...userTeam, ...data, players: data.players || userTeam.players };
+                persistTeam(updated);
+              }}
+              onLogout={handleLogout}
+            />
         );
       case 'admin':
         return (

@@ -5,12 +5,14 @@ import { DataService } from '../services/api';
 import backgroundImage from '../assets/images/backgrounds/skt-back.jpg';
 import logo from '../assets/images/logo/logo.png';
 import LoadingScreen from './LoadingScreen';
+import { useToast } from './Toast';
 
 interface LoginProps {
   onLoginSuccess: (userData: any) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+  const { showToast } = useToast();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,11 +22,24 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [forgotPasswordMsg, setForgotPasswordMsg] = useState<string | null>(null);
+  const [isSendingForgotPassword, setIsSendingForgotPassword] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [resetPasswordMsg, setResetPasswordMsg] = useState<string | null>(null);
+  const [isSubmittingResetPassword, setIsSubmittingResetPassword] = useState(false);
 
   useEffect(() => {
     const savedEmail = localStorage.getItem('remembered_email');
     if (savedEmail) {
       setEmail(savedEmail);
+    }
+
+    if (AuthService.isRecoveryPending()) {
+      setIsResetPasswordOpen(true);
     }
   }, []);
 
@@ -97,6 +112,70 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       setErrorMsg(`ERRO AO CONECTAR COM ${provider.toUpperCase()}`);
       setLoading(false);
     }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotPasswordMsg(null);
+
+    const targetEmail = forgotPasswordEmail.trim() || email.trim();
+    if (!targetEmail) {
+      setForgotPasswordMsg('INFORME UM E-MAIL VÁLIDO');
+      showToast({ type: 'warning', title: 'E-mail inválido', message: 'Informe um e-mail para recuperar a senha.' });
+      return;
+    }
+
+    setIsSendingForgotPassword(true);
+    const result = await AuthService.requestPasswordReset(targetEmail);
+    setIsSendingForgotPassword(false);
+
+    if (!result.ok) {
+      setForgotPasswordMsg((result.error || 'ERRO AO ENVIAR RECUPERAÇÃO').toUpperCase());
+      showToast({ type: 'error', title: 'Falha ao enviar link', message: result.error || 'Erro ao enviar recuperação.' });
+      return;
+    }
+
+    setForgotPasswordMsg('LINK DE RECUPERAÇÃO ENVIADO. VERIFIQUE SEU E-MAIL.');
+    showToast({ type: 'success', title: 'Link enviado', message: `Verifique o e-mail ${targetEmail}.`, duration: 4000 });
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetPasswordMsg(null);
+
+    if (newPassword.length < 6) {
+      setResetPasswordMsg('A SENHA DEVE TER NO MÍNIMO 6 CARACTERES');
+      showToast({ type: 'warning', title: 'Senha fraca', message: 'A senha deve ter no mínimo 6 caracteres.' });
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setResetPasswordMsg('AS SENHAS NÃO COINCIDEM');
+      showToast({ type: 'warning', title: 'Senhas diferentes', message: 'As senhas informadas não coincidem.' });
+      return;
+    }
+
+    setIsSubmittingResetPassword(true);
+    const recoveryToken = AuthService.getRecoveryToken();
+    const result = await AuthService.updatePassword(newPassword, recoveryToken);
+    setIsSubmittingResetPassword(false);
+
+    if (!result.ok) {
+      setResetPasswordMsg((result.error || 'ERRO AO ATUALIZAR SENHA').toUpperCase());
+      showToast({ type: 'error', title: 'Falha ao atualizar senha', message: result.error || 'Erro ao atualizar senha.' });
+      return;
+    }
+
+    AuthService.clearRecoveryState();
+    setResetPasswordMsg('SENHA ATUALIZADA COM SUCESSO. FAÇA LOGIN.');
+    showToast({ type: 'success', title: 'Senha atualizada', message: 'Faça login com sua nova senha.', duration: 4000 });
+    setNewPassword('');
+    setConfirmNewPassword('');
+
+    setTimeout(() => {
+      setIsResetPasswordOpen(false);
+      setResetPasswordMsg(null);
+    }, 1400);
   };
 
   return (
@@ -264,25 +343,40 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
                   {/* Remember Me */}
                   {!isSignUp && (
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input 
-                        type="checkbox" 
-                        checked={rememberMe} 
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="sr-only" 
+                    <div className="flex items-center justify-between gap-4">
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input 
+                          type="checkbox" 
+                          checked={rememberMe} 
+                          onChange={(e) => setRememberMe(e.target.checked)}
+                          className="sr-only" 
+                          disabled={loading}
+                        />
+                        <div className={`w-5 h-5 rounded-md border transition-all flex items-center justify-center ${
+                          rememberMe ? 'bg-[#6366F1] border-[#6366F1]' : 'bg-white/5 border-white/10 group-hover:border-white/20'
+                        }`}>
+                          {rememberMe && (
+                            <i className="fa-solid fa-check text-white text-xs"></i>
+                          )}
+                        </div>
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider group-hover:text-gray-300 transition-colors">
+                          Lembrar de mim
+                        </span>
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForgotPasswordEmail(email);
+                          setForgotPasswordMsg(null);
+                          setIsForgotPasswordOpen(true);
+                        }}
+                        className="text-[10px] font-black text-[#6366F1] uppercase tracking-widest hover:text-white transition-colors"
                         disabled={loading}
-                      />
-                      <div className={`w-5 h-5 rounded-md border transition-all flex items-center justify-center ${
-                        rememberMe ? 'bg-[#6366F1] border-[#6366F1]' : 'bg-white/5 border-white/10 group-hover:border-white/20'
-                      }`}>
-                        {rememberMe && (
-                          <i className="fa-solid fa-check text-white text-xs"></i>
-                        )}
-                      </div>
-                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider group-hover:text-gray-300 transition-colors">
-                        Lembrar de mim
-                      </span>
-                    </label>
+                      >
+                        Esqueci minha senha
+                      </button>
+                    </div>
                   )}
                   
                 {/* Error Message */}
@@ -356,6 +450,125 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 Voltar para login
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isForgotPasswordOpen && (
+        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="glass-card border border-white/10 rounded-3xl p-8 max-w-md w-full mx-6 shadow-[0_40px_120px_rgba(0,0,0,0.6)]">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-orbitron font-black text-white uppercase tracking-tight">Recuperar senha</h3>
+              <button
+                type="button"
+                onClick={() => setIsForgotPasswordOpen(false)}
+                className="w-9 h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#6366F1]/40 transition-colors"
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">E-mail da conta</label>
+                <input
+                  type="email"
+                  value={forgotPasswordEmail}
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
+                  required
+                  disabled={isSendingForgotPassword}
+                />
+              </div>
+
+              {forgotPasswordMsg && (
+                <div className={`p-3 rounded-xl border ${forgotPasswordMsg.includes('ENVIADO') ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                  <p className="text-[11px] font-bold uppercase tracking-wider">{forgotPasswordMsg}</p>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPasswordOpen(false)}
+                  className="btn-secondary text-xs uppercase tracking-wider"
+                  disabled={isSendingForgotPassword}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary text-xs uppercase tracking-wider"
+                  disabled={isSendingForgotPassword}
+                >
+                  {isSendingForgotPassword ? 'Enviando...' : 'Enviar link'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isResetPasswordOpen && (
+        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="glass-card border border-white/10 rounded-3xl p-8 max-w-md w-full mx-6 shadow-[0_40px_120px_rgba(0,0,0,0.6)]">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-orbitron font-black text-white uppercase tracking-tight">Definir nova senha</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsResetPasswordOpen(false);
+                  setResetPasswordMsg(null);
+                  AuthService.clearRecoveryState();
+                }}
+                className="w-9 h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#6366F1]/40 transition-colors"
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nova senha</label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
+                  required
+                  disabled={isSubmittingResetPassword}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Confirmar nova senha</label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
+                  required
+                  disabled={isSubmittingResetPassword}
+                />
+              </div>
+
+              {resetPasswordMsg && (
+                <div className={`p-3 rounded-xl border ${resetPasswordMsg.includes('SUCESSO') ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                  <p className="text-[11px] font-bold uppercase tracking-wider">{resetPasswordMsg}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white rounded-xl font-orbitron font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50"
+                disabled={isSubmittingResetPassword}
+              >
+                {isSubmittingResetPassword ? 'SALVANDO...' : 'ATUALIZAR SENHA'}
+              </button>
+            </form>
           </div>
         </div>
       )}

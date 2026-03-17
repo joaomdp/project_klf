@@ -656,12 +656,30 @@ class ScoringService {
 
       const { data: totals, error: totalsError } = await adminSupabase
         .from('round_scores')
-        .select('total_points')
+        .select('round_id, total_points, updated_at')
         .eq('user_team_id', userTeamId);
 
       if (totalsError) throw totalsError;
 
-      const totalPoints = (totals || []).reduce((sum: number, row: any) => sum + Number(row.total_points || 0), 0);
+      const latestScoreByRound = new Map<number, { totalPoints: number; updatedAt: number }>();
+
+      for (const row of totals || []) {
+        const roundId = Number(row.round_id);
+        if (!Number.isFinite(roundId)) continue;
+
+        const updatedAt = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+        const current = latestScoreByRound.get(roundId);
+
+        if (!current || updatedAt >= current.updatedAt) {
+          latestScoreByRound.set(roundId, {
+            totalPoints: Number(row.total_points || 0),
+            updatedAt
+          });
+        }
+      }
+
+      const totalPoints = Array.from(latestScoreByRound.values())
+        .reduce((sum, row) => sum + row.totalPoints, 0);
 
       const { error: updateError } = await adminSupabase
         .from('user_teams')

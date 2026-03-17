@@ -175,7 +175,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, onNavigate }) => {
                 </div>
                 <div className="flex justify-between items-center py-3 sm:py-4 border-y border-white/5">
                   <span className="text-[10px] sm:text-[12px] font-black text-gray-400 uppercase tracking-widest">PONTOS TOTAIS</span>
-                  <span className="text-xl sm:text-xl font-orbitron font-black text-white">{userTeam.totalPoints}</span>
+                  <span className="text-xl sm:text-xl font-orbitron font-black text-white">{formatPoints(userTeam.currentRoundPoints ?? userTeam.totalPoints)}</span>
                 </div>
               </div>
 
@@ -283,7 +283,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, onNavigate }) => {
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest">PONTOS</p>
-                      <p className="font-orbitron font-black text-sm text-white">{formatPoints(userTeam.totalPoints)}</p>
+                      <p className="font-orbitron font-black text-sm text-white">{formatPoints(userTeam.currentRoundPoints ?? userTeam.totalPoints)}</p>
                     </div>
                     <i className="fa-solid fa-chevron-right text-[10px] text-gray-700 group-hover:text-white group-hover:translate-x-1 transition-all"></i>
                   </div>

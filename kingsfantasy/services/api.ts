@@ -623,6 +623,7 @@ export const DataService = {
         honor: 1,
         players: dbTeam.lineup || {},
         budget: dbTeam.budget ?? INITIAL_BUDGET,
+        currentRoundPoints: Number(dbTeam.current_round_points || 0),
         totalPoints: dbTeam.total_points || 0,
         favoriteTeam: dbTeam.favorite_team,
         preferences: {

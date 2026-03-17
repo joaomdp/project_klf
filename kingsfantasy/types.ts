@@ -54,6 +54,7 @@ export interface UserTeam {
     [key in Role]?: Player;
   };
   budget: number;
+  currentRoundPoints?: number;
   totalPoints: number;
   preferences?: UserPreferences;
 }

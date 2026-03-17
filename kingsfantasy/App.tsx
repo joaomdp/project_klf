@@ -44,6 +44,7 @@ const DEFAULT_USER_TEAM: UserTeam = {
   honor: 1,
   players: {},
   budget: INITIAL_BUDGET,
+  currentRoundPoints: 0,
   totalPoints: 0,
   preferences: {
     publicProfile: true,
@@ -720,7 +721,7 @@ const AppContent: React.FC = () => {
           />
         );
       case 'squad': return <SquadBuilder userTeam={userTeam} onFire={handleFirePlayer} onNavigateToMarket={() => setCurrentPage('market')} />;
-      case 'ranking': return <Ranking onOpenCreateLeague={() => setIsCreateLeagueOpen(true)} userId={userTeam.userId} userName={userTeam.userName} selectedLeagueId={selectedLeagueId} userTeam={{ name: userTeam.name, totalPoints: userTeam.totalPoints, avatar: userTeam.avatar }} />;
+      case 'ranking': return <Ranking onOpenCreateLeague={() => setIsCreateLeagueOpen(true)} userId={userTeam.userId} userName={userTeam.userName} selectedLeagueId={selectedLeagueId} userTeam={{ name: userTeam.name, totalPoints: userTeam.currentRoundPoints ?? userTeam.totalPoints, avatar: userTeam.avatar }} />;
       case 'ai-coach': return <AICoach userTeam={userTeam} availablePlayers={players} />;
       case 'profile':
         return (

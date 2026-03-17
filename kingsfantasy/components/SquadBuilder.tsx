@@ -28,10 +28,8 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
   };
 
   const roundPoints = useMemo(() => {
-    return Object.values(userTeam.players)
-      .filter((p): p is Player => !!p)
-      .reduce((sum, p) => sum + p.points, 0);
-  }, [userTeam.players]);
+    return Number(userTeam.currentRoundPoints ?? 0);
+  }, [userTeam.currentRoundPoints]);
 
   const roleIcons: Record<string, string> = {
     [Role.TOP]: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-top.png',

@@ -196,7 +196,7 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
                   <div className="relative aspect-[4/5] overflow-hidden cursor-pointer group/image" onClick={() => p ? setHistoryPlayer(p) : onNavigateToMarket()}>
                     {p ? (
                       <>
-                        <PlayerImage player={p} priority className="w-full h-full object-top contrast-110 brightness-110 saturate-110 transition-transform duration-700 group-hover/image:scale-105" />
+                        <PlayerImage player={p} priority className="w-full h-full" imgClassName="w-full h-full object-cover object-center contrast-110 brightness-110 saturate-110 transition-transform duration-700 group-hover/image:scale-105" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-70"></div>
                         <div className="absolute inset-0 border-[0.5px] border-white/5 pointer-events-none"></div>
                         <div className="absolute top-3 left-3 z-30 transition-transform duration-300 group-hover:scale-110">
@@ -234,12 +234,12 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
                             <span className="text-[6px] font-black text-gray-600 uppercase tracking-widest leading-none mb-1">VALOR</span>
                             <span className="text-[10px] font-orbitron font-black text-[#6366F1]">C$ {p.price}</span>
                          </div>
-                         <div className="flex flex-col items-end">
-                            <span className="text-[6px] font-black text-gray-600 uppercase tracking-widest leading-none mb-1">PONTOS</span>
-                            <span className="text-[10px] font-orbitron font-black text-white">{p.points}</span>
-                         </div>
-                      </div>
-                    )}
+                          <div className="flex flex-col items-end">
+                             <span className="text-[6px] font-black text-gray-600 uppercase tracking-widest leading-none mb-1">PONTOS</span>
+                             <span className="text-[10px] font-orbitron font-black text-white">{formatValue(Number(p.points || p.avgPoints || 0))}</span>
+                          </div>
+                       </div>
+                     )}
                   </div>
                 </div>
               </div>

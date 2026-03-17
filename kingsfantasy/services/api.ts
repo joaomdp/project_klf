@@ -501,14 +501,17 @@ export const DataService = {
           console.warn('⚠️ Role não reconhecida:', item.role, 'para jogador:', item.name);
         }
 
+        const totalPoints = Number(item.points ?? 0);
+        const avgPoints = Number(item.avg_points ?? 0);
+
         const player = {
           id: item.id.toString(),
           name: item.name,
           role: mappedRole,
           teamId: item.team_id ? String(item.team_id) : undefined,
           price: Number(item.price),
-          points: Number(item.points ?? 0),
-          avgPoints: Number(item.avg_points ?? 0),
+          points: totalPoints !== 0 ? totalPoints : avgPoints,
+          avgPoints,
           kda: item.kda,
           image: this.getStorageUrl('players', item.image),
           team: teamData.name || 'Sem Time',

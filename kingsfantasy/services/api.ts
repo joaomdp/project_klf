@@ -1981,7 +1981,7 @@ export const DataService = {
   } {
     const teams = new Set<string>();
     Object.values(lineup).forEach(player => {
-      if (player) teams.add(player.team);
+      if (player) teams.add(String(player.teamId || player.team));
     });
 
     const uniqueTeams = teams.size;
@@ -2015,6 +2015,45 @@ export const DataService = {
     }
 
     return { uniqueTeams, bonusPercent, message };
+  },
+
+  /**
+   * Consulta o AI-SOLUT via backend
+   */
+  async askAICoach(payload: {
+    query: string;
+    userTeam: UserTeam;
+    availablePlayers: Player[];
+  }): Promise<{ ok: boolean; response?: string; error?: string }> {
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/ai/coach`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        return {
+          ok: false,
+          error: data?.error || 'Erro ao consultar AI-SOLUT'
+        };
+      }
+
+      return {
+        ok: true,
+        response: data.response || ''
+      };
+    } catch (error) {
+      console.error('❌ Erro ao consultar AI-SOLUT:', error);
+      return {
+        ok: false,
+        error: 'Erro de conexão com o AI-SOLUT'
+      };
+    }
   },
 
   /**

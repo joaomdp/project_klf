@@ -8,11 +8,21 @@ interface PlayerImageProps {
   className?: string;
   imgClassName?: string;
   priority?: boolean;
+  smartFocus?: boolean;
 }
 
-const PlayerImage: React.FC<PlayerImageProps> = ({ player, className, imgClassName, priority = false }) => {
+const focusCache = new Map<string, string>();
+
+const PlayerImage: React.FC<PlayerImageProps> = ({
+  player,
+  className,
+  imgClassName,
+  priority = false,
+  smartFocus = false
+}) => {
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(!priority); // Se priority, não mostra loading
+  const [focusPosition, setFocusPosition] = useState('50% 50%');
 
   // Se a URL já for HTTP (como as da Wikia/Riot), usa ela diretamente
   const imageUrl = player.image && player.image.startsWith('http') 
@@ -43,6 +53,92 @@ const PlayerImage: React.FC<PlayerImageProps> = ({ player, className, imgClassNa
     }
   }, [imageUrl, priority]);
 
+  useEffect(() => {
+    if (!smartFocus || !imageUrl) {
+      setFocusPosition('50% 50%');
+      return;
+    }
+
+    const cached = focusCache.get(imageUrl);
+    if (cached) {
+      setFocusPosition(cached);
+      return;
+    }
+
+    let cancelled = false;
+
+    const detectFocus = async () => {
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error('Falha ao carregar imagem'));
+          img.src = imageUrl;
+        });
+
+        const sampleWidth = 220;
+        const scale = sampleWidth / img.naturalWidth;
+        const width = Math.max(1, Math.round(img.naturalWidth * scale));
+        const height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        if (!ctx) throw new Error('Canvas indisponivel');
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const pixels = ctx.getImageData(0, 0, width, height).data;
+
+        let minX = width;
+        let maxX = 0;
+        let minY = height;
+        let maxY = 0;
+        let found = false;
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const alpha = pixels[(y * width + x) * 4 + 3];
+            if (alpha > 20) {
+              found = true;
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+
+        if (!found) throw new Error('Sem area opaca detectada');
+
+        const centerX = ((minX + maxX) / 2 / width) * 100;
+        const centerY = ((minY + maxY) / 2 / height) * 100;
+
+        const x = Math.max(30, Math.min(70, centerX));
+        const y = Math.max(28, Math.min(62, centerY));
+        const detected = `${x.toFixed(1)}% ${y.toFixed(1)}%`;
+
+        if (!cancelled) {
+          focusCache.set(imageUrl, detected);
+          setFocusPosition(detected);
+        }
+      } catch {
+        if (!cancelled) {
+          setFocusPosition('50% 50%');
+        }
+      }
+    };
+
+    detectFocus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUrl, smartFocus]);
+
   return (
     <div className={`${className} relative overflow-hidden bg-[#050505] flex items-center justify-center`}>
       {isLoading && imageUrl && !priority && (
@@ -57,6 +153,7 @@ const PlayerImage: React.FC<PlayerImageProps> = ({ player, className, imgClassNa
           ${isLoading && imageUrl && !priority ? 'opacity-0 scale-105' : 'opacity-100 scale-100'} 
           ${priority ? '' : 'transition-all duration-700'}
           ${hasError || !imageUrl ? 'p-4 opacity-50 grayscale' : ''}`}
+        style={smartFocus && !hasError && imageUrl ? { objectPosition: focusPosition } : undefined}
         alt={player.name}
         onLoad={() => setIsLoading(false)}
         onError={() => {

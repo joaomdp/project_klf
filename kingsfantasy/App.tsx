@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Page, UserTeam, Player, Role, Champion } from './types';
 import { INITIAL_BUDGET, MOCK_PLAYERS } from './constants'; 
 import { DataService } from './services/api';
@@ -134,6 +134,7 @@ const AppContent: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [marketMatchups, setMarketMatchups] = useState<MarketMatch[]>([]);
   const [marketRoundLabel, setMarketRoundLabel] = useState<string | null>(null);
+  const lastKnownMarketState = useRef<boolean | null>(null);
   
   const { showToast } = useToast();
 
@@ -252,12 +253,41 @@ const AppContent: React.FC = () => {
     }
   }, [showToast]);
 
+  const syncUserTeamFromServer = useCallback(async () => {
+    const session = AuthService.getSession();
+    const userId = session?.user?.id;
+
+    if (!userId) return;
+
+    try {
+      const latestTeam = await DataService.getUserTeam(userId);
+      if (!latestTeam) return;
+
+      setUserTeam((prev) => ({
+        ...latestTeam,
+        // Mantem preferencia local caso venha ausente do backend
+        preferences: latestTeam.preferences || prev.preferences
+      }));
+    } catch (error) {
+      console.warn('⚠️ Falha ao sincronizar time com backend', error);
+    }
+  }, []);
+
   const refreshMarketStatus = useCallback(async () => {
     const status = await DataService.getMarketStatus();
     if (status) {
-      setMarketIsOpen(Boolean(status.isOpen));
+      const nextState = Boolean(status.isOpen);
+      const previousState = lastKnownMarketState.current;
+
+      setMarketIsOpen(nextState);
+      lastKnownMarketState.current = nextState;
+
+      // Recarrega saldo/pontuacao ao detectar virada de estado do mercado
+      if (previousState !== null && previousState !== nextState) {
+        await syncUserTeamFromServer();
+      }
     }
-  }, []);
+  }, [syncUserTeamFromServer]);
 
   useEffect(() => {
     const initApp = async () => {
@@ -334,6 +364,12 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const handlePlayersRefresh = () => {
       fetchPlayers();
+
+      // Quando o mercado esta fechado, sincroniza o time para refletir
+      // patrimonio e pontuacao atualizados apos finalizacao de rodada.
+      if (marketIsOpen === false) {
+        syncUserTeamFromServer();
+      }
     };
 
     const handleMatchesRefresh = () => {
@@ -346,7 +382,7 @@ const AppContent: React.FC = () => {
       window.removeEventListener('players:refresh', handlePlayersRefresh as EventListener);
       window.removeEventListener('matches:refresh', handleMatchesRefresh as EventListener);
     };
-  }, [fetchPlayers, loadCurrentRoundMatchups]);
+  }, [fetchPlayers, loadCurrentRoundMatchups, marketIsOpen, syncUserTeamFromServer]);
 
   useEffect(() => {
     refreshMarketStatus();
@@ -627,6 +663,10 @@ const AppContent: React.FC = () => {
   };
 
   const handleNavigate = (page: Page, leagueId?: string) => {
+    if (page === 'market' || page === 'dashboard') {
+      syncUserTeamFromServer();
+    }
+
     setCurrentPage(page);
     if (leagueId) {
       setSelectedLeagueId(leagueId);
@@ -669,7 +709,7 @@ const AppContent: React.FC = () => {
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'dashboard': return <Dashboard userTeam={userTeam} onNavigate={handleNavigate} />;
+      case 'dashboard': return <Dashboard userTeam={userTeam} players={players} onNavigate={handleNavigate} />;
       case 'market':
         return (
           <Market
@@ -741,7 +781,7 @@ const AppContent: React.FC = () => {
             onAdminCheck={checkAdminAccess}
           />
         );
-      default: return <Dashboard userTeam={userTeam} onNavigate={handleNavigate} />;
+      default: return <Dashboard userTeam={userTeam} players={players} onNavigate={handleNavigate} />;
     }
   };
 
@@ -861,7 +901,7 @@ const AppContent: React.FC = () => {
 
             <Header
               activePage={currentPage}
-              onNavigate={setCurrentPage}
+              onNavigate={(page) => handleNavigate(page)}
               userName={userTeam.userName}
               avatar={userTeam.avatar}
               dbConnected={dbConnected}

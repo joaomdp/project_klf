@@ -515,6 +515,142 @@ app.get('/api/leagues/:leagueId/ranking', async (req: Request, res: Response) =>
 });
 
 // ============================================================================
+// AI COACH ENDPOINT
+// ============================================================================
+app.post('/api/ai/coach', async (req: Request, res: Response) => {
+  try {
+    const { query, userTeam, availablePlayers } = req.body || {};
+
+    if (!query || typeof query !== 'string' || !query.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Pergunta inválida'
+      });
+    }
+
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      return res.status(500).json({
+        success: false,
+        error: 'GEMINI_API_KEY não configurada no backend'
+      });
+    }
+
+    const safePlayers = Array.isArray(availablePlayers)
+      ? availablePlayers.map((player: any) => ({
+          id: String(player?.id || ''),
+          name: String(player?.name || 'Jogador'),
+          role: String(player?.role || '-'),
+          price: Number(player?.price || 0),
+          avgPoints: Number(player?.avgPoints || 0),
+          points: Number(player?.points || 0)
+        }))
+      : [];
+
+    const lineup = userTeam?.players || {};
+    const hiredPlayers = Object.values(lineup).filter(Boolean) as any[];
+
+    const currentTeamInfo = hiredPlayers.length > 0
+      ? hiredPlayers
+          .map((player) => {
+            const avg = Number(player?.avgPoints || 0).toFixed(1);
+            const points = Number(player?.points || 0).toFixed(1);
+            const price = Number(player?.price || 0).toFixed(1);
+            return `${player?.name || 'Jogador'} (${player?.role || '-'}) - C$${price} - ${points}pts - Media: ${avg}`;
+          })
+          .join('\n  ')
+      : 'Ainda não escalou jogadores';
+
+    const budget = Number(userTeam?.budget || 0);
+    const teamValue = hiredPlayers.reduce((sum, player: any) => sum + Number(player?.price || 0), 0);
+    const emptySlots = Math.max(0, 5 - hiredPlayers.length);
+    const totalPoints = Number(userTeam?.totalPoints || 0);
+
+    const topValuePlayers = safePlayers
+      .map((player) => ({
+        ...player,
+        valueRatio: player.price > 0 ? player.avgPoints / player.price : 0
+      }))
+      .sort((a, b) => b.valueRatio - a.valueRatio)
+      .slice(0, 10);
+
+    const affordablePlayers = safePlayers
+      .filter((player) => player.price <= budget)
+      .sort((a, b) => b.avgPoints - a.avgPoints)
+      .slice(0, 15);
+
+    const marketContext = safePlayers.length > 0
+      ? `\n\n📊 DADOS DO MERCADO (${safePlayers.length} jogadores disponíveis):\n\n🏆 TOP 10 CUSTO-BENEFÍCIO:\n${topValuePlayers
+          .map(
+            (player, index) =>
+              `${index + 1}. ${player.name} (${player.role}) - C$${player.price.toFixed(1)} - Media: ${player.avgPoints.toFixed(1)} - Ratio: ${player.valueRatio.toFixed(2)}`
+          )
+          .join('\n')}\n\n💰 TOP 15 ACESSÍVEIS (C$${budget.toFixed(1)}):\n${affordablePlayers
+          .map(
+            (player, index) =>
+              `${index + 1}. ${player.name} (${player.role}) - C$${player.price.toFixed(1)} - Media: ${player.avgPoints.toFixed(1)}`
+          )
+          .join('\n')}`
+      : '';
+
+    const prompt = `Você é o AI-SOLUT, assistente de fantasy especializado em League of Legends da Kings Lendas.\n\n📋 TIME ATUAL:\n  ${currentTeamInfo}\n\n💼 SITUAÇÃO FINANCEIRA:\n  - Orçamento disponível: C$${budget.toFixed(1)}\n  - Valor investido no time: C$${teamValue.toFixed(1)}\n  - Vagas vazias: ${emptySlots}\n  - Total de pontos: ${totalPoints.toFixed(2)}\n\n${marketContext}\n\n❓ PERGUNTA: "${query.trim()}"\n\nINSTRUÇÕES:\n1. Responda em português do Brasil\n2. Seja objetivo e estratégico\n3. Considere orçamento e custo-benefício\n4. Ao sugerir jogador, cite nome, posição, preço e média\n5. Use emojis de forma moderada\n6. Evite respostas genéricas`;
+
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: prompt }]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.4
+          }
+        })
+      }
+    );
+
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      return res.status(502).json({
+        success: false,
+        error: 'Falha ao consultar IA',
+        details: errorText
+      });
+    }
+
+    const geminiData: any = await geminiResponse.json();
+    const text = geminiData?.candidates?.[0]?.content?.parts
+      ?.map((part: any) => part?.text || '')
+      .join('')
+      .trim();
+
+    if (!text) {
+      return res.status(502).json({
+        success: false,
+        error: 'IA não retornou conteúdo'
+      });
+    }
+
+    return res.json({
+      success: true,
+      response: text
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro interno'
+    });
+  }
+});
+
+// ============================================================================
 // 404 HANDLER
 // ============================================================================
 app.use((req: Request, res: Response) => {

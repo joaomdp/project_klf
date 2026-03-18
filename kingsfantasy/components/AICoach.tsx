@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { GoogleGenAI } from '@google/genai';
 import { UserTeam, Player } from '../types';
 import aisolutIcon from '../assets/images/icons/aisolut.png';
+import { DataService } from '../services/api';
 
 interface AICoachProps {
   userTeam: UserTeam;
@@ -21,81 +21,18 @@ const AICoach: React.FC<AICoachProps> = ({ userTeam, availablePlayers = [] }) =>
     setResponse(null);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
-      const playersList = Object.values(userTeam.players) as (Player | undefined)[];
-      const hiredPlayers = playersList.filter((p): p is Player => !!p);
-      
-      const currentTeamInfo = hiredPlayers.length > 0
-        ? hiredPlayers.map(p => `${p.name} (${p.role}) - C$${p.price} - ${p.points}pts - Média: ${p.avgPoints.toFixed(1)}`).join('\n  ')
-        : 'Ainda não escalou jogadores';
-
-      // Calcula valor total do time
-      const teamValue = hiredPlayers.reduce((sum, p) => sum + p.price, 0);
-      const slotsVazios = 5 - hiredPlayers.length;
-      
-      // Top 10 jogadores por custo-benefício (pontos por crédito)
-      const topValuePlayers = availablePlayers
-        .map(p => ({
-          ...p,
-          valueRatio: p.avgPoints / p.price // Pontos por crédito gasto
-        }))
-        .sort((a, b) => b.valueRatio - a.valueRatio)
-        .slice(0, 10);
-
-      // Jogadores disponíveis com o orçamento atual
-      const affordablePlayers = availablePlayers
-        .filter(p => p.price <= userTeam.budget)
-        .sort((a, b) => b.avgPoints - a.avgPoints)
-        .slice(0, 15);
-
-      const marketContext = availablePlayers.length > 0 ? `
-
-📊 DADOS DO MERCADO (${availablePlayers.length} jogadores disponíveis):
-
-🏆 TOP 10 CUSTO-BENEFÍCIO (Média de pontos ÷ Preço):
-${topValuePlayers.map((p, i) => 
-  `${i + 1}. ${p.name} (${p.role}) - C$${p.price} - Média: ${p.avgPoints.toFixed(1)} - Ratio: ${p.valueRatio.toFixed(2)}`
-).join('\n')}
-
-💰 TOP 15 ACESSÍVEIS COM SEU ORÇAMENTO (C$${userTeam.budget.toFixed(1)}):
-${affordablePlayers.slice(0, 15).map((p, i) => 
-  `${i + 1}. ${p.name} (${p.role}) - C$${p.price} - Média: ${p.avgPoints.toFixed(1)}`
-).join('\n')}` : '';
-
-      const prompt = `Você é o AI-SOLUT, assistente de fantasy especializado em League of Legends da "Kings Lendas". 
-
-📋 TIME ATUAL DO USUÁRIO:
-  ${currentTeamInfo}
-
-💼 SITUAÇÃO FINANCEIRA:
-  - Orçamento disponível: C$${userTeam.budget.toFixed(1)}
-  - Valor investido no time: C$${teamValue.toFixed(1)}
-  - Vagas vazias: ${slotsVazios}
-  - Total de pontos: ${userTeam.totalPoints}
-
-${marketContext}
-
-❓ PERGUNTA DO USUÁRIO: "${query}"
-
-📝 INSTRUÇÕES PARA RESPOSTA:
-1. Se perguntarem sobre recomendações, use os dados do mercado acima
-2. Priorize jogadores com melhor custo-benefício (ratio pontos/preço)
-3. Considere o orçamento disponível do usuário
-4. Sugira trocas se puder melhorar o time sem estourar o orçamento
-5. Se o time está incompleto, sugira jogadores acessíveis para preencher
-6. Seja direto e objetivo, mas entusiasta como um coach de esports
-7. Use emojis para deixar a resposta mais visual
-8. Ao sugerir jogadores, sempre mencione: nome, posição, preço e média de pontos
-
-Responda em português de forma clara e estratégica.`;
-
-      const result = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
+      const result = await DataService.askAICoach({
+        query,
+        userTeam,
+        availablePlayers
       });
 
-      setResponse(result.text || 'O Coach está pensando em outra coisa agora...');
+      if (!result.ok) {
+        setResponse(result.error || 'Ops, a conexão com o servidor caiu. Tente novamente mais tarde.');
+        return;
+      }
+
+      setResponse(result.response || 'O Coach está pensando em outra coisa agora...');
     } catch (error) {
       console.error('AI Error:', error);
       setResponse('Ops, a conexão com o servidor caiu. Tente novamente mais tarde.');

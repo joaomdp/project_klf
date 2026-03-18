@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { UserTeam, Role, League } from '../types';
-import { MOCK_PLAYERS } from '../constants';
+import { UserTeam, Role, League, Player } from '../types';
 import PlayerImage from './PlayerImage';
 import { DataService } from '../services/api';
 import jogosSabado from '../assets/images/logo/jogos-sabado.optimized.jpg';
@@ -10,6 +9,7 @@ import StandingsTable from './StandingsTable';
 
 interface DashboardProps {
   userTeam: UserTeam;
+  players: Player[];
   onNavigate: (page: any, leagueId?: string) => void;
 }
 
@@ -24,7 +24,7 @@ const MEDIA_HUB_CONFIG = {
   channelIcon: "https://i.imgur.com/4ilaY1c.png"
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ userTeam, onNavigate }) => {
+const Dashboard: React.FC<DashboardProps> = ({ userTeam, players, onNavigate }) => {
   const [pickedFilter, setPickedFilter] = useState<Role | 'TODOS'>('TODOS');
   const [userLeagues, setUserLeagues] = useState<League[]>([]);
   const [loadingLeagues, setLoadingLeagues] = useState(true);
@@ -118,7 +118,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, onNavigate }) => {
     return val.toFixed(2);
   };
 
-  const trending = [...MOCK_PLAYERS]
+  const trending = [...players]
     .filter(p => pickedFilter === 'TODOS' || p.role === pickedFilter)
     .sort((a, b) => b.points - a.points)
     .slice(0, 5)

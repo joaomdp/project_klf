@@ -607,10 +607,11 @@ class ScoringService {
       }
 
       // 4. Calcular buff de diversidade
-      const teamDiversityBonus = 0;
+      const diversity = await this.calculateDiversityBonus(playersData);
+      const teamDiversityBonus = basePoints * (Number(diversity.bonusPercent || 0) / 100);
       const championMultiplierBonus = 0;
 
-      const totalPoints = basePoints;
+      const totalPoints = basePoints + teamDiversityBonus + championMultiplierBonus;
 
       console.log(`✅ Score calculated: Base=${basePoints.toFixed(2)}, Total=${totalPoints.toFixed(2)}`);
 
@@ -619,8 +620,8 @@ class ScoringService {
         teamDiversityBonus: parseFloat(teamDiversityBonus.toFixed(2)),
         championMultiplierBonus: parseFloat(championMultiplierBonus.toFixed(2)),
         totalPoints: parseFloat(totalPoints.toFixed(2)),
-        numUniqueTeams: 0,
-        diversityPercent: 0
+        numUniqueTeams: diversity.uniqueTeams,
+        diversityPercent: Number(diversity.bonusPercent || 0)
       };
 
     } catch (error) {

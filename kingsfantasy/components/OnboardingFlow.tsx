@@ -215,9 +215,16 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
     if (value && index < 5) inputRefs.current[index + 1]?.focus();
   };
 
-  const handleVerifyCodeSubmit = async () => {
+    const handleVerifyCodeSubmit = async () => {
     const token = code.join('');
-    if (token.length < 6) return;
+    if (token.length !== 6) {
+      showToast({
+        type: 'error',
+        title: 'Código inválido',
+        message: 'O código deve ter exatamente 6 dígitos.'
+      });
+      return;
+    }
 
     if (isOtpLocked) {
       showToast({

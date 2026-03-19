@@ -206,7 +206,7 @@ export const AuthService = {
     }
   },
 
-  async requestEmailOtp(email: string) {
+   async requestEmailOtp(email: string) {
     const anonKey = DataService.getAnonKey();
 
     try {
@@ -218,7 +218,7 @@ export const AuthService = {
         },
         body: JSON.stringify({
           email,
-          create_user: false
+          create_user: true
         })
       });
 
@@ -235,7 +235,7 @@ export const AuthService = {
     }
   },
 
-  async verifyEmailOtp(email: string, token: string) {
+   async verifyEmailOtp(email: string, token: string) {
     const anonKey = DataService.getAnonKey();
 
     try {
@@ -256,11 +256,18 @@ export const AuthService = {
 
       if (!res.ok) {
         const msg = data?.msg || data?.error_description || data?.error || 'Código inválido ou expirado.';
+        console.error('❌ OTP Verification Error:', { 
+          status: res.status, 
+          data,
+          email,
+          token: token.substring(0, 3) + '...' // Don't log full token
+        });
         throw new Error(msg);
       }
 
       return { ok: true, error: null as string | null };
     } catch (e: any) {
+      console.error('❌ Exception in verifyEmailOtp:', e);
       return { ok: false, error: e?.message || 'Código inválido ou expirado.' };
     }
   },

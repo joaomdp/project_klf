@@ -348,8 +348,8 @@ export const DataService = {
       user_id: team.userId,
       user_name: team.userName,
       team_name: team.name,
-      budget: Math.floor(team.budget),
-      total_points: Math.floor(team.totalPoints),
+      budget: Number((Number(team.budget) || 0).toFixed(2)),
+      total_points: Number((Number(team.totalPoints) || 0).toFixed(2)),
       lineup: simplifiedLineup,
       favorite_team: team.favoriteTeam,
       avatar: team.avatar,
@@ -548,8 +548,8 @@ export const DataService = {
         user_id: team.userId,
         user_name: team.userName,
         team_name: team.name,
-        budget: Math.floor(team.budget), // Converte para inteiro
-        total_points: Math.floor(team.totalPoints), // Converte para inteiro
+        budget: Number((Number(team.budget) || 0).toFixed(2)),
+        total_points: Number((Number(team.totalPoints) || 0).toFixed(2)),
         lineup: simplifiedLineup,
         favorite_team: team.favoriteTeam,
         avatar: team.avatar,

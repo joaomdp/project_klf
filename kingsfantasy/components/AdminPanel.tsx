@@ -492,9 +492,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
         return;
       }
 
-      const finalizeMessage = result.data?.marketWarning
-        ? `Rodada finalizada com sucesso. ${result.data.marketWarning}`
+      const wasRecalculated = Boolean(result.data?.result?.recalculated);
+      const baseSuccessMessage = wasRecalculated
+        ? 'Rodada recalculada com sucesso (modo substituicao).'
         : (result.data?.message || 'Rodada finalizada com sucesso. Mercado aberto novamente.');
+
+      const finalizeMessage = result.data?.marketWarning
+        ? `${baseSuccessMessage} ${result.data.marketWarning}`
+        : baseSuccessMessage;
       setPerformancesSuccess(finalizeMessage);
 
       setFinalizeCheckResult(null);

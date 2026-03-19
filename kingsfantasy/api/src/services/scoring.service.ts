@@ -147,6 +147,19 @@ class ScoringService {
       throw new Error('roundId inválido');
     }
 
+    const { data: round, error: roundError } = await adminSupabase
+      .from('rounds')
+      .select('id, status')
+      .eq('id', roundId)
+      .single();
+
+    if (roundError || !round) {
+      throw roundError || new Error('Rodada não encontrada');
+    }
+
+    const roundStatus = String((round as any).status || '').toLowerCase();
+    const isRecalculation = roundStatus === 'completed' || roundStatus === 'finished';
+
     const { data: matches, error: matchesError } = await adminSupabase
       .from('matches')
       .select('id')
@@ -184,7 +197,9 @@ class ScoringService {
       };
     }
 
-    await this.calculateAllScoresForRound(roundId);
+    await this.calculateAllScoresForRound(roundId, {
+      updatePlayerPrices: !isRecalculation
+    });
 
     const { data: scores, error: scoresError } = await adminSupabase
       .from('round_scores')
@@ -265,24 +280,26 @@ class ScoringService {
     }
 
     let updatedBudgets = 0;
-    for (const team of userTeams || []) {
-      const lineup = team.lineup || {};
-      const lineupPlayers = Object.values(lineup).filter(Boolean) as Array<{ id: string; price?: number }>;
-      const oldLineupValue = lineupPlayers.reduce((sum, player) => sum + Number(player.price || 0), 0);
-      const newLineupValue = lineupPlayers.reduce((sum, player) => {
-        const mapped = playerPriceMap.get(String(player.id));
-        const fallbackPrice = Number(player.price || 0);
-        return sum + (mapped ?? fallbackPrice);
-      }, 0);
+    if (!isRecalculation) {
+      for (const team of userTeams || []) {
+        const lineup = team.lineup || {};
+        const lineupPlayers = Object.values(lineup).filter(Boolean) as Array<{ id: string; price?: number }>;
+        const oldLineupValue = lineupPlayers.reduce((sum, player) => sum + Number(player.price || 0), 0);
+        const newLineupValue = lineupPlayers.reduce((sum, player) => {
+          const mapped = playerPriceMap.get(String(player.id));
+          const fallbackPrice = Number(player.price || 0);
+          return sum + (mapped ?? fallbackPrice);
+        }, 0);
 
-      const nextBudget = parseFloat((Number(team.budget || 0) + (newLineupValue - oldLineupValue)).toFixed(2));
+        const nextBudget = parseFloat((Number(team.budget || 0) + (newLineupValue - oldLineupValue)).toFixed(2));
 
-      const { error } = await adminSupabase
-        .from('user_teams')
-        .update({ budget: nextBudget })
-        .eq('id', team.id);
+        const { error } = await adminSupabase
+          .from('user_teams')
+          .update({ budget: nextBudget })
+          .eq('id', team.id);
 
-      if (!error) updatedBudgets++;
+        if (!error) updatedBudgets++;
+      }
     }
 
     await adminSupabase
@@ -291,6 +308,7 @@ class ScoringService {
       .eq('id', roundId);
 
     return {
+      recalculated: isRecalculation,
       totalPerformances,
       remainingNulls,
       updatedTeams,
@@ -704,9 +722,10 @@ class ScoringService {
   /**
    * Calcula pontuações de TODOS os user_teams em uma rodada
    */
-  async calculateAllScoresForRound(roundId: number) {
+  async calculateAllScoresForRound(roundId: number, options?: { updatePlayerPrices?: boolean }) {
     try {
       console.log(`📊 Calculating all scores for round ${roundId}...`);
+      const shouldUpdatePlayerPrices = options?.updatePlayerPrices !== false;
 
       // Buscar todos os user_teams
       const { data: userTeams, error } = await adminSupabase
@@ -735,10 +754,14 @@ class ScoringService {
 
       console.log(`✅ Finished calculating scores: ${successCount} success, ${errorCount} errors`);
 
-      try {
-        await this.updatePlayerPricesForRound(roundId);
-      } catch (error) {
-        console.error('⚠️  Error updating player prices:', error);
+      if (shouldUpdatePlayerPrices) {
+        try {
+          await this.updatePlayerPricesForRound(roundId);
+        } catch (error) {
+          console.error('⚠️  Error updating player prices:', error);
+        }
+      } else {
+        console.log(`ℹ️  Skipping player price update for round ${roundId} (recalculation mode)`);
       }
 
       return { successCount, errorCount, total: userTeams.length };

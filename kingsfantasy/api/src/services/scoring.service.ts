@@ -280,26 +280,37 @@ class ScoringService {
     }
 
     let updatedBudgets = 0;
-    if (!isRecalculation) {
-      for (const team of userTeams || []) {
-        const lineup = team.lineup || {};
-        const lineupPlayers = Object.values(lineup).filter(Boolean) as Array<{ id: string; price?: number }>;
-        const oldLineupValue = lineupPlayers.reduce((sum, player) => sum + Number(player.price || 0), 0);
-        const newLineupValue = lineupPlayers.reduce((sum, player) => {
-          const mapped = playerPriceMap.get(String(player.id));
-          const fallbackPrice = Number(player.price || 0);
-          return sum + (mapped ?? fallbackPrice);
-        }, 0);
+    for (const team of userTeams || []) {
+      const lineup = (team.lineup || {}) as Record<string, any>;
+      const lineupPlayers = Object.values(lineup).filter(Boolean) as Array<{ id: string; price?: number }>;
+      const oldLineupValue = lineupPlayers.reduce((sum, player) => sum + Number(player.price || 0), 0);
+      const newLineupValue = lineupPlayers.reduce((sum, player) => {
+        const mapped = playerPriceMap.get(String(player.id));
+        const fallbackPrice = Number(player.price || 0);
+        return sum + (mapped ?? fallbackPrice);
+      }, 0);
 
-        const nextBudget = parseFloat((Number(team.budget || 0) + (newLineupValue - oldLineupValue)).toFixed(2));
+      const nextBudget = parseFloat((Number(team.budget || 0) + (newLineupValue - oldLineupValue)).toFixed(2));
 
-        const { error } = await adminSupabase
-          .from('user_teams')
-          .update({ budget: nextBudget })
-          .eq('id', team.id);
+      const normalizedLineup = Object.entries(lineup).reduce<Record<string, any>>((acc, [role, player]) => {
+        if (!player) return acc;
+        const mappedPrice = playerPriceMap.get(String(player.id));
+        acc[role] = {
+          ...player,
+          price: mappedPrice ?? Number(player.price || 0)
+        };
+        return acc;
+      }, {});
 
-        if (!error) updatedBudgets++;
-      }
+      const { error } = await adminSupabase
+        .from('user_teams')
+        .update({
+          budget: nextBudget,
+          lineup: normalizedLineup
+        })
+        .eq('id', team.id);
+
+      if (!error) updatedBudgets++;
     }
 
     await adminSupabase
@@ -614,14 +625,69 @@ class ScoringService {
         };
       }
 
-      // 3. Calcular pontos base (soma de todos os fantasy_points)
-      let basePoints = 0;
-      const playersData: Array<{ team_id: string }> = [];
+      // 3. Calcular pontos base de forma robusta
+      // - Remove duplicatas por match/player/game (quando houver reenvios)
+      // - Para cada jogador, usa média por série (média dos jogos da partida)
+      // - Soma os 5 jogadores escalados
+      const uniquePerformanceMap = new Map<string, any>();
 
       for (const perf of performances) {
-        const gamesCount = Number(matchGamesCount.get(Number(perf.match_id)) || 1);
-        basePoints += Number(perf.fantasy_points || 0) / gamesCount;
-        playersData.push({ team_id: (perf.players as any).team_id });
+        const gameNumber = Number(perf.game_number || 1);
+        const key = `${String(perf.match_id)}:${String(perf.player_id)}:${gameNumber}`;
+        if (!uniquePerformanceMap.has(key)) {
+          uniquePerformanceMap.set(key, perf);
+        }
+      }
+
+      const uniquePerformances = Array.from(uniquePerformanceMap.values());
+
+      const playerSeriesMap = new Map<string, Map<number, { total: number; games: number }>>();
+      const playersData: Array<{ team_id: string }> = [];
+      const seenPlayers = new Set<string>();
+
+      for (const perf of uniquePerformances) {
+        const playerId = String(perf.player_id);
+        const matchId = Number(perf.match_id);
+        const points = Number(perf.fantasy_points || 0);
+
+        if (!Number.isFinite(matchId)) continue;
+
+        const byMatch = playerSeriesMap.get(playerId) || new Map<number, { total: number; games: number }>();
+        const current = byMatch.get(matchId) || { total: 0, games: 0 };
+
+        current.total += points;
+        current.games += 1;
+
+        byMatch.set(matchId, current);
+        playerSeriesMap.set(playerId, byMatch);
+
+        if (!seenPlayers.has(playerId)) {
+          playersData.push({ team_id: (perf.players as any).team_id });
+          seenPlayers.add(playerId);
+        }
+      }
+
+      let basePoints = 0;
+
+      for (const playerId of playerIds) {
+        const playerMatches = playerSeriesMap.get(String(playerId));
+        if (!playerMatches || playerMatches.size === 0) continue;
+
+        let playerRoundTotal = 0;
+        let seriesCount = 0;
+
+        for (const [matchId, stats] of playerMatches.entries()) {
+          const configuredGamesCount = Number(matchGamesCount.get(matchId) || 0);
+          const divisor = configuredGamesCount > 0
+            ? configuredGamesCount
+            : Math.max(stats.games, 1);
+
+          playerRoundTotal += stats.total / divisor;
+          seriesCount += 1;
+        }
+
+        const playerAverageForRound = playerRoundTotal / Math.max(seriesCount, 1);
+        basePoints += playerAverageForRound;
       }
 
       // 4. Calcular buff de diversidade

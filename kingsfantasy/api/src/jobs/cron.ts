@@ -43,11 +43,12 @@ class CronJobsService {
     const scoringJob = cron.schedule('0 9 * * 1', async () => {
       console.log('📊 [CRON] Calculating scores for completed rounds...');
       try {
-        // Buscar rodadas completadas que ainda não tiveram pontuação calculada
+        // Buscar rodadas finalizadas que ainda não tiveram pontuação calculada
+        // DB usa 'closed' para rodadas encerradas e 'finished' para finalizadas
         const { data: rounds } = await supabase
           .from('rounds')
           .select('id, round_number')
-          .eq('status', 'completed')
+          .in('status', ['closed', 'finished'])
           .order('start_date', { ascending: false })
           .limit(1);
 
@@ -82,41 +83,42 @@ class CronJobsService {
       try {
         const now = new Date();
 
-        // Atualizar rodadas que já começaram (upcoming -> live)
-        const { data: upcomingRounds } = await supabase
+        // Atualizar rodadas que já começaram (pending -> open)
+        // DB status: pending = aguardando, open = em andamento, closed = encerrada, finished = finalizada
+        const { data: pendingRounds } = await supabase
           .from('rounds')
           .select('id, start_date')
-          .eq('status', 'upcoming');
+          .eq('status', 'pending');
 
-        if (upcomingRounds) {
-          for (const round of upcomingRounds) {
+        if (pendingRounds) {
+          for (const round of pendingRounds) {
             const startDate = new Date(round.start_date);
             if (now >= startDate) {
               await supabase
                 .from('rounds')
-                .update({ status: 'live' })
+                .update({ status: 'open' })
                 .eq('id', round.id);
-              console.log(`✅ [CRON] Round ${round.id} status: upcoming -> live`);
+              console.log(`✅ [CRON] Round ${round.id} status: pending -> open`);
             }
           }
         }
 
-        // Atualizar rodadas que já terminaram (live -> completed)
-        const { data: liveRounds } = await supabase
+        // Atualizar rodadas que já terminaram (open -> closed)
+        const { data: openRounds } = await supabase
           .from('rounds')
           .select('id, end_date')
-          .eq('status', 'live');
+          .eq('status', 'open');
 
-        if (liveRounds) {
-          for (const round of liveRounds) {
+        if (openRounds) {
+          for (const round of openRounds) {
             if (round.end_date) {
               const endDate = new Date(round.end_date);
               if (now >= endDate) {
                 await supabase
                   .from('rounds')
-                  .update({ status: 'completed' })
+                  .update({ status: 'closed' })
                   .eq('id', round.id);
-                console.log(`✅ [CRON] Round ${round.id} status: live -> completed`);
+                console.log(`✅ [CRON] Round ${round.id} status: open -> closed`);
               }
             }
           }
@@ -132,18 +134,16 @@ class CronJobsService {
     const autoImportJob = cron.schedule('0 23 * * 0', async () => {
       console.log('📥 [CRON] Auto-importing round from Leaguepedia...');
       try {
-        // Get current season (assume Season 4 for now - can be made dynamic)
-        const currentSeason = 4;
-        
-        // Find next round to import
-        const { data: rounds } = await supabase
+        // Buscar season mais recente do banco ao invés de hardcodar
+        const { data: latestRound } = await supabase
           .from('rounds')
-          .select('round_number')
-          .eq('season', currentSeason)
+          .select('season, round_number')
+          .order('season', { ascending: false })
           .order('round_number', { ascending: false })
           .limit(1);
 
-        const nextRound = rounds && rounds.length > 0 ? rounds[0].round_number + 1 : 1;
+        const currentSeason = latestRound && latestRound.length > 0 ? latestRound[0].season : 1;
+        const nextRound = latestRound && latestRound.length > 0 ? latestRound[0].round_number + 1 : 1;
         
         console.log(`📥 [CRON] Importing Season ${currentSeason} Round ${nextRound}...`);
         

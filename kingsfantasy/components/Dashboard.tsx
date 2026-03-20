@@ -6,6 +6,7 @@ import { DataService } from '../services/api';
 import jogosSabado from '../assets/images/logo/jogos-sabado.optimized.jpg';
 import jogosDomingo from '../assets/images/logo/jogos-domingo.optimized.jpg';
 import StandingsTable from './StandingsTable';
+import PaiCoin from './PaiCoin';
 
 interface DashboardProps {
   userTeam: UserTeam;
@@ -46,22 +47,16 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, players, onNavigate }) 
   
   useEffect(() => {
     const fetchUserLeagues = async () => {
-      console.log('🔍 Dashboard - fetchUserLeagues iniciado');
-      console.log('🔍 Dashboard - userTeam.userId:', userTeam.userId);
-      
       if (userTeam.userId) {
         setLoadingLeagues(true);
         try {
           const leagues = await DataService.getUserLeagues(userTeam.userId);
-          console.log('🔍 Dashboard - Ligas retornadas:', leagues);
           setUserLeagues(leagues);
         } catch (error) {
-          console.error('❌ Dashboard - Erro ao buscar ligas:', error);
+          console.error('Erro ao buscar ligas:', error);
         } finally {
           setLoadingLeagues(false);
         }
-      } else {
-        console.log('⚠️ Dashboard - userId não disponível');
       }
     };
     
@@ -97,16 +92,6 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, players, onNavigate }) 
     }
   };
 
-  const PaiCoin = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
-    const dims = size === "sm" ? "w-5 h-5" : size === "md" ? "w-8 h-8" : "w-12 h-12";
-    return (
-      <img 
-        src="https://i.imgur.com/4odZyzF.png" 
-        className={`${dims} object-contain invert-[0.1] sepia-[1] saturate-[5] hue-rotate-[210deg]`}
-        alt="Moeda PAI"
-      />
-    );
-  };
 
   const formatValue = (val: number) => {
     if (Number.isInteger(val)) return val.toString();
@@ -122,7 +107,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, players, onNavigate }) 
     .filter(p => pickedFilter === 'TODOS' || p.role === pickedFilter)
     .sort((a, b) => b.points - a.points)
     .slice(0, 5)
-    .map((p, idx) => ({ ...p, choices: Math.floor(5000 - (idx * 380)) }));
+    .map((p) => ({ ...p, choices: Math.round(p.points) }));
 
   const videoThumbnail = MEDIA_HUB_CONFIG.customThumbnail || `https://i.ytimg.com/vi/${MEDIA_HUB_CONFIG.videoId}/maxresdefault.jpg`;
 
@@ -432,7 +417,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, players, onNavigate }) 
                   </div>
                   <div className="flex-1">
                     <h4 className="font-orbitron font-black text-[#6366F1] text-xl uppercase leading-none mb-2">{p.name}</h4>
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-widest opacity-60">{p.choices.toLocaleString()} CONVOCAÇÕES</p>
+                    <p className="text-gray-500 text-xs font-bold uppercase tracking-widest opacity-60">{p.choices.toLocaleString()} PTS TOTAL</p>
                   </div>
                   <div className="text-right mr-4">
                     <span className="text-[10px] font-black text-gray-700 block mb-1">MÉDIA</span>

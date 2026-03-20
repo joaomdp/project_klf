@@ -179,10 +179,12 @@ export async function deleteTeam(req: AuthenticatedRequest, res: Response) {
     }
 
     // Deletar partidas relacionadas ao time
+    // Sanitizar id para prevenir filter injection no .or()
+    const safeId = String(id).replace(/[^a-zA-Z0-9_-]/g, '');
     const { error: matchesError } = await adminSupabase
       .from('matches')
       .delete()
-      .or(`team_a_id.eq.${id},team_b_id.eq.${id},winner_id.eq.${id}`);
+      .or(`team_a_id.eq.${safeId},team_b_id.eq.${safeId},winner_id.eq.${safeId}`);
 
     if (matchesError) {
       console.error('❌ Error deleting matches:', matchesError);

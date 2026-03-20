@@ -945,6 +945,20 @@ export async function deletePerformance(req: AuthenticatedRequest, res: Response
   try {
     const { id } = req.params;
 
+    // Buscar performance antes de deletar para saber o player_id
+    const { data: perfToDelete, error: fetchError } = await adminSupabase
+      .from('player_performances')
+      .select('player_id')
+      .eq('id', parseInt(id))
+      .single();
+
+    if (fetchError || !perfToDelete) {
+      return res.status(404).json({
+        success: false,
+        error: 'Performance não encontrada'
+      });
+    }
+
     const { error: deleteError } = await adminSupabase
       .from('player_performances')
       .delete()
@@ -959,11 +973,36 @@ export async function deletePerformance(req: AuthenticatedRequest, res: Response
       });
     }
 
-    console.log(`✅ Performance deleted: ${id}`);
+    // Recalcular agregados do jogador após deletar a performance
+    const { data: remainingPerfs } = await adminSupabase
+      .from('player_performances')
+      .select('fantasy_points')
+      .eq('player_id', perfToDelete.player_id);
+
+    if (remainingPerfs && remainingPerfs.length > 0) {
+      const totalPoints = remainingPerfs.reduce((sum: number, p: any) => sum + (p.fantasy_points || 0), 0);
+      const avgPoints = totalPoints / remainingPerfs.length;
+      await adminSupabase
+        .from('players')
+        .update({
+          total_points: totalPoints,
+          avg_points: avgPoints,
+          games_played: remainingPerfs.length
+        })
+        .eq('id', perfToDelete.player_id);
+    } else {
+      // Sem performances restantes, zera os stats
+      await adminSupabase
+        .from('players')
+        .update({ total_points: 0, avg_points: 0, games_played: 0 })
+        .eq('id', perfToDelete.player_id);
+    }
+
+    console.log(`✅ Performance deleted: ${id}, player stats recalculated`);
 
     return res.json({
       success: true,
-      message: 'Performance deletada com sucesso',
+      message: 'Performance deletada e stats do jogador recalculados',
       performance_id: id
     });
 

@@ -17,6 +17,7 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [champSearch, setChampSearch] = useState('');
   const [tempTeamName, setTempTeamName] = useState(userTeam.name);
+  const [teamNameError, setTeamNameError] = useState<string | null>(null);
   const [currentLang, setCurrentLang] = useState<'PT' | 'EN'>('PT');
   const [formData, setFormData] = useState({
     name: userTeam.name,
@@ -37,12 +38,13 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
     const lowerName = tempTeamName.toLowerCase().trim();
     if (!lowerName) return;
 
-    const existingTeams = ["t1", "loud", "paiN", "furia", "fluxo", "red canids", "kabum", "intz", "los grandes", "itafantasy"];
-    
-    if (existingTeams.includes(lowerName) && lowerName !== userTeam.name.toLowerCase()) {
-      alert("ERRO DE IDENTIDADE: Este nome de time já foi reivindicado na Ilha das Lendas!");
+    const reservedTeams = ["t1", "loud", "pain", "furia", "fluxo", "red canids", "kabum", "intz", "los grandes", "itafantasy"];
+
+    if (reservedTeams.includes(lowerName) && lowerName !== userTeam.name.toLowerCase()) {
+      setTeamNameError("Este nome de time é reservado e não pode ser utilizado.");
       return;
     }
+    setTeamNameError(null);
 
     setFormData(prev => ({ ...prev, name: tempTeamName }));
     onUpdate({ name: tempTeamName });
@@ -134,14 +136,17 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
                 <p className="text-xs text-gray-500 mt-0.5">Altere a identidade do seu time</p>
               </div>
             </div>
-            <input 
-              type="text" 
-              value={tempTeamName}
-              onChange={(e) => setTempTeamName(e.target.value.toUpperCase())}
-              className="w-full bg-white/5 border border-white/10 py-3.5 px-4 text-sm font-bold text-white placeholder:text-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
-              placeholder="DIGITE O NOME..."
-              autoFocus
-            />
+            <div>
+              <input
+                type="text"
+                value={tempTeamName}
+                onChange={(e) => { setTempTeamName(e.target.value.toUpperCase()); setTeamNameError(null); }}
+                className={`w-full bg-white/5 border py-3.5 px-4 text-sm font-bold text-white placeholder:text-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all ${teamNameError ? 'border-red-500/50' : 'border-white/10'}`}
+                placeholder="DIGITE O NOME..."
+                autoFocus
+              />
+              {teamNameError && <p className="text-red-400 text-xs mt-2">{teamNameError}</p>}
+            </div>
             <div className="flex gap-3">
               <button type="button" onClick={() => setIsEditTeamModalOpen(false)} className="flex-1 py-3 bg-white/5 border border-white/10 text-gray-400 text-xs font-bold hover:bg-white/10 hover:text-white transition-all duration-300">
                 Cancelar
@@ -308,11 +313,11 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
               delay="100"
             />
 
-            <SettingItem 
-              icon="fa-language" 
-              label="IDIOMA" 
-              value={currentLang === 'PT' ? "PORTUGUÊS (BR)" : "ENGLISH (US)"} 
-              onClick={() => setIsLanguageModalOpen(true)} 
+            <SettingItem
+              icon="fa-language"
+              label="IDIOMA"
+              value="PORTUGUÊS (BR)"
+              onClick={() => {}}
               color="text-emerald-400"
               delay="200"
             />

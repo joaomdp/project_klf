@@ -125,13 +125,14 @@ class MarketService {
 
       if (roundError) throw roundError;
 
-      // 2. Travar todos os user_teams
+      // 2. Travar todos os user_teams que ainda não estão travados
       const { error: lockError } = await adminSupabase
         .from('user_teams')
         .update({
           is_locked: true,
           last_locked_at: new Date().toISOString()
-        });
+        })
+        .eq('is_locked', false);
 
       if (lockError) throw lockError;
 
@@ -187,12 +188,13 @@ class MarketService {
 
       if (updateError) throw updateError;
 
-      // 3. Destravar todos os user_teams
+      // 3. Destravar todos os user_teams que estão travados
       const { error: unlockError } = await adminSupabase
         .from('user_teams')
         .update({
           is_locked: false
-        });
+        })
+        .eq('is_locked', true);
 
       if (unlockError) throw unlockError;
 
@@ -361,7 +363,8 @@ class MarketService {
 
     const { error: unlockError } = await adminSupabase
       .from('user_teams')
-      .update({ is_locked: false });
+      .update({ is_locked: false })
+      .eq('is_locked', true);
 
     if (unlockError) throw unlockError;
 

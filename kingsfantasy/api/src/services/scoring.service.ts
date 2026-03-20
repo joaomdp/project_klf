@@ -31,6 +31,9 @@ interface SystemConfig {
 
 class ScoringService {
   private config: SystemConfig | null = null;
+  private configLoadedAt: number = 0;
+  private static CONFIG_TTL_MS = 5 * 60 * 1000; // 5 minutos
+  private finalizingRounds: Set<number> = new Set();
 
   private async refreshPlayerAggregates(playerIds: string[], latestRoundId?: number): Promise<number> {
     if (playerIds.length === 0) return 0;
@@ -147,6 +150,20 @@ class ScoringService {
       throw new Error('roundId inválido');
     }
 
+    // Lock para evitar execução simultânea no mesmo round
+    if (this.finalizingRounds.has(roundId)) {
+      throw new Error(`Rodada ${roundId} já está sendo finalizada. Aguarde a conclusão.`);
+    }
+    this.finalizingRounds.add(roundId);
+
+    try {
+      return await this._doFinalizeRound(roundId);
+    } finally {
+      this.finalizingRounds.delete(roundId);
+    }
+  }
+
+  private async _doFinalizeRound(roundId: number) {
     const { data: round, error: roundError } = await adminSupabase
       .from('rounds')
       .select('id, status')
@@ -315,7 +332,7 @@ class ScoringService {
 
     await adminSupabase
       .from('rounds')
-      .update({ status: 'completed' })
+      .update({ status: 'finished' })
       .eq('id', roundId);
 
     return {
@@ -332,7 +349,10 @@ class ScoringService {
    * Carrega configurações do sistema do banco
    */
   async loadConfig(): Promise<SystemConfig> {
-    if (this.config) return this.config;
+    const now = Date.now();
+    if (this.config && (now - this.configLoadedAt) < ScoringService.CONFIG_TTL_MS) {
+      return this.config;
+    }
 
     const { data, error } = await supabase
       .from('system_config')
@@ -350,6 +370,7 @@ class ScoringService {
     });
 
     this.config = config as SystemConfig;
+    this.configLoadedAt = now;
     return this.config;
   }
 

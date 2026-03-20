@@ -1,5 +1,7 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { supabase, adminSupabase } from './config/supabase';
 import { scraperService } from './services/scraper.service';
@@ -7,11 +9,18 @@ import { scoringService } from './services/scoring.service';
 import { marketService } from './services/market.service';
 import { cronJobsService } from './jobs/cron';
 import adminRoutes from './routes/admin';
+import { authMiddleware, adminMiddleware, AuthenticatedRequest } from './middleware/auth.middleware';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+/** Parse e valida um parâmetro numérico. Retorna null se inválido. */
+const parseIntParam = (value: string): number | null => {
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+};
 
 // Middleware
 const allowedOrigins = (process.env.ALLOWED_ORIGINS
@@ -28,11 +37,20 @@ const isAllowedOrigin = (origin?: string) => {
   if (allowedOrigins.includes(origin)) return true;
   try {
     const url = new URL(origin);
-    return url.protocol === 'https:' && url.hostname.endsWith('.vercel.app');
+    // Restringe apenas a subdomínios do projeto na Vercel
+    return url.protocol === 'https:' && (
+      url.hostname.endsWith('.kingslendas.vercel.app') ||
+      url.hostname === 'kingslendas.vercel.app'
+    );
   } catch (error) {
     return false;
   }
 };
+
+// Security headers
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -45,6 +63,25 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
+
+// Rate limiting global
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 300, // 300 requests por janela
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Muitas requisições. Tente novamente em alguns minutos.' }
+});
+app.use('/api/', globalLimiter);
+
+// Rate limiting específico para AI Coach (mais restritivo)
+const aiCoachLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 5, // 5 requests por minuto
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Limite de consultas ao AI Coach atingido. Aguarde 1 minuto.' }
+});
 
 // ============================================================================
 // ADMIN PANEL ROUTES (Protected)
@@ -198,7 +235,7 @@ app.get('/api/rounds/current', async (req: Request, res: Response) => {
     const { data, error } = await supabase
       .from('rounds')
       .select('*')
-      .eq('status', 'upcoming')
+      .in('status', ['pending', 'open'])
       .order('start_date', { ascending: true })
       .limit(1)
       .single();
@@ -294,7 +331,8 @@ app.get('/api/market/matchups/current', async (req: Request, res: Response) => {
 
 app.post('/api/market/validate-trade/:userTeamId', async (req: Request, res: Response) => {
   try {
-    const userTeamId = parseInt(req.params.userTeamId);
+    const userTeamId = parseIntParam(req.params.userTeamId);
+    if (userTeamId === null) return res.status(400).json({ success: false, error: 'userTeamId inválido' });
     const validation = await marketService.validateTrade(userTeamId);
     res.json({
       success: true,
@@ -309,12 +347,148 @@ app.post('/api/market/validate-trade/:userTeamId', async (req: Request, res: Res
 });
 
 // ============================================================================
+// LINEUP SAVE ENDPOINT (with server-side budget validation)
+// ============================================================================
+app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+    }
+
+    const { lineup } = req.body;
+    if (!lineup || typeof lineup !== 'object') {
+      return res.status(400).json({ success: false, error: 'Lineup inválido' });
+    }
+
+    // 1. Verificar se mercado está aberto
+    const marketStatus = await marketService.getMarketStatus();
+    if (!marketStatus.isOpen) {
+      return res.status(403).json({ success: false, error: 'Mercado fechado. Não é possível alterar a escalação.' });
+    }
+
+    // 2. Buscar time atual do usuário
+    const { data: currentTeam, error: teamError } = await adminSupabase
+      .from('user_teams')
+      .select('id, budget, lineup, is_locked')
+      .eq('user_id', userId)
+      .single();
+
+    if (teamError || !currentTeam) {
+      return res.status(404).json({ success: false, error: 'Time não encontrado' });
+    }
+
+    if (currentTeam.is_locked) {
+      return res.status(403).json({ success: false, error: 'Time está travado' });
+    }
+
+    // 3. Validar roles
+    const validRoles = ['top', 'jungler', 'mid', 'adc', 'support'];
+    const lineupRoles = Object.keys(lineup);
+    for (const role of lineupRoles) {
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ success: false, error: `Role inválida: ${role}` });
+      }
+    }
+
+    // 4. Coletar IDs dos jogadores do novo lineup
+    const newPlayerIds: string[] = [];
+    for (const role of lineupRoles) {
+      const player = lineup[role];
+      if (player && player.id) {
+        if (newPlayerIds.includes(String(player.id))) {
+          return res.status(400).json({ success: false, error: 'Jogador duplicado na escalação' });
+        }
+        newPlayerIds.push(String(player.id));
+      }
+    }
+
+    // 5. Buscar preços reais dos jogadores no banco
+    let newLineupCost = 0;
+    if (newPlayerIds.length > 0) {
+      const { data: dbPlayers, error: playersError } = await adminSupabase
+        .from('players')
+        .select('id, price, role')
+        .in('id', newPlayerIds);
+
+      if (playersError) throw playersError;
+
+      const dbPlayerMap = new Map((dbPlayers || []).map((p: any) => [String(p.id), p]));
+
+      // Validar que todos os jogadores existem e calcular custo real
+      for (const role of lineupRoles) {
+        const player = lineup[role];
+        if (!player || !player.id) continue;
+
+        const dbPlayer = dbPlayerMap.get(String(player.id));
+        if (!dbPlayer) {
+          return res.status(400).json({ success: false, error: `Jogador ${player.id} não encontrado` });
+        }
+        newLineupCost += Number(dbPlayer.price) || 0;
+      }
+    }
+
+    // 6. Calcular custo do lineup anterior (para devolver ao budget)
+    const currentLineup = currentTeam.lineup || {};
+    let currentLineupCost = 0;
+    const currentPlayerIds = Object.values(currentLineup)
+      .filter((p: any) => p && p.id)
+      .map((p: any) => String(p.id));
+
+    if (currentPlayerIds.length > 0) {
+      const { data: currentDbPlayers } = await adminSupabase
+        .from('players')
+        .select('id, price')
+        .in('id', currentPlayerIds);
+
+      currentLineupCost = (currentDbPlayers || []).reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
+    }
+
+    // 7. Calcular budget resultante
+    const totalBudget = Number(currentTeam.budget) + currentLineupCost;
+    const newBudget = Number((totalBudget - newLineupCost).toFixed(2));
+
+    if (newBudget < 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Orçamento insuficiente. Custo: C$${newLineupCost.toFixed(2)}, Disponível: C$${totalBudget.toFixed(2)}`
+      });
+    }
+
+    // 8. Salvar lineup e budget validados
+    const { error: updateError } = await adminSupabase
+      .from('user_teams')
+      .update({
+        lineup,
+        budget: newBudget,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId);
+
+    if (updateError) throw updateError;
+
+    return res.json({
+      success: true,
+      budget: newBudget,
+      message: 'Escalação salva com sucesso'
+    });
+  } catch (error) {
+    console.error('❌ Error saving lineup:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro interno ao salvar escalação'
+    });
+  }
+});
+
+// ============================================================================
 // SCORING ENDPOINTS
 // ============================================================================
 app.get('/api/scores/round/:roundId/user/:userTeamId', async (req: Request, res: Response) => {
   try {
-    const roundId = parseInt(req.params.roundId);
-    const userTeamId = parseInt(req.params.userTeamId);
+    const roundId = parseIntParam(req.params.roundId);
+    const userTeamId = parseIntParam(req.params.userTeamId);
+    if (roundId === null || userTeamId === null) return res.status(400).json({ success: false, error: 'Parâmetros inválidos' });
     
     const score = await scoringService.calculateRoundScore(userTeamId, roundId);
     
@@ -330,9 +504,10 @@ app.get('/api/scores/round/:roundId/user/:userTeamId', async (req: Request, res:
   }
 });
 
-app.post('/api/scores/calculate/:roundId', async (req: Request, res: Response) => {
+app.post('/api/scores/calculate/:roundId', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {
-    const roundId = parseInt(req.params.roundId);
+    const roundId = parseIntParam(req.params.roundId);
+    if (roundId === null) return res.status(400).json({ success: false, error: 'roundId inválido' });
     const result = await scoringService.calculateAllScoresForRound(roundId);
     
     res.json({
@@ -381,7 +556,7 @@ app.get('/api/scraper/players', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/scraper/manual-match', async (req: Request, res: Response) => {
+app.post('/api/scraper/manual-match', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {
     const { roundId, matchData } = req.body;
     const result = await scraperService.insertManualMatchData(roundId, matchData);
@@ -402,7 +577,7 @@ app.post('/api/scraper/manual-match', async (req: Request, res: Response) => {
 // ============================================================================
 // CRON JOBS ENDPOINTS
 // ============================================================================
-app.get('/api/cron/status', (req: Request, res: Response) => {
+app.get('/api/cron/status', authMiddleware, adminMiddleware, (req: Request, res: Response) => {
   const status = cronJobsService.getJobsStatus();
   res.json({
     success: true,
@@ -410,7 +585,7 @@ app.get('/api/cron/status', (req: Request, res: Response) => {
   });
 });
 
-app.post('/api/cron/run/market-check', async (req: Request, res: Response) => {
+app.post('/api/cron/run/market-check', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {
     const result = await cronJobsService.runMarketCheckNow();
     res.json(result);
@@ -422,9 +597,10 @@ app.post('/api/cron/run/market-check', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/cron/run/scoring/:roundId', async (req: Request, res: Response) => {
+app.post('/api/cron/run/scoring/:roundId', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {
-    const roundId = parseInt(req.params.roundId);
+    const roundId = parseIntParam(req.params.roundId);
+    if (roundId === null) return res.status(400).json({ success: false, error: 'roundId inválido' });
     const result = await cronJobsService.runScoringJobNow(roundId);
     res.json(result);
   } catch (error) {
@@ -435,7 +611,7 @@ app.post('/api/cron/run/scoring/:roundId', async (req: Request, res: Response) =
   }
 });
 
-app.post('/api/cron/run/market-reopen', async (req: Request, res: Response) => {
+app.post('/api/cron/run/market-reopen', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {
     const result = await cronJobsService.runMarketReopenNow();
     res.json(result);
@@ -517,7 +693,7 @@ app.get('/api/leagues/:leagueId/ranking', async (req: Request, res: Response) =>
 // ============================================================================
 // AI COACH ENDPOINT
 // ============================================================================
-app.post('/api/ai/coach', async (req: Request, res: Response) => {
+app.post('/api/ai/coach', aiCoachLimiter, async (req: Request, res: Response) => {
   try {
     const { query, userTeam, availablePlayers } = req.body || {};
 
@@ -525,6 +701,22 @@ app.post('/api/ai/coach', async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         error: 'Pergunta inválida'
+      });
+    }
+
+    // Limitar tamanho do input para evitar abuso
+    if (query.length > 500) {
+      return res.status(400).json({
+        success: false,
+        error: 'Pergunta muito longa. Máximo de 500 caracteres.'
+      });
+    }
+
+    // Limitar quantidade de jogadores enviados
+    if (Array.isArray(availablePlayers) && availablePlayers.length > 200) {
+      return res.status(400).json({
+        success: false,
+        error: 'Lista de jogadores muito grande.'
       });
     }
 
@@ -618,10 +810,10 @@ app.post('/api/ai/coach', async (req: Request, res: Response) => {
 
     if (!geminiResponse.ok) {
       const errorText = await geminiResponse.text();
+      console.error('❌ Gemini API error:', errorText);
       return res.status(502).json({
         success: false,
-        error: 'Falha ao consultar IA',
-        details: errorText
+        error: 'Falha ao consultar IA. Tente novamente em alguns instantes.'
       });
     }
 
@@ -656,27 +848,8 @@ app.post('/api/ai/coach', async (req: Request, res: Response) => {
 app.use((req: Request, res: Response) => {
   res.status(404).json({
     success: false,
-    message: '🤔 Endpoint not found',
-    availableEndpoints: [
-      'GET /api/health',
-      'GET /api/champions',
-      'GET /api/config',
-      'GET /api/rounds',
-      'GET /api/rounds/current',
-      'GET /api/market/status',
-      'GET /api/market/time-remaining',
-      'POST /api/market/validate-trade/:userTeamId',
-      'GET /api/scores/round/:roundId/user/:userTeamId',
-      'POST /api/scores/calculate/:roundId',
-      'GET /api/scraper/teams',
-      'GET /api/scraper/players',
-      'POST /api/scraper/manual-match',
-      'GET /api/cron/status',
-      'POST /api/cron/run/market-check',
-      'POST /api/cron/run/scoring/:roundId',
-      'POST /api/cron/run/market-reopen',
-      'GET /api/leagues/:leagueId/ranking'
-    ]
+    message: 'Endpoint not found',
+    path: req.path
   });
 });
 

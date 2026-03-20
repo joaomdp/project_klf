@@ -5,6 +5,7 @@ import PlayerImage from './PlayerImage';
 import TeamLogo from './TeamLogo';
 import MatchHistoryModal from './MatchHistoryModal';
 import DiversityIndicator from './DiversityIndicator';
+import PaiCoin from './PaiCoin';
 
 interface MarketProps {
   players: Player[];
@@ -119,9 +120,6 @@ const Market: React.FC<MarketProps> = ({
       .reduce((sum, p) => sum + p.price, 0);
   }, [userTeam.players]);
 
-  const PaiCoin = ({ size = "sm" }: { size?: "xs" | "sm" | "md" }) => (
-    <img src="https://i.imgur.com/4odZyzF.png" className={`${size === "xs" ? "w-3.5 h-3.5" : size === "sm" ? "w-4 h-4" : "w-6 h-6"} object-contain invert-[0.1] sepia-[1] saturate-[5] hue-rotate-[210deg]`} alt="P" />
-  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in fade-in duration-500 pb-20">

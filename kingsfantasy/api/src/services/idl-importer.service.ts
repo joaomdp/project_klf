@@ -310,7 +310,7 @@ class IDLImporterService {
    * Update player statistics after importing a round
    */
   private async updatePlayerStats(roundId: number): Promise<void> {
-    // Get all matches in this round
+    // Get players that participated in this round's matches
     const { data: matches, error: matchesError } = await supabase
       .from('matches')
       .select('id')
@@ -327,29 +327,46 @@ class IDLImporterService {
       return;
     }
 
-    // Get all performances in these matches
-    const { data: performances, error: perfError } = await supabase
+    // Get player IDs from this round
+    const { data: roundPerfs, error: roundPerfError } = await supabase
       .from('player_performances')
-      .select('player_id, fantasy_points')
+      .select('player_id')
       .in('match_id', matchIds);
 
-    if (perfError || !performances) {
-      throw new Error(`Erro ao buscar performances: ${perfError?.message}`);
+    if (roundPerfError || !roundPerfs) {
+      throw new Error(`Erro ao buscar performances: ${roundPerfError?.message}`);
     }
 
-    // Group by player and calculate stats
+    const playerIds = Array.from(new Set(roundPerfs.map(p => p.player_id)));
+
+    if (playerIds.length === 0) {
+      console.log('   ⚠️  Nenhum jogador encontrado para atualizar');
+      return;
+    }
+
+    // Get ALL performances of these players (across all rounds)
+    const { data: allPerformances, error: allPerfError } = await supabase
+      .from('player_performances')
+      .select('player_id, fantasy_points')
+      .in('player_id', playerIds);
+
+    if (allPerfError || !allPerformances) {
+      throw new Error(`Erro ao buscar todas as performances: ${allPerfError?.message}`);
+    }
+
+    // Group by player and calculate cumulative stats
     const playerStats = new Map<string, { totalPoints: number; count: number }>();
 
-    for (const perf of performances) {
+    for (const perf of allPerformances) {
       const existing = playerStats.get(perf.player_id) || { totalPoints: 0, count: 0 };
       existing.totalPoints += perf.fantasy_points || 0;
       existing.count += 1;
       playerStats.set(perf.player_id, existing);
     }
 
-    // Update each player's statistics
+    // Update each player's statistics with cumulative data
     for (const [playerId, stats] of playerStats) {
-      const avgPoints = stats.totalPoints / stats.count;
+      const avgPoints = stats.count > 0 ? stats.totalPoints / stats.count : 0;
 
       const { error: updateError } = await supabase
         .from('players')
@@ -365,7 +382,7 @@ class IDLImporterService {
       }
     }
 
-    console.log(`   ✅ ${playerStats.size} jogadores atualizados`);
+    console.log(`   ✅ ${playerStats.size} jogadores atualizados (dados cumulativos)`);
   }
 
   /**

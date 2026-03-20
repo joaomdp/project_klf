@@ -1,6 +1,5 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { MOCK_RANKING } from '../constants';
 import { DataService } from '../services/api';
 import { League as LeagueType, RankingEntry } from '../types';
 import kingsLogo from '../assets/images/logo/logo.png';
@@ -132,7 +131,6 @@ const Ranking: React.FC<RankingProps> = ({ onOpenCreateLeague, userId, userName,
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
   const [copiedInvite, setCopiedInvite] = useState(false);
   const [tipoFiltro, setTipoFiltro] = useState('Temporada');
-  const [rodadaFiltro, setRodadaFiltro] = useState('Rodada 10');
   const [myLeagues, setMyLeagues] = useState<League[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [leagueRanking, setLeagueRanking] = useState<RankingEntry[]>([]);
@@ -185,48 +183,33 @@ const Ranking: React.FC<RankingProps> = ({ onOpenCreateLeague, userId, userName,
 
   const loadUserLeagues = async () => {
     setIsLoading(true);
-    console.log('🔍 DEBUG Ranking - userId recebido:', userId);
     try {
       const leagues = await DataService.getUserLeagues(userId);
-      console.log('🔍 DEBUG Ranking - Ligas retornadas:', leagues);
-      
-      // Busca o time favorito do usuário para determinar logo
+
       const userTeam = await DataService.getUserTeam(userId);
       const favoriteTeam = userTeam?.favoriteTeam;
-      console.log('🔍 DEBUG Ranking - favoriteTeam:', favoriteTeam);
-      
-      // Busca todos os times do banco para mapear nome -> logo
+
       const allTeams = await DataService.getTeams();
-      console.log('🔍 DEBUG Ranking - Times disponíveis:', allTeams);
-      
-      // Mapeia os dados para o formato esperado pela UI
+
       const mappedLeagues: League[] = await Promise.all(leagues.map(async league => {
         let logoUrl: string | undefined;
-        
-        // Se for a liga global KINGSLENDAS, usa o logo do Kings
+
         if (league.code === 'KINGSLENDAS' || league.name.toUpperCase().includes('KINGS')) {
           logoUrl = kingsLogo;
-        } 
-        // Se for uma liga de time e temos o time favorito
-        else if (favoriteTeam) {
-          // Encontra o time no array de times pelo nome
-          const team = allTeams.find(t => 
+        } else if (favoriteTeam) {
+          const team = allTeams.find(t =>
             t.name.toLowerCase() === favoriteTeam.toLowerCase() ||
             t.name.toLowerCase().includes(favoriteTeam.toLowerCase()) ||
             favoriteTeam.toLowerCase().includes(t.name.toLowerCase())
           );
-          
+
           if (team) {
             logoUrl = team.logo;
-            console.log('🔍 DEBUG Ranking - Logo encontrado para', favoriteTeam, ':', logoUrl);
-          } else {
-            console.warn('⚠️ Time não encontrado:', favoriteTeam);
           }
         }
-        
-        // Busca a contagem real de membros
+
         const memberCount = await DataService.getLeagueMemberCount(league.id);
-        
+
         return {
           id: league.id,
           name: league.name,
@@ -237,8 +220,7 @@ const Ranking: React.FC<RankingProps> = ({ onOpenCreateLeague, userId, userName,
           logoUrl
         };
       }));
-      
-      console.log('🔍 DEBUG Ranking - Ligas mapeadas:', mappedLeagues);
+
       setMyLeagues(mappedLeagues);
     } catch (error) {
       console.error('❌ Erro ao carregar ligas:', error);
@@ -392,7 +374,18 @@ const Ranking: React.FC<RankingProps> = ({ onOpenCreateLeague, userId, userName,
                   <button onClick={handleCopyInvite} className="w-9 h-9 flex items-center justify-center bg-white/5 border border-white/10 text-gray-400 hover:text-[#6366F1] hover:border-[#6366F1]/30 transition-all shadow-xl">
                     <i className={`fa-solid ${copiedInvite ? 'fa-check text-green-500' : 'fa-share-nodes'} text-xs`}></i>
                   </button>
-                  <button className="px-3 py-2 bg-red-600/10 text-red-500 border border-red-500/10 text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">SAIR</button>
+                  <button
+                    onClick={async () => {
+                      if (!selectedLeague || !userId) return;
+                      if (!confirm(`Tem certeza que deseja sair da liga "${selectedLeague.name}"?`)) return;
+                      const success = await DataService.leaveLeague(selectedLeague.id, userId);
+                      if (success) {
+                        setMyLeagues(prev => prev.filter(l => l.id !== selectedLeague.id));
+                        setSelectedLeague(null);
+                      }
+                    }}
+                    className="px-3 py-2 bg-red-600/10 text-red-500 border border-red-500/10 text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
+                  >SAIR</button>
                 </div>
               </div>
               <div className="mt-6 pt-6 border-t border-white/5 space-y-5">
@@ -427,8 +420,7 @@ const Ranking: React.FC<RankingProps> = ({ onOpenCreateLeague, userId, userName,
               <div className="p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
                  <h2 className="font-orbitron font-black text-lg text-white uppercase tracking-tight">RANKING</h2>
                  <div className="flex items-center gap-8">
-                    <CustomDropdown label="TIPO" icon="fa-list-ul" options={['Temporada', 'Rodada']} selected={tipoFiltro} onSelect={setTipoFiltro} />
-                    <CustomDropdown label="RODADA" icon="fa-sliders" options={['Rodada 10', 'Rodada 09']} selected={rodadaFiltro} onSelect={setRodadaFiltro} />
+                    <CustomDropdown label="TIPO" icon="fa-list-ul" options={['Temporada']} selected={tipoFiltro} onSelect={setTipoFiltro} />
                  </div>
                </div>
                <div className="divide-y divide-white/[0.03]">

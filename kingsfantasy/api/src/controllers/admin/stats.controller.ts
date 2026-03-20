@@ -34,17 +34,17 @@ export async function getDashboardStats(req: AuthenticatedRequest, res: Response
       // Total de performances
       supabase.from('player_performances').select('id', { count: 'exact', head: true }),
       
-      // Rodadas pendentes (upcoming)
+      // Rodadas pendentes
       supabase
         .from('rounds')
         .select('id')
-        .eq('status', 'upcoming'),
-      
-      // Rodadas ativas
+        .eq('status', 'pending'),
+
+      // Rodadas ativas (open no DB)
       supabase
         .from('rounds')
         .select('id, is_market_open')
-        .eq('status', 'active'),
+        .eq('status', 'open'),
       
       // Última partida inserida
       supabase
@@ -148,7 +148,7 @@ export async function getRoundStats(req: AuthenticatedRequest, res: Response) {
     // Buscar partidas da rodada
     const { data: matches } = await supabase
       .from('matches')
-      .select('id')
+      .select('id, games_count')
       .eq('round_id', parseInt(roundId));
 
     const matchIds = matches?.map(m => m.id) || [];
@@ -173,11 +173,14 @@ export async function getRoundStats(req: AuthenticatedRequest, res: Response) {
       },
       performances: {
         total: performancesCount || 0,
-        expected: (matches?.length || 0) * 10,
+        expected: (matches || []).reduce((sum: number, m: any) => sum + (Number(m.games_count || 1) * 10), 0),
         label: 'Performances Inseridas'
       },
       completion: {
-        percentage: matches?.length ? ((performancesCount || 0) / (matches.length * 10)) * 100 : 0,
+        percentage: (() => {
+          const expected = (matches || []).reduce((sum: number, m: any) => sum + (Number(m.games_count || 1) * 10), 0);
+          return expected > 0 ? ((performancesCount || 0) / expected) * 100 : 0;
+        })(),
         label: 'Completude da Rodada'
       }
     };

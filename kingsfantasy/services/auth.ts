@@ -61,9 +61,6 @@ export const AuthService = {
       
       const data = await res.json();
       
-      console.log('🔍 DEBUG SignUp - Status:', res.status);
-      console.log('🔍 DEBUG SignUp - Response:', JSON.stringify(data, null, 2));
-      
       if (!res.ok) {
         console.error('❌ SignUp Error:', data);
         const rawMsg = data.msg || data.error_description || data.error || 'Erro ao criar conta.';
@@ -91,7 +88,6 @@ export const AuthService = {
           }
         };
         
-        console.log('✅ Sessão criada com token:', session.user.id);
         localStorage.setItem('nexus_session', JSON.stringify(session));
         return { data: session, error: null };
       }
@@ -102,7 +98,6 @@ export const AuthService = {
         const emailConfirmedAt = data.email_confirmed_at || data.user?.email_confirmed_at;
 
         if (confirmationSentAt || !emailConfirmedAt) {
-          console.log('📧 Confirmação de email necessária');
           return { data: null, error: null, requiresEmailConfirmation: true };
         }
       }
@@ -134,9 +129,6 @@ export const AuthService = {
       
       const data = await res.json();
       
-      console.log('🔍 DEBUG SignIn - Status:', res.status);
-      console.log('🔍 DEBUG SignIn - Response:', JSON.stringify(data, null, 2));
-      
       if (!res.ok) {
         const errorMsg = data.error_description || data.error || 'E-mail ou senha inválidos.';
         console.error('❌ SignIn Error:', errorMsg);
@@ -167,7 +159,6 @@ export const AuthService = {
         }
       };
       
-      console.log('✅ Login bem-sucedido, userId:', session.user.id);
       localStorage.setItem('nexus_session', JSON.stringify(session));
       return { data: session, error: null };
     } catch (e: any) {
@@ -387,6 +378,54 @@ export const AuthService = {
   clearRecoveryState() {
     localStorage.removeItem('nexus_recovery_token');
     localStorage.removeItem('nexus_recovery_pending');
+  },
+
+  /**
+   * Refresh the access token using the stored refresh_token
+   * @returns New session or null if refresh failed
+   */
+  async refreshSession(): Promise<any | null> {
+    const session = this.getSession();
+    const refreshToken = session?.refresh_token;
+    if (!refreshToken) return null;
+
+    const anonKey = DataService.getAnonKey();
+    try {
+      const res = await fetch(`${DataService.SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: {
+          'apikey': anonKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+
+      if (!res.ok) {
+        console.warn('⚠️ Token refresh falhou, deslogando...');
+        this.signOut();
+        return null;
+      }
+
+      const data = await res.json();
+      if (!data.access_token) return null;
+
+      const decodedToken = decodeJWT(data.access_token);
+      const newSession = {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token || refreshToken,
+        user: {
+          id: decodedToken?.sub || session?.user?.id,
+          email: decodedToken?.email || session?.user?.email,
+          user_metadata: data.user?.user_metadata || session?.user?.user_metadata || {}
+        }
+      };
+
+      localStorage.setItem('nexus_session', JSON.stringify(newSession));
+      return newSession;
+    } catch (error) {
+      console.error('❌ Erro ao renovar token:', error);
+      return null;
+    }
   },
 
   /**

@@ -186,7 +186,7 @@ class ScraperService {
             triple_kill: perf.triple_kill || false,
             quadra_kill: perf.quadra_kill || false,
             penta_kill: perf.penta_kill || false,
-            is_winner: matchData.winner_id === matchData.team_a_id || matchData.winner_id === matchData.team_b_id
+            is_winner: await this.isPlayerOnWinningTeam(perf.player_id, matchData.winner_id, matchData.team_a_id, matchData.team_b_id)
           });
 
         if (perfError) {
@@ -251,6 +251,25 @@ class ScraperService {
       console.error(`❌ Error updating player stats:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Verifica se o jogador pertence ao time vencedor
+   */
+  private async isPlayerOnWinningTeam(
+    playerId: string,
+    winnerId: string,
+    teamAId: string,
+    teamBId: string
+  ): Promise<boolean> {
+    const { data: player } = await supabase
+      .from('players')
+      .select('team_id')
+      .eq('id', playerId)
+      .single();
+
+    if (!player) return false;
+    return String(player.team_id) === String(winnerId);
   }
 
   /**

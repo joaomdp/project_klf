@@ -68,14 +68,10 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     let result;
     try {
       if (isSignUp) {
-        console.log('🔍 Iniciando cadastro para:', email);
         result = await AuthService.signUp(email, password);
       } else {
-        console.log('🔍 Iniciando login para:', email);
         result = await AuthService.signIn(email, password);
       }
-
-      console.log('🔍 Resultado da autenticação:', result.error ? 'ERRO' : 'SUCESSO');
 
       if (result.requiresEmailConfirmation) {
         setPendingEmail(email);
@@ -88,7 +84,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           email: result.data.user?.email || email,
           avatar: result.data.user?.user_metadata?.avatar_url
         };
-        console.log('✅ Chamando onLoginSuccess com:', userPayload);
         onLoginSuccess(userPayload);
         setLoading(false);
       } else {
@@ -126,17 +121,24 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     }
 
     setIsSendingForgotPassword(true);
-    const result = await AuthService.requestPasswordReset(targetEmail);
-    setIsSendingForgotPassword(false);
+    try {
+      const result = await AuthService.requestPasswordReset(targetEmail);
 
-    if (!result.ok) {
-      setForgotPasswordMsg((result.error || 'ERRO AO ENVIAR RECUPERAÇÃO').toUpperCase());
-      showToast({ type: 'error', title: 'Falha ao enviar link', message: result.error || 'Erro ao enviar recuperação.' });
-      return;
+      if (!result.ok) {
+        setForgotPasswordMsg((result.error || 'ERRO AO ENVIAR RECUPERAÇÃO').toUpperCase());
+        showToast({ type: 'error', title: 'Falha ao enviar link', message: result.error || 'Erro ao enviar recuperação.' });
+        return;
+      }
+
+      setForgotPasswordMsg('LINK DE RECUPERAÇÃO ENVIADO. VERIFIQUE SEU E-MAIL.');
+      showToast({ type: 'success', title: 'Link enviado', message: `Verifique o e-mail ${targetEmail}.`, duration: 4000 });
+    } catch (error) {
+      console.error('Erro ao solicitar recuperação de senha:', error);
+      setForgotPasswordMsg('ERRO INESPERADO. TENTE NOVAMENTE.');
+      showToast({ type: 'error', title: 'Erro inesperado', message: 'Não foi possível enviar o link de recuperação.' });
+    } finally {
+      setIsSendingForgotPassword(false);
     }
-
-    setForgotPasswordMsg('LINK DE RECUPERAÇÃO ENVIADO. VERIFIQUE SEU E-MAIL.');
-    showToast({ type: 'success', title: 'Link enviado', message: `Verifique o e-mail ${targetEmail}.`, duration: 4000 });
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -156,21 +158,28 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     }
 
     setIsSubmittingResetPassword(true);
-    const recoveryToken = AuthService.getRecoveryToken();
-    const result = await AuthService.updatePassword(newPassword, recoveryToken);
-    setIsSubmittingResetPassword(false);
+    try {
+      const recoveryToken = AuthService.getRecoveryToken();
+      const result = await AuthService.updatePassword(newPassword, recoveryToken);
 
-    if (!result.ok) {
-      setResetPasswordMsg((result.error || 'ERRO AO ATUALIZAR SENHA').toUpperCase());
-      showToast({ type: 'error', title: 'Falha ao atualizar senha', message: result.error || 'Erro ao atualizar senha.' });
-      return;
+      if (!result.ok) {
+        setResetPasswordMsg((result.error || 'ERRO AO ATUALIZAR SENHA').toUpperCase());
+        showToast({ type: 'error', title: 'Falha ao atualizar senha', message: result.error || 'Erro ao atualizar senha.' });
+        return;
+      }
+
+      AuthService.clearRecoveryState();
+      setResetPasswordMsg('SENHA ATUALIZADA COM SUCESSO. FAÇA LOGIN.');
+      showToast({ type: 'success', title: 'Senha atualizada', message: 'Faça login com sua nova senha.', duration: 4000 });
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (error) {
+      console.error('Erro ao redefinir senha:', error);
+      setResetPasswordMsg('ERRO INESPERADO. TENTE NOVAMENTE.');
+      showToast({ type: 'error', title: 'Erro inesperado', message: 'Não foi possível redefinir a senha.' });
+    } finally {
+      setIsSubmittingResetPassword(false);
     }
-
-    AuthService.clearRecoveryState();
-    setResetPasswordMsg('SENHA ATUALIZADA COM SUCESSO. FAÇA LOGIN.');
-    showToast({ type: 'success', title: 'Senha atualizada', message: 'Faça login com sua nova senha.', duration: 4000 });
-    setNewPassword('');
-    setConfirmNewPassword('');
 
     setTimeout(() => {
       setIsResetPasswordOpen(false);

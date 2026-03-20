@@ -16,12 +16,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+if (!supabaseServiceKey) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('❌ SUPABASE_SERVICE_ROLE_KEY is required in production! Admin operations will fail without it.');
+  }
+  console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY not set. Admin operations may be limited by RLS.');
+}
+
 export const adminSupabase = supabaseServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey)
   : supabase;
 
-if (!supabaseServiceKey) {
-  console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY not set. Admin operations may be limited by RLS.');
-}
-
-console.log('✅ Supabase client initialized');

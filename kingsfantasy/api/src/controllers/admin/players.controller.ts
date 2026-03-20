@@ -182,7 +182,7 @@ export async function createPlayer(req: AuthenticatedRequest, res: Response) {
         name,
         role,
         team_id: team_id || null,
-        price: price ?? 20,
+        price: price ?? 10,
         points: points ?? 0,
         avg_points: avg_points ?? 0,
         kda: kda ?? '0.0',

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Page, UserTeam, Player, Role, Champion } from './types';
 import { INITIAL_BUDGET, MOCK_PLAYERS } from './constants'; 
 import { DataService } from './services/api';
@@ -81,18 +81,43 @@ const isTokenExpired = (token?: string | null) => {
     return payload.exp < now;
   } catch (error) {
     console.warn('⚠️ Falha ao validar expiração do token', error);
-    return false;
+    return true;
   }
 };
 
-const clearInvalidSession = () => {
+/** Retorna true se o token expira nos próximos N segundos */
+const isTokenExpiringSoon = (token?: string | null, thresholdSeconds = 300) => {
+  if (!token) return true;
+  try {
+    const base64Url = token.split('.')[1];
+    if (!base64Url) return true;
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(base64));
+    if (!payload?.exp) return false;
+    const now = Math.floor(Date.now() / 1000);
+    return payload.exp - now < thresholdSeconds;
+  } catch {
+    return true;
+  }
+};
+
+const clearInvalidSession = async () => {
   const sessionStr = localStorage.getItem('nexus_session');
   if (!sessionStr) return;
 
   try {
     const session = JSON.parse(sessionStr);
-    if (!session.access_token || !session.user?.id || isTokenExpired(session.access_token)) {
-      console.log('⚠️ Sessão inválida detectada, limpando...');
+    if (!session.access_token || !session.user?.id) {
+      localStorage.removeItem('nexus_session');
+      return;
+    }
+
+    if (isTokenExpired(session.access_token)) {
+      // Tentar refresh antes de limpar
+      if (session.refresh_token) {
+        const refreshed = await AuthService.refreshSession();
+        if (refreshed) return; // Refresh bem-sucedido
+      }
       localStorage.removeItem('nexus_session');
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('setup_complete_')) {
@@ -101,7 +126,6 @@ const clearInvalidSession = () => {
       });
     }
   } catch (e) {
-    console.log('⚠️ Erro ao parsear sessão, limpando...');
     localStorage.removeItem('nexus_session');
   }
 };
@@ -186,17 +210,26 @@ const AppContent: React.FC = () => {
 
   const persistTeam = useCallback((team: UserTeam) => {
     setUserTeam(team);
-    DataService.saveUserTeam(team);
+    DataService.saveUserTeam(team).catch((err) => {
+      console.error('❌ Erro ao persistir time:', err);
+    });
   }, []);
 
   const resetTeam = useCallback(() => {
-    setUserTeam(prev => ({
-      ...prev,
-      budget: prev.budget + Object.values(prev.players)
+    setUserTeam(prev => {
+      const refund = Object.values(prev.players)
         .filter((p): p is Player => !!p)
-        .reduce((sum, p) => sum + (p.price || 0), 0),
-      players: {},
-    }));
+        .reduce((sum, p) => sum + (p.price || 0), 0);
+      const cleared = {
+        ...prev,
+        budget: prev.budget + refund,
+        players: {},
+      };
+      DataService.saveUserTeam(cleared).catch((err) => {
+        console.error('❌ Erro ao persistir reset de time:', err);
+      });
+      return cleared;
+    });
   }, []);
 
   const showSaveError = useCallback(() => {
@@ -214,12 +247,16 @@ const AppContent: React.FC = () => {
   }, []);
 
   const loadCurrentRoundMatchups = useCallback(async () => {
-    const data = await DataService.getCurrentRoundMatchups();
-    setMarketMatchups(data.matches || []);
-    if (data.round?.round_number) {
-      setMarketRoundLabel(`rodada ${data.round.round_number}`);
-    } else {
-      setMarketRoundLabel(null);
+    try {
+      const data = await DataService.getCurrentRoundMatchups();
+      setMarketMatchups(data.matches || []);
+      if (data.round?.round_number) {
+        setMarketRoundLabel(`rodada ${data.round.round_number}`);
+      } else {
+        setMarketRoundLabel(null);
+      }
+    } catch (error) {
+      console.error('Falha ao carregar confrontos da rodada:', error);
     }
   }, []);
 
@@ -274,24 +311,28 @@ const AppContent: React.FC = () => {
   }, []);
 
   const refreshMarketStatus = useCallback(async () => {
-    const status = await DataService.getMarketStatus();
-    if (status) {
-      const nextState = Boolean(status.isOpen);
-      const previousState = lastKnownMarketState.current;
+    try {
+      const status = await DataService.getMarketStatus();
+      if (status) {
+        const nextState = Boolean(status.isOpen);
+        const previousState = lastKnownMarketState.current;
 
-      setMarketIsOpen(nextState);
-      lastKnownMarketState.current = nextState;
+        setMarketIsOpen(nextState);
+        lastKnownMarketState.current = nextState;
 
-      // Recarrega saldo/pontuacao ao detectar virada de estado do mercado
-      if (previousState !== null && previousState !== nextState) {
-        await syncUserTeamFromServer();
+        // Recarrega saldo/pontuacao ao detectar virada de estado do mercado
+        if (previousState !== null && previousState !== nextState) {
+          await syncUserTeamFromServer();
+        }
       }
+    } catch (error) {
+      console.error('Falha ao atualizar status do mercado:', error);
     }
   }, [syncUserTeamFromServer]);
 
   useEffect(() => {
     const initApp = async () => {
-      clearInvalidSession();
+      await clearInvalidSession();
       
       const callbackResult: any = AuthService.handleAuthCallback();
       const session = (callbackResult && !callbackResult.error) ? callbackResult : AuthService.getSession();
@@ -299,12 +340,8 @@ const AppContent: React.FC = () => {
       const hasSession = Boolean(session && session.access_token && session.user?.id);
         if (hasSession) {
         setIsLoading(true);
-        console.log('✅ Sessão válida encontrada, userId:', session.user?.id);
-        // Usuário autenticado - esconde landing page
         setShowLanding(false);
-        
-          // Busca dados essenciais em paralelo para reduzir tempo de carregamento
-          console.log('🔍 Buscando dados do usuário:', session.user.id);
+
           const [, , existingTeam] = await Promise.all([
             fetchPlayers(),
             checkAdminAccess(),
@@ -313,18 +350,12 @@ const AppContent: React.FC = () => {
           await Promise.all([loadCurrentRoundMatchups(), refreshMarketStatus()]);
         
         if (existingTeam) {
-          // Usuário já tem dados no banco - carrega e não precisa fazer onboarding
-          console.log('✅ Usuário existente encontrado no banco:', existingTeam.userName);
           setUserTeam(existingTeam);
           setIsAuthenticated(true);
           setNeedsOnboarding(false);
           
-          // Marca como setup completo no localStorage
           localStorage.setItem(`setup_complete_${session.user.id}`, 'true');
-          console.log('✅ Setup marcado como completo para:', session.user.id);
         } else {
-          // Usuário novo - precisa fazer onboarding
-          console.log('⚠️ Usuário novo detectado, iniciando onboarding');
           setIsAuthenticated(true);
           setNeedsOnboarding(true);
           
@@ -340,7 +371,6 @@ const AppContent: React.FC = () => {
           }));
         }
        } else {
-        console.log('ℹ️ Nenhuma sessão encontrada, mostrando landing page');
         setShowLanding(true);
         setIsAuthenticated(false);
         setNeedsOnboarding(false);
@@ -390,6 +420,21 @@ const AppContent: React.FC = () => {
     return () => clearInterval(interval);
   }, [refreshMarketStatus]);
 
+  // Token refresh automático — verifica a cada 2 minutos se o token vai expirar em breve
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const checkAndRefreshToken = async () => {
+      const session = AuthService.getSession();
+      if (session?.access_token && isTokenExpiringSoon(session.access_token, 300)) {
+        await AuthService.refreshSession();
+      }
+    };
+
+    const interval = setInterval(checkAndRefreshToken, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
   useEffect(() => {
     const handleMarketRefresh = () => {
       refreshMarketStatus();
@@ -408,8 +453,6 @@ const AppContent: React.FC = () => {
     try {
       const session = AuthService.getSession();
       if (session?.user?.id) {
-        // Busca jogadores, admin e time do usuário em paralelo
-        console.log('🔍 handleLoginSuccess - Verificando usuário:', session.user.id);
         const [, , existingTeam] = await Promise.all([
           fetchPlayers(),
           checkAdminAccess(),
@@ -418,16 +461,10 @@ const AppContent: React.FC = () => {
         await Promise.all([loadCurrentRoundMatchups(), refreshMarketStatus()]);
         
            if (existingTeam) {
-            // Usuário já existe - carrega os dados e pula onboarding
-            console.log('✅ handleLoginSuccess - Usuário existente:', existingTeam.userName);
             setUserTeam(existingTeam);
           setNeedsOnboarding(false);
           localStorage.setItem(`setup_complete_${session.user.id}`, 'true');
-          console.log('✅ handleLoginSuccess - Setup marcado como completo');
         } else {
-          // Usuário novo - precisa fazer onboarding
-          console.log('⚠️ handleLoginSuccess - Novo usuário, iniciando onboarding');
-          // Define o userName baseado nos dados disponíveis
           const userName = getUserNameFromSession(session);
           const avatar = userData.avatar || getAvatarFromSession(session, userName, userTeam.avatar);
           
@@ -440,8 +477,6 @@ const AppContent: React.FC = () => {
           setNeedsOnboarding(true);
         }
       } else {
-        // Fallback: assume que é novo usuário
-        console.log('⚠️ handleLoginSuccess - Sem session.user.id, assumindo novo usuário');
         setNeedsOnboarding(true);
       }
     } finally {
@@ -450,11 +485,8 @@ const AppContent: React.FC = () => {
   };
 
   const handleOnboardingComplete = async (data: { userName: string; teamName: string; avatar: string; favoriteTeam: string }) => {
-    console.log('🔍 DEBUG - handleOnboardingComplete CHAMADO com data:', data);
-    
     const session = AuthService.getSession();
-    console.log('🔍 DEBUG - Session obtida:', session?.user?.id ? 'OK' : 'NULL');
-    
+
     if (session?.user?.id) {
       localStorage.setItem(`setup_complete_${session.user.id}`, 'true');
     }
@@ -473,7 +505,6 @@ const AppContent: React.FC = () => {
 
     // Salva imediatamente no banco de dados para garantir persistência
     if (session?.user?.id) {
-      console.log('🔍 DEBUG - Salvando userTeam com userId:', session.user.id);
       const createResult = await DataService.createUserTeam(updatedTeam as any);
       if (!createResult.ok) {
         showToast({
@@ -485,12 +516,7 @@ const AppContent: React.FC = () => {
         return;
       }
       
-      console.log('🔍 DEBUG - Chamando joinDefaultLeagues com:', {
-        userId: session.user.id,
-        favoriteTeam: data.favoriteTeam
-      });
-      const leagueResult = await DataService.joinDefaultLeagues(session.user.id, data.favoriteTeam);
-      console.log('🔍 DEBUG - Resultado joinDefaultLeagues:', leagueResult);
+      await DataService.joinDefaultLeagues(session.user.id, data.favoriteTeam);
     } else {
       console.error('❌ session.user.id é NULL - não foi possível adicionar às ligas!');
       showToast({
@@ -506,9 +532,9 @@ const AppContent: React.FC = () => {
     setCurrentPage('dashboard');
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     AuthService.signOut();
-  };
+  }, []);
   
   // Atalhos de teclado
   useKeyboardShortcuts([
@@ -590,7 +616,35 @@ const AppContent: React.FC = () => {
     }
   ]);
 
-  const handleOpenChampionSelector = (player: Player) => {
+  const teamMatchups = useMemo(() => {
+    return marketMatchups.reduce<Record<string, Array<{ opponentName: string; opponentLogoUrl?: string; scheduledTime?: string | null }>>>((acc, match) => {
+      const teamAId = String(match.team_a_id);
+      const teamBId = String(match.team_b_id);
+      const teamAName = match.team_a?.name || teamAId;
+      const teamBName = match.team_b?.name || teamBId;
+      const teamALogo = match.team_a?.logo_url ? DataService.getStorageUrl('teams', match.team_a.logo_url) : undefined;
+      const teamBLogo = match.team_b?.logo_url ? DataService.getStorageUrl('teams', match.team_b.logo_url) : undefined;
+
+      if (!acc[teamAId]) acc[teamAId] = [];
+      if (!acc[teamBId]) acc[teamBId] = [];
+
+      acc[teamAId].push({
+        opponentName: teamBName,
+        opponentLogoUrl: teamBLogo,
+        scheduledTime: match.scheduled_time
+      });
+
+      acc[teamBId].push({
+        opponentName: teamAName,
+        opponentLogoUrl: teamALogo,
+        scheduledTime: match.scheduled_time
+      });
+
+      return acc;
+    }, {} as Record<string, Array<{ opponentName: string; opponentLogoUrl?: string; scheduledTime?: string | null }>>);
+  }, [marketMatchups]);
+
+  const handleOpenChampionSelector = useCallback((player: Player) => {
     if (!canEditMarket) {
       showToast({
         type: 'warning',
@@ -602,20 +656,20 @@ const AppContent: React.FC = () => {
     }
     const currentPlayerInRole = userTeam.players[player.role];
     const availableFunds = userTeam.budget + (currentPlayerInRole?.price || 0);
-    if (availableFunds < player.price) return; 
+    if (availableFunds < player.price) return;
     setPendingPlayer(player);
-  };
+  }, [canEditMarket, userTeam.players, userTeam.budget, showToast]);
 
-  const handleHirePlayer = (champion: Champion) => {
+  const handleHirePlayer = useCallback((champion: Champion) => {
     if (!pendingPlayer) return;
     const playerToHire = { ...pendingPlayer, selectedChampion: champion };
     const currentPlayerInRole = userTeam.players[playerToHire.role];
     let newBudget = userTeam.budget;
     if (currentPlayerInRole) newBudget += currentPlayerInRole.price;
     newBudget -= playerToHire.price;
-    
+
     const newPlayers = { ...userTeam.players, [playerToHire.role]: playerToHire };
-    
+
     const updatedTeam = {
       ...userTeam,
       players: newPlayers,
@@ -623,16 +677,16 @@ const AppContent: React.FC = () => {
     };
     persistTeam(updatedTeam);
     setPendingPlayer(null);
-    
+
     showToast({
       type: 'success',
       title: 'Jogador contratado!',
       message: `${playerToHire.name} foi adicionado à sua escalação`,
       duration: 4000
     });
-  };
+  }, [pendingPlayer, userTeam, persistTeam, showToast]);
 
-  const handleFirePlayer = (role: Role) => {
+  const handleFirePlayer = useCallback((role: Role) => {
     if (!canEditMarket) {
       showToast({
         type: 'warning',
@@ -644,25 +698,25 @@ const AppContent: React.FC = () => {
     }
     const playerToFire = userTeam.players[role];
     if (!playerToFire) return;
-    
+
     const newPlayers = { ...userTeam.players, [role]: undefined };
-    
+
     const updatedTeam = {
       ...userTeam,
       budget: userTeam.budget + playerToFire.price,
       players: newPlayers,
     };
     persistTeam(updatedTeam);
-    
+
     showToast({
       type: 'info',
       title: 'Jogador dispensado',
       message: `${playerToFire.name} foi removido da escalação`,
       duration: 3000
     });
-  };
+  }, [canEditMarket, userTeam, persistTeam, showToast]);
 
-  const handleNavigate = (page: Page, leagueId?: string) => {
+  const handleNavigate = useCallback((page: Page, leagueId?: string) => {
     if (page === 'market' || page === 'dashboard') {
       syncUserTeamFromServer();
     }
@@ -673,9 +727,9 @@ const AppContent: React.FC = () => {
     } else if (page !== 'ranking') {
       setSelectedLeagueId(undefined);
     }
-  };
+  }, [syncUserTeamFromServer]);
 
-  const handleConfirmLineup = async () => {
+  const handleConfirmLineup = useCallback(async () => {
     if (!canEditMarket) {
       showToast({
         type: 'warning',
@@ -687,25 +741,33 @@ const AppContent: React.FC = () => {
     }
 
     try {
-      // Salva a escalação no banco de dados
-      const success = await DataService.saveUserTeam(userTeam);
-      
-      if (success) {
+      // Salva via endpoint seguro com validação de budget server-side
+      const result = await DataService.saveLineupSecure(userTeam.players);
+
+      if (result.success) {
+        // Atualiza budget local com o valor validado pelo servidor
+        if (result.budget !== undefined) {
+          setUserTeam(prev => ({ ...prev, budget: result.budget! }));
+        }
         showToast({
           type: 'success',
           title: 'Escalação Confirmada!',
           message: 'Sua escalação foi salva com sucesso.',
           duration: 3000
         });
-        // Permanece na página de mercado
       } else {
-        showSaveError();
+        showToast({
+          type: 'error',
+          title: 'Erro ao Salvar',
+          message: result.error || 'Não foi possível confirmar sua escalação.',
+          duration: 5000
+        });
       }
     } catch (error) {
       console.error('❌ App - Erro ao confirmar escalação:', error);
       showSaveError();
     }
-  };
+  }, [canEditMarket, userTeam.players, showToast, showSaveError]);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -715,31 +777,7 @@ const AppContent: React.FC = () => {
           <Market
             players={players}
             userTeam={userTeam}
-            teamMatchups={marketMatchups.reduce<Record<string, Array<{ opponentName: string; opponentLogoUrl?: string; scheduledTime?: string | null }>>>((acc, match) => {
-              const teamAId = String(match.team_a_id);
-              const teamBId = String(match.team_b_id);
-              const teamAName = match.team_a?.name || teamAId;
-              const teamBName = match.team_b?.name || teamBId;
-              const teamALogo = match.team_a?.logo_url ? DataService.getStorageUrl('teams', match.team_a.logo_url) : undefined;
-              const teamBLogo = match.team_b?.logo_url ? DataService.getStorageUrl('teams', match.team_b.logo_url) : undefined;
-
-              if (!acc[teamAId]) acc[teamAId] = [];
-              if (!acc[teamBId]) acc[teamBId] = [];
-
-              acc[teamAId].push({
-                opponentName: teamBName,
-                opponentLogoUrl: teamBLogo,
-                scheduledTime: match.scheduled_time
-              });
-
-              acc[teamBId].push({
-                opponentName: teamAName,
-                opponentLogoUrl: teamALogo,
-                scheduledTime: match.scheduled_time
-              });
-
-              return acc;
-            }, {} as Record<string, Array<{ opponentName: string; opponentLogoUrl?: string; scheduledTime?: string | null }>>)}
+            teamMatchups={teamMatchups}
             currentRoundLabel={marketRoundLabel}
             isMarketOpen={canEditMarket}
             onHire={handleOpenChampionSelector}
@@ -826,7 +864,6 @@ const AppContent: React.FC = () => {
               onClose={() => setIsCreateLeagueOpen(false)}
               userId={userTeam.userId}
               onSuccess={(leagueCode: string, leagueName: string) => {
-                console.log("✅ Liga criada com sucesso! Código:", leagueCode);
                 setCreatedLeagueCode(leagueCode);
                 setCreatedLeagueName(leagueName);
                 setIsCreateLeagueOpen(false);

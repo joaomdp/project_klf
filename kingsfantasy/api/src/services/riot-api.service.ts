@@ -191,7 +191,8 @@ class RiotAPIService {
     try {
       await this.rateLimiter.waitIfNeeded();
 
-      const response = await this.platformClient.get<string[]>(
+      // Match V5 usa endpoint regional (americas), não platform (br1)
+      const response = await this.accountClient.get<string[]>(
         `/lol/match/v5/matches/by-puuid/${puuid}/ids`,
         {
           params: {
@@ -216,11 +217,13 @@ class RiotAPIService {
   /**
    * Get detailed match information
    */
-  async getMatchDetails(matchId: string): Promise<RiotMatch | null> {
+  async getMatchDetails(matchId: string, retries: number = 0): Promise<RiotMatch | null> {
+    const MAX_RETRIES = 3;
     try {
       await this.rateLimiter.waitIfNeeded();
 
-      const response = await this.platformClient.get<RiotMatch>(
+      // Match V5 usa endpoint regional (americas), não platform (br1)
+      const response = await this.accountClient.get<RiotMatch>(
         `/lol/match/v5/matches/${matchId}`
       );
 
@@ -228,10 +231,11 @@ class RiotAPIService {
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError;
-        if (axiosError.response?.status === 429) {
-          console.warn('⚠️  Rate limit atingido, aguardando...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          return this.getMatchDetails(matchId); // Retry
+        if (axiosError.response?.status === 429 && retries < MAX_RETRIES) {
+          const delay = Math.min(2000 * Math.pow(2, retries), 10000); // Backoff exponencial: 2s, 4s, 8s
+          console.warn(`⚠️  Rate limit atingido, tentativa ${retries + 1}/${MAX_RETRIES}, aguardando ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.getMatchDetails(matchId, retries + 1);
         }
         console.error(`❌ Erro ao buscar detalhes da partida ${matchId}:`, axiosError.message);
       }

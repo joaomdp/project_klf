@@ -4,6 +4,7 @@ import { UserTeam, Role, Player } from '../types';
 import PlayerImage from './PlayerImage';
 import TeamLogo from './TeamLogo';
 import MatchHistoryModal from './MatchHistoryModal';
+import PaiCoin from './PaiCoin';
 
 interface SquadBuilderProps {
   userTeam: UserTeam;
@@ -155,7 +156,7 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
             label="PAITRIMÔNIO" 
             value={formatValue(userTeam.budget)} 
             isCoin={true}
-            icon={<img src="https://i.imgur.com/4odZyzF.png" className="w-8 h-8 object-contain invert-[0.1] sepia-[1] saturate-[5] hue-rotate-[210deg]" alt="Coin" />} 
+            icon={<PaiCoin size="md" />}
           />
           <PowerModule 
             label="PONTOS NA RODADA" 

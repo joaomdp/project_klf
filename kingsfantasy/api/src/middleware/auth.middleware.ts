@@ -58,9 +58,6 @@ export async function authMiddleware(
       role: user.user_metadata?.role || 'user'
     };
 
-    console.log(`✅ Authenticated user: ${req.user.email} (${req.user.id})`);
-    
-    // Continuar para o próximo middleware
     next();
 
   } catch (error) {
@@ -127,9 +124,6 @@ export function adminMiddleware(
       });
     }
 
-    console.log(`✅ Admin access granted: ${req.user.email}`);
-    
-    // Usuário é admin, continuar
     next();
 
   } catch (error) {

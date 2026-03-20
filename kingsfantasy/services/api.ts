@@ -278,7 +278,6 @@ export const DataService = {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/players?select=id&limit=1`, {
         headers: buildAuthHeaders(anonKey, userToken)
       });
-      console.log('🔍 DEBUG checkConnection - status:', res.status);
       return { ok: res.ok };
     } catch (e) {
       return { ok: false, error: 'Erro de rede' };
@@ -384,7 +383,6 @@ export const DataService = {
       const response = await fetch(`${SUPABASE_URL}/rest/v1/teams?select=*`, {
         headers: buildAuthHeaders(anonKey, userToken)
       });
-      console.log('🔍 DEBUG getTeams - status:', response.status);
       if (!response.ok) return [];
       const data = await response.json();
       return data.map((t: any) => ({
@@ -487,11 +485,9 @@ export const DataService = {
         headers: buildAuthHeaders(anonKey, userToken, { includeContentType: true })
       });
 
-      console.log('🔍 DEBUG getPlayers - status:', response.status);
       if (!response.ok) return [];
       
       const rawData = await response.json();
-      console.log('🔍 DEBUG getPlayers - Total jogadores:', rawData.length);
       
       return rawData.map((item: any) => {
         const teamData = item.teams || item.team || {};
@@ -519,7 +515,6 @@ export const DataService = {
         };
         
         if (item.role !== mappedRole) {
-          console.log(`🔄 Mapeado: "${item.role}" → ${mappedRole} (${item.name})`);
         }
         
         return player;
@@ -570,7 +565,6 @@ export const DataService = {
           return false;
         }
         
-        console.log('✅ Dados do usuário atualizados com sucesso');
         return true;
       } else {
         // INSERT - novo usuário, cria registro
@@ -586,7 +580,6 @@ export const DataService = {
           return false;
         }
         
-        console.log('✅ Novo usuário criado com sucesso');
         return true;
       }
     } catch (error) {
@@ -599,13 +592,11 @@ export const DataService = {
     const anonKey = this.getAnonKey();
     const userToken = this.getUserToken();
     logAuthDebug('getUserTeam', anonKey, userToken);
-    console.log('🔍 DEBUG getUserTeam - userId:', userId);
     try {
       const response = await fetch(`${SUPABASE_URL}/rest/v1/user_teams?user_id=eq.${userId}&select=*`, {
         headers: buildAuthHeaders(anonKey, userToken, { includeContentType: true })
       });
 
-      console.log('🔍 DEBUG getUserTeam - status:', response.status);
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erro getUserTeam:', errorText);
@@ -744,7 +735,6 @@ export const DataService = {
       // Adiciona o criador como membro da liga
       await this.joinLeague(code, leagueData.createdBy);
 
-      console.log('✅ Liga criada com sucesso:', leagueId, code);
       return { ok: true, leagueId, code };
     } catch (error) {
       console.error('❌ Erro ao criar liga:', error);
@@ -759,7 +749,6 @@ export const DataService = {
     const anonKey = this.getAnonKey();
     const userToken = this.getUserToken();
     
-    console.log('🔍 DEBUG joinLeague - Input:', { code, userId });
     
     if (!userToken) {
       return { ok: false, error: 'Usuário não autenticado' };
@@ -774,14 +763,12 @@ export const DataService = {
         }
       );
 
-      console.log('🔍 DEBUG - League response status:', leagueResponse.status);
 
       if (!leagueResponse.ok) {
         return { ok: false, error: 'Liga não encontrada' };
       }
 
       const leagues = await leagueResponse.json();
-      console.log('🔍 DEBUG - Ligas encontradas:', leagues);
       
       if (leagues.length === 0) {
         console.warn('⚠️ Nenhuma liga encontrada com código:', code);
@@ -789,14 +776,12 @@ export const DataService = {
       }
 
       const leagueId = leagues[0].id;
-      console.log('🔍 DEBUG - League ID:', leagueId);
 
       // Adiciona o usuário como membro
       const payload = {
         league_id: leagueId,
         user_id: userId
       };
-      console.log('🔍 DEBUG - Payload para inserção:', payload);
       
       const memberResponse = await fetch(`${SUPABASE_URL}/rest/v1/league_members`, {
         method: 'POST',
@@ -804,7 +789,6 @@ export const DataService = {
         body: JSON.stringify(payload)
       });
 
-      console.log('🔍 DEBUG - Member insert response status:', memberResponse.status);
 
       if (!memberResponse.ok) {
         const errorText = await memberResponse.text();
@@ -817,7 +801,6 @@ export const DataService = {
         return { ok: false, error: errorText };
       }
 
-      console.log('✅ Membro inserido com sucesso na liga:', code);
       return { ok: true };
     } catch (error) {
       console.error('❌ Exception em joinLeague:', error);
@@ -832,7 +815,6 @@ export const DataService = {
     const anonKey = this.getAnonKey();
     const userToken = this.getUserToken();
     
-    console.log('🔍 DEBUG getUserLeagues - userId:', userId);
     
     try {
       // Primeiro busca os IDs das ligas que o usuário é membro
@@ -843,7 +825,6 @@ export const DataService = {
         }
       );
 
-      console.log('🔍 DEBUG - Members response status:', membersResponse.status);
 
       if (!membersResponse.ok) {
         const errorText = await membersResponse.text();
@@ -859,7 +840,6 @@ export const DataService = {
         
         if (fallbackResponse.ok) {
           const publicLeagues = await fallbackResponse.json();
-          console.log('🔍 DEBUG - Fallback: retornando', publicLeagues.length, 'ligas públicas');
           return publicLeagues.map(mapLeagueResponse);
         }
         
@@ -867,13 +847,10 @@ export const DataService = {
       }
 
       const members = await membersResponse.json();
-      console.log('🔍 DEBUG - Members data:', members);
       
       const leagueIds = members.map((m: any) => m.league_id);
-      console.log('🔍 DEBUG - League IDs:', leagueIds);
 
       if (leagueIds.length === 0) {
-        console.log('⚠️ Usuário não é membro de nenhuma liga');
         return [];
       }
 
@@ -971,7 +948,6 @@ export const DataService = {
       );
 
       if (response.ok) {
-        console.log('✅ Usuário saiu da liga com sucesso');
       }
       return response.ok;
     } catch (error) {
@@ -987,26 +963,21 @@ export const DataService = {
   async joinDefaultLeagues(userId: string, favoriteTeam?: string): Promise<{ok: boolean, error?: string}> {
     // Esta função não precisa de token pois usa joinLeague que já valida
     try {
-      console.log('🔍 DEBUG joinDefaultLeagues - Input:', { userId, favoriteTeam });
       
       // Sempre adiciona na liga Kings Lendas Global
       const globalResult = await this.joinLeague('KINGSLENDAS', userId);
-      console.log('🔍 DEBUG - Global league result:', globalResult);
 
       // Se tiver time favorito, adiciona na liga do time
       if (favoriteTeam) {
         const teamCode = TEAM_CODE_MAP[favoriteTeam];
-        console.log('🔍 DEBUG - Team mapping:', { favoriteTeam, teamCode });
         
         if (teamCode) {
           const teamResult = await this.joinLeague(teamCode, userId);
-          console.log('🔍 DEBUG - Team league result:', teamResult);
         } else {
           console.warn('⚠️ Time não encontrado no mapeamento:', favoriteTeam);
         }
       }
 
-      console.log('✅ joinDefaultLeagues concluído com sucesso');
       return { ok: true };
     } catch (error) {
       console.error('❌ Erro ao adicionar usuário nas ligas padrão:', error);
@@ -1766,6 +1737,38 @@ export const DataService = {
       return { ok: true };
     } catch (error) {
       return { ok: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Salva lineup via backend com validação server-side de budget
+   */
+  async saveLineupSecure(lineup: UserTeam['players']): Promise<{ success: boolean; budget?: number; error?: string }> {
+    const userToken = this.getUserToken();
+    if (!userToken) {
+      return { success: false, error: 'Usuário não autenticado' };
+    }
+
+    try {
+      const simplifiedLineup = buildSimplifiedLineup(lineup);
+      const response = await fetch(`${this.API_BASE_URL}/lineup/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        },
+        body: JSON.stringify({ lineup: simplifiedLineup })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Erro ao salvar escalação' };
+      }
+
+      return { success: true, budget: data.budget };
+    } catch (error) {
+      console.error('❌ Erro ao salvar lineup seguro:', error);
+      return { success: false, error: 'Erro de conexão ao salvar escalação' };
     }
   },
 

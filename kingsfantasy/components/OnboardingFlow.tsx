@@ -1,7 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { CHAMPIONS_LIST } from '../constants';
 import { DataService } from '../services/api';
-import { AuthService } from '../services/auth';
 import { useToast } from './Toast';
 
 interface OnboardingFlowProps {
@@ -14,23 +13,17 @@ const COLORS = ['#FFFFFF', '#6366F1', '#FFB800', '#00FF94', '#00E0FF', '#FF4655'
 
 // Lista de nomes reservados (Times oficiais)
 const RESERVED_NAMES = ["T1", "LOUD", "PAIN", "FURIA", "FLUXO", "RED CANIDS", "KABUM", "INTZ", "LOS GRANDES", "ITAFANTASY", "LIBERTY", "VIVO KEYD", "KEYD"];
-const OTP_MAX_ATTEMPTS = 5;
-const OTP_PROGRESSIVE_LOCKS_MS = [10 * 60 * 1000, 30 * 60 * 1000, 60 * 60 * 1000];
 
 const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
   const { showToast } = useToast();
-  // Get user email from session
-  const session = AuthService.getSession();
-  const userEmail = session?.user?.email || '';
-  
-  const [step, setStep] = useState<'verify' | 'username' | 'fav-team' | 'team-name' | 'avatar'>('verify');
-  const [code, setCode] = useState(['', '', '', '', '', '']);
+
+  const [step, setStep] = useState<'username' | 'fav-team' | 'team-name' | 'avatar'>('username');
   const [userName, setUserName] = useState('');
   const [teamName, setTeamName] = useState('');
   const [dbTeams, setDbTeams] = useState<{id: string, name: string, logo: string}[]>([]);
   const [selectedFavTeam, setSelectedFavTeam] = useState<any>(null);
   const [selectedAvatar, setSelectedAvatar] = useState('');
-  
+
   // Validation States
   const [userNameError, setUserNameError] = useState('');
   const [isCheckingUserName, setIsCheckingUserName] = useState(false);
@@ -42,19 +35,11 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
 
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
   const [isLoadingTeams, setIsLoadingTeams] = useState(false);
-  const [isSendingCode, setIsSendingCode] = useState(false);
-  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
-  const [resendCountdown, setResendCountdown] = useState(0);
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  const [lockUntil, setLockUntil] = useState(0);
-  const [nowTs, setNowTs] = useState(Date.now());
-  const [lockLevel, setLockLevel] = useState(0);
   
   const [shieldShape, setShieldShape] = useState(SHIELD_SHAPES[0]);
   const [shieldColor, setShieldColor] = useState('#6366F1');
   const [shieldSymbol, setShieldSymbol] = useState(SHIELD_SYMBOLS[2]);
 
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const teamButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
@@ -85,198 +70,6 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
     }
   }, [selectedFavTeam]);
 
-  useEffect(() => {
-    if (resendCountdown <= 0) return;
-    const timer = setInterval(() => {
-      setResendCountdown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [resendCountdown]);
-
-  useEffect(() => {
-    const isLocked = lockUntil > Date.now();
-    if (!isLocked) return;
-
-    const timer = setInterval(() => {
-      setNowTs(Date.now());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [lockUntil]);
-
-  const getOtpStateStorageKey = () => `otp_guard_${(userEmail || '').toLowerCase()}`;
-
-  const saveOtpState = (attempts: number, until: number) => {
-    if (!userEmail) return;
-    localStorage.setItem(getOtpStateStorageKey(), JSON.stringify({ attempts, lockUntil: until, lockLevel }));
-  };
-
-  const saveOtpStateWithLevel = (attempts: number, until: number, level: number) => {
-    if (!userEmail) return;
-    localStorage.setItem(getOtpStateStorageKey(), JSON.stringify({ attempts, lockUntil: until, lockLevel: level }));
-  };
-
-  const clearOtpState = () => {
-    if (!userEmail) return;
-    localStorage.removeItem(getOtpStateStorageKey());
-    setFailedAttempts(0);
-    setLockUntil(0);
-    setLockLevel(0);
-  };
-
-  useEffect(() => {
-    if (!userEmail) return;
-    const raw = localStorage.getItem(getOtpStateStorageKey());
-    if (!raw) return;
-
-    try {
-      const parsed = JSON.parse(raw);
-      const attempts = Number(parsed?.attempts || 0);
-      const until = Number(parsed?.lockUntil || 0);
-      const level = Number(parsed?.lockLevel || 0);
-      setFailedAttempts(attempts);
-      setLockUntil(until);
-      setLockLevel(level);
-    } catch {
-      localStorage.removeItem(getOtpStateStorageKey());
-    }
-  }, [userEmail]);
-
-  const lockSecondsRemaining = Math.max(0, Math.ceil((lockUntil - nowTs) / 1000));
-  const isOtpLocked = lockSecondsRemaining > 0;
-
-  const maskEmail = (email: string) => {
-    if (!email || !email.includes('@')) return email;
-    const [local, domain] = email.split('@');
-    if (!local) return `***@${domain}`;
-    if (local.length <= 2) return `${local[0] || '*'}***@${domain}`;
-    const visible = local.slice(0, 2);
-    return `${visible}***@${domain}`;
-  };
-
-  const getLockDurationMsByLevel = (level: number) => {
-    if (level <= 0) return OTP_PROGRESSIVE_LOCKS_MS[0];
-    const idx = Math.min(level - 1, OTP_PROGRESSIVE_LOCKS_MS.length - 1);
-    return OTP_PROGRESSIVE_LOCKS_MS[idx];
-  };
-
-  const sendVerificationCode = async () => {
-    if (isOtpLocked) {
-      showToast({
-        type: 'warning',
-        title: 'Muitas tentativas',
-        message: `Aguarde ${lockSecondsRemaining}s para reenviar o código.`
-      });
-      return;
-    }
-
-    if (!userEmail) {
-      showToast({
-        type: 'error',
-        title: 'Erro de verificação',
-        message: 'Não foi possível identificar seu e-mail.'
-      });
-      return;
-    }
-
-    setIsSendingCode(true);
-    const result = await AuthService.requestEmailOtp(userEmail);
-    setIsSendingCode(false);
-
-    if (!result.ok) {
-      showToast({
-        type: 'error',
-        title: 'Falha ao enviar código',
-        message: result.error || 'Erro ao enviar código de verificação.'
-      });
-      return;
-    }
-
-    showToast({
-      type: 'success',
-      title: 'Código enviado',
-      message: `Enviamos um código para ${userEmail}.`,
-      duration: 4000
-    });
-    setResendCountdown(60);
-  };
-
-  useEffect(() => {
-    if (step !== 'verify') return;
-    if (isOtpLocked) return;
-    sendVerificationCode();
-  }, [step, userEmail, isOtpLocked]);
-
-  const handleCodeChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
-    const newCode = [...code];
-    newCode[index] = value.substring(value.length - 1);
-    setCode(newCode);
-    if (value && index < 5) inputRefs.current[index + 1]?.focus();
-  };
-
-    const handleVerifyCodeSubmit = async () => {
-    const token = code.join('');
-    if (token.length !== 6) {
-      showToast({
-        type: 'error',
-        title: 'Código inválido',
-        message: 'O código deve ter exatamente 6 dígitos.'
-      });
-      return;
-    }
-
-    if (isOtpLocked) {
-      showToast({
-        type: 'warning',
-        title: 'Verificação bloqueada',
-        message: `Aguarde ${lockSecondsRemaining}s antes de tentar novamente.`
-      });
-      return;
-    }
-
-    setIsVerifyingCode(true);
-    const result = await AuthService.verifyEmailOtp(userEmail, token);
-    setIsVerifyingCode(false);
-
-    if (!result.ok) {
-      const nextAttempts = failedAttempts + 1;
-
-      if (nextAttempts >= OTP_MAX_ATTEMPTS) {
-        const nextLockLevel = Math.min(lockLevel + 1, OTP_PROGRESSIVE_LOCKS_MS.length);
-        const lockMs = getLockDurationMsByLevel(nextLockLevel);
-        const until = Date.now() + lockMs;
-        setFailedAttempts(0);
-        setLockUntil(until);
-        setLockLevel(nextLockLevel);
-        setNowTs(Date.now());
-        saveOtpStateWithLevel(0, until, nextLockLevel);
-        showToast({
-          type: 'error',
-          title: 'Muitas tentativas',
-          message: `Verificação bloqueada por ${Math.floor(lockMs / 60000)} minutos.`
-        });
-      } else {
-        setFailedAttempts(nextAttempts);
-        saveOtpState(nextAttempts, lockUntil);
-        showToast({
-          type: 'error',
-          title: 'Código inválido',
-          message: `Tentativa ${nextAttempts}/${OTP_MAX_ATTEMPTS}.`
-        });
-      }
-      return;
-    }
-
-    clearOtpState();
-    showToast({
-      type: 'success',
-      title: 'Verificação concluída',
-      message: 'Código validado com sucesso.',
-      duration: 3000
-    });
-    setStep('username');
-  };
 
   const handleUserNameSubmit = async () => {
     const normalizedUserName = userName.toUpperCase().trim();
@@ -367,40 +160,6 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
     <div className="fixed inset-0 z-[6000] bg-[#0B0411] flex flex-col items-center justify-center overflow-y-auto min-h-[100dvh] font-inter">
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
       <div className="absolute inset-0 bg-gradient-to-b from-[#6366F1]/5 via-transparent to-transparent pointer-events-none"></div>
-
-      {step === 'verify' && (
-         <div className="w-full max-w-md p-6 sm:p-10 space-y-12 animate-in fade-in relative z-10">
-            <div className="text-center space-y-4">
-              <h2 className="text-white font-orbitron font-black text-3xl uppercase tracking-tighter">VERIFICAÇÃO</h2>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed">DIGITE O CÓDIGO ENVIADO PARA<br/>{maskEmail(userEmail)}</p>
-            </div>
-            <div className="flex justify-center gap-3">
-              {code.map((digit, idx) => (
-                <input key={idx} ref={el => inputRefs.current[idx] = el} type="text" maxLength={1} value={digit} onChange={e => handleCodeChange(idx, e.target.value)} className="w-14 h-20 bg-white/5 border border-white/10 rounded-2xl text-center text-3xl font-orbitron font-black text-white focus:outline-none focus:border-[#6366F1] transition-all shadow-inner" />
-              ))}
-            </div>
-
-            {isOtpLocked && (
-              <p className="text-[10px] font-black text-amber-400 uppercase text-center bg-amber-500/10 py-3 px-4 rounded-xl border border-amber-500/20">
-                BLOQUEADO TEMPORARIAMENTE • AGUARDE {lockSecondsRemaining}s
-              </p>
-            )}
-
-            <div className="space-y-3">
-              <button onClick={handleVerifyCodeSubmit} disabled={isVerifyingCode || isOtpLocked || code.join('').length < 6} className="w-full py-6 bg-[#6366F1] text-black font-black text-sm uppercase tracking-widest rounded-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-[0_20px_50px_rgba(94,108,255,0.3)] disabled:opacity-20">
-                {isVerifyingCode ? 'VALIDANDO...' : 'CONECTAR'}
-              </button>
-              <button
-                type="button"
-                onClick={sendVerificationCode}
-                disabled={isSendingCode || isOtpLocked || resendCountdown > 0}
-                className="w-full py-4 bg-white/5 border border-white/10 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:border-[#6366F1]/40 transition-all disabled:opacity-30"
-              >
-                {isSendingCode ? 'REENVIANDO...' : resendCountdown > 0 ? `REENVIAR EM ${resendCountdown}s` : 'REENVIAR CÓDIGO'}
-              </button>
-            </div>
-         </div>
-      )}
 
       {step === 'username' && (
         <div className="w-full max-w-md p-6 sm:p-10 space-y-8 animate-in fade-in relative z-10">

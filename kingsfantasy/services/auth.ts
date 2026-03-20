@@ -432,7 +432,13 @@ export const AuthService = {
    * Signs out current user and clears session
    */
   signOut() {
+    // Limpa sessão e caches de autenticação
     localStorage.removeItem('nexus_session');
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('otp_guard_') || key.startsWith('setup_complete_')) {
+        localStorage.removeItem(key);
+      }
+    });
     window.location.reload();
   },
 

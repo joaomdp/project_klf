@@ -58,50 +58,30 @@ export interface RiotMatch {
  * Development Key limits: 20/sec, 100/2min
  */
 class RateLimiter {
-  private requestsLastSecond: number = 0;
-  private requestsLast2Minutes: number = 0;
-  private lastSecondReset: number = Date.now();
-  private last2MinutesReset: number = Date.now();
+  private requestTimestamps: number[] = [];
 
   private readonly PER_SECOND_LIMIT = 18; // Safe margin (20 max)
   private readonly PER_2_MINUTES_LIMIT = 90; // Safe margin (100 max)
 
   async waitIfNeeded(): Promise<void> {
-    // Reset counters if time windows passed
-    const now = Date.now();
-    
-    if (now - this.lastSecondReset >= 1000) {
-      this.requestsLastSecond = 0;
-      this.lastSecondReset = now;
-    }
+    while (true) {
+      const now = Date.now();
 
-    if (now - this.last2MinutesReset >= 120000) {
-      this.requestsLast2Minutes = 0;
-      this.last2MinutesReset = now;
-    }
+      // Remove timestamps outside the 2-minute window
+      this.requestTimestamps = this.requestTimestamps.filter(t => now - t < 120000);
 
-    // Wait if limits exceeded
-    while (
-      this.requestsLastSecond >= this.PER_SECOND_LIMIT ||
-      this.requestsLast2Minutes >= this.PER_2_MINUTES_LIMIT
-    ) {
+      const lastSecondCount = this.requestTimestamps.filter(t => now - t < 1000).length;
+      const last2MinutesCount = this.requestTimestamps.length;
+
+      if (lastSecondCount < this.PER_SECOND_LIMIT && last2MinutesCount < this.PER_2_MINUTES_LIMIT) {
+        // Safe to proceed — record this request atomically
+        this.requestTimestamps.push(now);
+        return;
+      }
+
+      // Wait and retry
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Check again after waiting
-      const nowAfterWait = Date.now();
-      if (nowAfterWait - this.lastSecondReset >= 1000) {
-        this.requestsLastSecond = 0;
-        this.lastSecondReset = nowAfterWait;
-      }
-      if (nowAfterWait - this.last2MinutesReset >= 120000) {
-        this.requestsLast2Minutes = 0;
-        this.last2MinutesReset = nowAfterWait;
-      }
     }
-
-    // Increment counters
-    this.requestsLastSecond++;
-    this.requestsLast2Minutes++;
   }
 }
 
@@ -270,9 +250,11 @@ class RiotAPIService {
    * Get rate limiter stats (for debugging)
    */
   getRateLimiterStats() {
+    const timestamps: number[] = (this.rateLimiter as any).requestTimestamps || [];
+    const now = Date.now();
     return {
-      requestsLastSecond: (this.rateLimiter as any).requestsLastSecond,
-      requestsLast2Minutes: (this.rateLimiter as any).requestsLast2Minutes
+      requestsLastSecond: timestamps.filter((t: number) => now - t < 1000).length,
+      requestsLast2Minutes: timestamps.filter((t: number) => now - t < 120000).length
     };
   }
 }

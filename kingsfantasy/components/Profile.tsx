@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { UserTeam } from '../types';
 import { CHAMPIONS_LIST } from '../constants';
@@ -24,6 +24,15 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
     userName: userTeam.userName,
     avatar: userTeam.avatar,
   });
+
+  // Sincroniza formData quando props mudam (ex: dados atualizados em outra tela)
+  useEffect(() => {
+    setFormData({
+      name: userTeam.name,
+      userName: userTeam.userName,
+      avatar: userTeam.avatar,
+    });
+  }, [userTeam.name, userTeam.userName, userTeam.avatar]);
 
   const handleSaveAvatar = (url: string) => {
     setFormData(prev => ({ ...prev, avatar: url }));

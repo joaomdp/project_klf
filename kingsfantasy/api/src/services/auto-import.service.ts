@@ -137,8 +137,9 @@ class AutoImportService {
       // Determine winner
       const winnerId = lpMatch.Winner === '1' ? team1Id : team2Id;
 
-      // Parse date (format: "2024-01-28 19:00:00")
-      const matchDate = new Date(lpMatch.DateTime_UTC);
+      // Parse date — MatchSchedule returns "DateTime UTC", ScoreboardGames returns "DateTime_UTC"
+      const rawDate = lpMatch.DateTime_UTC || lpMatch['DateTime UTC'];
+      const matchDate = new Date(rawDate || Date.now());
 
       // Check for existing match to avoid duplicates on re-import
       const { data: existingMatch } = await adminSupabase
@@ -184,9 +185,11 @@ class AutoImportService {
       const playerStats = await leaguepediaService.getPlayerStats(lpMatch.GameId);
 
       if (playerStats.length === 0) {
+        console.warn(`⚠️ No player stats for GameId: ${lpMatch.GameId} — match created without performances`);
         return {
-          success: false,
-          error: `No player stats found for GameId: ${lpMatch.GameId}`
+          success: true,
+          matchId: match.id,
+          performancesCreated: 0
         };
       }
 

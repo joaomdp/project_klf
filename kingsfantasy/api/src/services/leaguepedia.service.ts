@@ -127,59 +127,72 @@ class LeaguepediaService {
     const fields = 'GameId,MatchId,Team1,Team2,Winner,DateTime_UTC,Week,Game';
     const weekStr = String(week);
 
-    // Build list of queries to try in order
-    const attempts: Array<{ label: string; where: string }> = [
-      // 1. Exact Week match
-      { label: `Week="${weekStr}"`, where: `OverviewPage="${overviewPage}" AND Week="${weekStr}"` },
-      // 2. Tab exact match
-      { label: `Tab="${weekStr}"`, where: `OverviewPage="${overviewPage}" AND Tab="${weekStr}"` },
-    ];
-
-    // If numeric, also try "Day X" format
+    // Build list of queries to try in order (ScoreboardGames first)
+    const weekVariants: string[] = [weekStr];
     if (typeof week === 'number' || /^\d+$/.test(weekStr)) {
       const num = typeof week === 'number' ? week : parseInt(weekStr);
-      attempts.push(
-        { label: `Week="Day ${num}"`, where: `OverviewPage="${overviewPage}" AND Week="Day ${num}"` },
-        { label: `Tab="Day ${num}"`, where: `OverviewPage="${overviewPage}" AND Tab="Day ${num}"` },
-      );
+      weekVariants.push(`Day ${num}`);
     }
-
-    // If "Day X" string, also try just the number
     const dayMatch = weekStr.match(/^Day\s+(\d+)$/i);
     if (dayMatch) {
-      attempts.push(
-        { label: `Week="${dayMatch[1]}"`, where: `OverviewPage="${overviewPage}" AND Week="${dayMatch[1]}"` },
-        { label: `Tab="${dayMatch[1]}"`, where: `OverviewPage="${overviewPage}" AND Tab="${dayMatch[1]}"` },
-      );
+      weekVariants.push(dayMatch[1]);
     }
 
-    for (const attempt of attempts) {
-      console.log(`🔍 Tentando: ${attempt.label}`);
-      const results = await this.cargoQuery({
-        tables: 'ScoreboardGames',
-        fields,
-        where: attempt.where,
-        order_by: 'DateTime_UTC',
-        limit: 50
-      });
-
-      if (results.length > 0) {
-        console.log(`✅ Encontradas ${results.length} partidas com ${attempt.label}`);
-        return results;
+    // Try ScoreboardGames with Week and Tab for each variant
+    for (const variant of weekVariants) {
+      for (const field of ['Week', 'Tab']) {
+        try {
+          console.log(`🔍 Tentando ScoreboardGames ${field}="${variant}"`);
+          const results = await this.cargoQuery({
+            tables: 'ScoreboardGames',
+            fields,
+            where: `OverviewPage="${overviewPage}" AND ${field}="${variant}"`,
+            order_by: 'DateTime_UTC',
+            limit: 50
+          });
+          if (results.length > 0) {
+            console.log(`✅ Encontradas ${results.length} partidas via ScoreboardGames`);
+            return results;
+          }
+        } catch (err: any) {
+          console.warn(`⚠️ ScoreboardGames query failed: ${err.message}`);
+        }
       }
     }
 
-    // Last resort: fetch ALL matches and log available Week/Tab values for debugging
-    console.log(`⚠️  Nenhuma partida encontrada. Buscando valores de Week disponíveis...`);
-    const allMatches = await this.cargoQuery({
-      tables: 'ScoreboardGames',
-      fields: 'Week,Tab,N_MatchInTab',
-      where: `OverviewPage="${overviewPage}"`,
-      group_by: 'Week',
-      limit: 50
-    });
-    const weekValues = allMatches.map(m => `Week="${m.Week}" Tab="${m.Tab}"`).join(', ');
-    console.log(`📋 Valores de Week/Tab disponíveis: ${weekValues}`);
+    // Fallback: use MatchSchedule table (some tournaments don't have ScoreboardGames)
+    console.log('🔄 Fallback: tentando MatchSchedule...');
+    for (const variant of weekVariants) {
+      try {
+        console.log(`🔍 Tentando MatchSchedule Tab="${variant}"`);
+        const msResults = await this.cargoQuery({
+          tables: 'MatchSchedule',
+          fields: 'MatchId,Team1,Team2,Winner,DateTime_UTC,Tab,BestOf',
+          where: `OverviewPage="${overviewPage}" AND Tab="${variant}"`,
+          order_by: 'DateTime_UTC',
+          limit: 50
+        });
+
+        if (msResults.length > 0) {
+          console.log(`✅ Encontradas ${msResults.length} partidas via MatchSchedule`);
+          // Convert MatchSchedule format to MatchData format
+          return msResults.map((ms: any, idx: number) => ({
+            GameId: `${overviewPage}_${variant}_${idx + 1}_1`,
+            MatchId: ms.MatchId || `${overviewPage}_${variant}_${idx + 1}`,
+            Team1: ms.Team1,
+            Team2: ms.Team2,
+            Winner: ms.Winner,
+            DateTime_UTC: ms['DateTime UTC'] || ms.DateTime_UTC,
+            Week: variant,
+            Game: '1',
+            _bestOf: ms.BestOf || '1',
+            _source: 'MatchSchedule'
+          }));
+        }
+      } catch (err: any) {
+        console.warn(`⚠️ MatchSchedule query failed: ${err.message}`);
+      }
+    }
 
     console.log(`❌ Nenhuma partida encontrada para ${overviewPage} ${weekStr}`);
     return [];
@@ -205,32 +218,51 @@ class LeaguepediaService {
   
   /**
    * Buscar estatísticas dos jogadores de um game
+   * Tenta GameId exato primeiro, depois busca por padrão LIKE
    */
   async getPlayerStats(gameId: string): Promise<PlayerStats[]> {
     console.log(`📊 Buscando stats dos jogadores: Game ${gameId}`);
-    
-    const results = await this.cargoQuery({
+
+    const statsFields = [
+      'Link', 'Champion', 'Kills', 'Deaths', 'Assists',
+      'Gold', 'CS', 'DamageToChampions', 'Side', 'Team', 'GameId'
+    ].join(',');
+
+    // Try exact GameId first
+    let results = await this.cargoQuery({
       tables: 'ScoreboardPlayers',
-      fields: [
-        'Link',          // Nome do jogador
-        'Champion',      // Campeão usado
-        'Kills',
-        'Deaths',
-        'Assists',
-        'Gold',
-        'CS',            // Creep Score
-        'DamageToChampions',
-        'Side',          // Blue ou Red
-        'Team'           // Nome do time
-      ].join(','),
+      fields: statsFields,
       where: `GameId="${gameId}"`,
       limit: 10
     });
     
-    console.log(`✅ Encontradas stats de ${results.length} jogadores`);
+    if (results.length > 0) {
+      console.log(`✅ Encontradas stats de ${results.length} jogadores (GameId exato)`);
+      return results;
+    }
+
+    // Fallback: try LIKE pattern for MatchSchedule-sourced GameIds
+    // Our generated GameId: "IDL Kings Lendas Cup_Day 1_1_1"
+    // Real Leaguepedia GameId: "IDL Kings Lendas Cup_Day 1_1_1"
+    // Try matching by LIKE with the base pattern (without trailing _1)
+    const basePattern = gameId.replace(/_\d+$/, ''); // Remove last _N
+    console.log(`🔍 Tentando LIKE: GameId LIKE "${basePattern}%"`);
+    results = await this.cargoQuery({
+      tables: 'ScoreboardPlayers',
+      fields: statsFields,
+      where: `GameId LIKE "${basePattern}%"`,
+      limit: 50
+    });
+
+    if (results.length > 0) {
+      console.log(`✅ Encontradas stats de ${results.length} jogadores (LIKE pattern)`);
+      return results;
+    }
+
+    console.log(`❌ Nenhuma stat encontrada para ${gameId}`);
     return results;
   }
-  
+
   /**
    * Buscar picks & bans de um game
    */
@@ -286,18 +318,43 @@ class LeaguepediaService {
   async getAvailableWeeks(overviewPage: string): Promise<(number | string)[]> {
     console.log(`📋 Buscando weeks disponíveis: ${overviewPage}`);
 
-    const results = await this.cargoQuery({
-      tables: 'ScoreboardGames',
-      fields: 'Week',
-      where: `OverviewPage="${overviewPage}"`,
-      group_by: 'Week',
-      order_by: 'Week',
-      limit: 50
-    });
+    // Try ScoreboardGames first
+    let results: any[] = [];
+    let fieldName = 'Week';
+    try {
+      results = await this.cargoQuery({
+        tables: 'ScoreboardGames',
+        fields: 'Week',
+        where: `OverviewPage="${overviewPage}"`,
+        group_by: 'Week',
+        order_by: 'Week',
+        limit: 50
+      });
+    } catch (err: any) {
+      console.warn(`⚠️ ScoreboardGames failed: ${err.message}`);
+    }
+
+    // Fallback to MatchSchedule Tab field
+    if (results.length === 0) {
+      console.log('🔄 Fallback: buscando Tabs via MatchSchedule...');
+      fieldName = 'Tab';
+      try {
+        results = await this.cargoQuery({
+          tables: 'MatchSchedule',
+          fields: 'Tab',
+          where: `OverviewPage="${overviewPage}"`,
+          group_by: 'Tab',
+          order_by: 'Tab',
+          limit: 50
+        });
+      } catch (err: any) {
+        console.warn(`⚠️ MatchSchedule also failed: ${err.message}`);
+      }
+    }
 
     const weeks: (number | string)[] = [];
     for (const r of results) {
-      const weekVal = r.Week;
+      const weekVal = r[fieldName];
       const num = parseInt(weekVal);
       if (!isNaN(num) && String(num) === weekVal) {
         weeks.push(num);

@@ -249,42 +249,33 @@ router.post('/setup-cup-mappings', async (req: AuthenticatedRequest, res: Respon
       { leaguepedia_name: 'Team Sobe Muro', db_name: 'TEAM SOBE MURO' },
     ];
 
+    // Strategy: delete existing mappings then insert fresh (avoids constraint issues)
+    // Supabase requires a filter on delete — use gte on is_active to match all rows
+    await adminSupabase.from('team_mappings').delete().in('is_active', [true, false]);
+    await adminSupabase.from('player_mappings').delete().in('is_active', [true, false]);
+    console.log('🧹 Cleared existing mappings');
+
     const teamResults: any[] = [];
     for (const mapping of teamMappings) {
-      // Case-insensitive + trim match
       const dbNameNorm = mapping.db_name.toLowerCase().trim();
       const team = teams.find(t => t.name.toLowerCase().trim() === dbNameNorm);
       if (!team) {
-        teamResults.push({ ...mapping, status: 'NOT_FOUND', error: `Time "${mapping.db_name}" não encontrado no banco. Times disponíveis: ${teams.map(t => t.name).join(', ')}` });
+        teamResults.push({ ...mapping, status: 'NOT_FOUND', error: `Time "${mapping.db_name}" não encontrado. Disponíveis: ${teams.map(t => t.name).join(', ')}` });
         continue;
       }
 
-      // Upsert into team_mappings
       const { error } = await adminSupabase
         .from('team_mappings')
-        .upsert({
+        .insert({
           team_id: team.id,
           leaguepedia_name: mapping.leaguepedia_name,
           is_active: true
-        }, { onConflict: 'team_id,leaguepedia_name' });
+        });
 
       if (error) {
-        // Try insert if upsert fails (table may not have unique constraint)
-        const { error: insertError } = await adminSupabase
-          .from('team_mappings')
-          .insert({
-            team_id: team.id,
-            leaguepedia_name: mapping.leaguepedia_name,
-            is_active: true
-          });
-
-        if (insertError) {
-          teamResults.push({ ...mapping, team_id: team.id, status: 'ERROR', error: insertError.message });
-        } else {
-          teamResults.push({ ...mapping, team_id: team.id, status: 'INSERTED' });
-        }
+        teamResults.push({ ...mapping, team_id: team.id, status: 'ERROR', error: error.message });
       } else {
-        teamResults.push({ ...mapping, team_id: team.id, status: 'UPSERTED' });
+        teamResults.push({ ...mapping, team_id: team.id, status: 'OK' });
       }
     }
 
@@ -300,32 +291,25 @@ router.post('/setup-cup-mappings', async (req: AuthenticatedRequest, res: Respon
     const playerResults: any[] = [];
     for (const player of players) {
       const leaguepediaName = playerNameOverrides[player.name] || player.name;
+
       const { error } = await adminSupabase
         .from('player_mappings')
-        .upsert({
+        .insert({
           player_id: player.id,
           leaguepedia_name: leaguepediaName,
           is_active: true
-        }, { onConflict: 'player_id,leaguepedia_name' });
+        });
 
       if (error) {
-        const { error: insertError } = await adminSupabase
-          .from('player_mappings')
-          .insert({
-            player_id: player.id,
-            leaguepedia_name: leaguepediaName,
-            is_active: true
-          });
-
         playerResults.push({
           name: player.name,
           leaguepedia_name: leaguepediaName,
           player_id: player.id,
-          status: insertError ? 'ERROR' : 'INSERTED',
-          error: insertError?.message
+          status: 'ERROR',
+          error: error.message
         });
       } else {
-        playerResults.push({ name: player.name, leaguepedia_name: leaguepediaName, player_id: player.id, status: 'UPSERTED' });
+        playerResults.push({ name: player.name, leaguepedia_name: leaguepediaName, player_id: player.id, status: 'OK' });
       }
     }
 

@@ -1955,7 +1955,7 @@ export const DataService = {
 
   async importFromLeaguepedia(payload: {
     season: number | string;
-    roundNumber: number;
+    roundNumber: number | string;
   }): Promise<{
     ok: boolean;
     error?: string;

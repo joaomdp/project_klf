@@ -8,6 +8,11 @@ interface AdminPanelProps {
 
 const sections = [
   {
+    id: 'pipeline',
+    title: 'Pipeline',
+    description: 'Fluxo completo da rodada em 4 fases.'
+  },
+  {
     id: 'players',
     title: 'Jogadores',
     description: 'Gerencie preços, status e cadastros de atletas.'
@@ -51,7 +56,10 @@ const sections = [
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [isChecking, setIsChecking] = useState(false);
-  const [activeSection, setActiveSection] = useState<'players' | 'teams' | 'rounds' | 'matches' | 'performances' | 'market' | 'users' | 'leagues'>('players');
+  const [activeSection, setActiveSection] = useState<'pipeline' | 'players' | 'teams' | 'rounds' | 'matches' | 'performances' | 'market' | 'users' | 'leagues'>('pipeline');
+  const [pipelinePhase, setPipelinePhase] = useState<1 | 2 | 3 | 4>(1);
+  const [pipelineRoundId, setPipelineRoundId] = useState('');
+  const [pipelineStatus, setPipelineStatus] = useState<string | null>(null);
   const [players, setPlayers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
@@ -215,6 +223,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
   const handleOpenSection = (sectionId: string) => {
     if (
+      sectionId !== 'pipeline' &&
       sectionId !== 'players' &&
       sectionId !== 'teams' &&
       sectionId !== 'rounds' &&
@@ -322,6 +331,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
   const loadSectionData = useCallback(async (sectionId: typeof activeSection) => {
     switch (sectionId) {
+      case 'pipeline':
+        await Promise.all([loadRounds(), loadPlayers(), loadMatches()]);
+        break;
       case 'players':
         await Promise.all([loadPlayers(), loadTeams()]);
         break;
@@ -1355,7 +1367,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     try {
       const result = await DataService.importFromLeaguepedia({
         season,
-        roundNumber: parseInt(roundNumber)
+        roundNumber
       });
 
       if (result.ok) {
@@ -1730,6 +1742,591 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     const selectedRound = rounds.find((round) => String(round.id) === String(marketRoundId));
     setMarketCloseTimeInput(toDateTimeLocalValue(selectedRound?.market_close_time));
   }, [marketRoundId, rounds]);
+
+  const pipelineSelectedRound = useMemo(
+    () => rounds.find((r) => String(r.id) === String(pipelineRoundId)) || null,
+    [rounds, pipelineRoundId]
+  );
+
+  const pipelineRoundMatches = useMemo(
+    () => matches.filter((m) => String(m.round_id) === String(pipelineRoundId)),
+    [matches, pipelineRoundId]
+  );
+
+  const pipelinePhaseInfo = useMemo(() => {
+    const r = pipelineSelectedRound;
+    if (!r) return { detectedPhase: 0 as number, label: 'Selecione uma rodada' };
+
+    const status = r.status;
+    const isMarketOpen = r.is_market_open;
+    const matchCount = pipelineRoundMatches.length;
+    const completedMatches = pipelineRoundMatches.filter((m: any) => m.status === 'completed').length;
+
+    if (status === 'finished') {
+      return { detectedPhase: 4, label: 'Rodada finalizada' };
+    }
+    if (completedMatches > 0 && completedMatches === matchCount) {
+      return { detectedPhase: 3, label: 'Dados prontos para validacao' };
+    }
+    if (status === 'active' && !isMarketOpen) {
+      return { detectedPhase: 2, label: 'Mercado fechado, jogos em andamento' };
+    }
+    if (status === 'active' && isMarketOpen) {
+      return { detectedPhase: 1, label: 'Mercado aberto, usuarios montando times' };
+    }
+    return { detectedPhase: 1, label: 'Rodada em preparacao' };
+  }, [pipelineSelectedRound, pipelineRoundMatches]);
+
+  const handlePipelineMarketAction = async (action: 'open' | 'close') => {
+    const roundId = Number(pipelineRoundId);
+    if (!roundId) return;
+
+    setPipelineStatus(null);
+
+    try {
+      const anonKey = DataService.getAnonKey();
+      const userToken = DataService.getUserToken();
+      if (!userToken) {
+        setPipelineStatus('Usuario nao autenticado.');
+        return;
+      }
+
+      const endpoint = action === 'open'
+        ? `${DataService.API_BASE_URL}/admin/market/force-open/${roundId}`
+        : `${DataService.API_BASE_URL}/admin/market/force-close/${roundId}`;
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${userToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        setPipelineStatus(errorText || 'Erro ao atualizar mercado');
+      } else {
+        setPipelineStatus(action === 'open' ? 'Mercado aberto com sucesso!' : 'Mercado fechado com sucesso!');
+        await loadRounds();
+        window.dispatchEvent(new Event('market:refresh'));
+      }
+    } catch (error) {
+      setPipelineStatus(String(error));
+    }
+  };
+
+  const handlePipelineImport = async () => {
+    if (!pipelineRoundId) return;
+    setPipelineStatus(null);
+    setLeaguepediaImportLoading(true);
+
+    try {
+      const result = await DataService.importFromLeaguepedia({
+        season: leaguepediaImportForm.season,
+        roundNumber: leaguepediaImportForm.roundNumber
+      });
+
+      if (result.ok) {
+        setPipelineStatus(`Importado! ${result.stats?.matchesImported || 0} partidas, ${result.stats?.performancesImported || 0} performances.`);
+        await Promise.all([loadPlayers(), loadRounds(), loadMatches()]);
+        window.dispatchEvent(new Event('players:refresh'));
+        window.dispatchEvent(new Event('leagues:refresh'));
+      } else {
+        setPipelineStatus(result.error || 'Erro na importacao');
+      }
+    } catch (error) {
+      setPipelineStatus(String(error));
+    } finally {
+      setLeaguepediaImportLoading(false);
+    }
+  };
+
+  const handlePipelineFinalize = async () => {
+    const roundId = Number(pipelineRoundId);
+    if (!roundId) return;
+
+    if (!window.confirm('Finalizar rodada? Isso vai calcular pontos, atualizar precos e patrimonio dos usuarios.')) {
+      return;
+    }
+
+    setFinalizeRoundLoading(true);
+    setPipelineStatus(null);
+
+    try {
+      const result = await DataService.finalizeAdminRound(roundId);
+      if (result.ok) {
+        setPipelineStatus('Rodada finalizada! Pontos calculados, precos atualizados, patrimonio recalculado.');
+        setPipelinePhase(4);
+        await Promise.all([loadRounds(), loadPlayers()]);
+        window.dispatchEvent(new Event('players:refresh'));
+        window.dispatchEvent(new Event('leagues:refresh'));
+        window.dispatchEvent(new Event('market:refresh'));
+      } else {
+        setPipelineStatus(result.error || 'Erro ao finalizar rodada');
+      }
+    } catch (error) {
+      setPipelineStatus(String(error));
+    } finally {
+      setFinalizeRoundLoading(false);
+    }
+  };
+
+  const handlePipelineCheck = async () => {
+    const roundId = Number(pipelineRoundId);
+    if (!roundId) return;
+
+    setFinalizeCheckLoading(true);
+    try {
+      const result = await DataService.getAdminRoundFinalizeCheck(roundId);
+      if (result.ok) {
+        setFinalizeCheckResult(result.check);
+      } else {
+        setPipelineStatus(result.error || 'Erro ao verificar checklist');
+      }
+    } catch (error) {
+      setPipelineStatus(String(error));
+    } finally {
+      setFinalizeCheckLoading(false);
+    }
+  };
+
+  const renderPipeline = () => {
+    const phases = [
+      { num: 1, title: 'Preparacao', icon: 'fa-cog', desc: 'Mappings, mercado aberto' },
+      { num: 2, title: 'Execucao', icon: 'fa-gamepad', desc: 'Mercado fechado, jogos' },
+      { num: 3, title: 'Validacao', icon: 'fa-check-double', desc: 'Importar dados, revisar' },
+      { num: 4, title: 'Finalizar', icon: 'fa-flag-checkered', desc: 'Pontos, precos, patrimonio' }
+    ];
+
+    return (
+      <div className="space-y-6">
+        {/* Round Selector */}
+        <div className="glass-card border border-white/5 p-5">
+          <div className="flex flex-col md:flex-row md:items-end gap-4">
+            <div className="flex-1 space-y-2">
+              <label className="text-[10px] uppercase tracking-[0.3em] text-gray-500">Rodada ativa</label>
+              <select
+                value={pipelineRoundId}
+                onChange={(e) => {
+                  setPipelineRoundId(e.target.value);
+                  setPipelineStatus(null);
+                  setFinalizeCheckResult(null);
+                }}
+                className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
+              >
+                <option value="">Selecione a rodada</option>
+                {rounds.map((round) => (
+                  <option key={round.id} value={round.id}>
+                    Season {round.season} - Rodada {round.round_number} ({round.status})
+                  </option>
+                ))}
+              </select>
+            </div>
+            {pipelineSelectedRound && (
+              <div className="text-xs text-gray-400">
+                Status: <span className="text-white font-bold uppercase">{pipelineSelectedRound.status}</span>
+                {' | '}Mercado: <span className={pipelineSelectedRound.is_market_open ? 'text-emerald-300' : 'text-red-300'}>
+                  {pipelineSelectedRound.is_market_open ? 'Aberto' : 'Fechado'}
+                </span>
+                {' | '}Partidas: <span className="text-white">{pipelineRoundMatches.length}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Phase Stepper */}
+        <div className="glass-card border border-white/5 p-5">
+          <div className="grid grid-cols-4 gap-2">
+            {phases.map((phase) => {
+              const isActive = pipelinePhase === phase.num;
+              const isCompleted = pipelinePhaseInfo.detectedPhase > phase.num;
+              const isCurrent = pipelinePhaseInfo.detectedPhase === phase.num;
+              return (
+                <button
+                  key={phase.num}
+                  onClick={() => setPipelinePhase(phase.num as 1 | 2 | 3 | 4)}
+                  className={`p-3 border text-center transition-all ${
+                    isActive
+                      ? 'border-[#6366F1]/60 bg-[#6366F1]/10 text-[#6366F1]'
+                      : isCompleted
+                        ? 'border-emerald-500/40 bg-emerald-500/5 text-emerald-300'
+                        : isCurrent
+                          ? 'border-amber-500/40 bg-amber-500/5 text-amber-300'
+                          : 'border-white/10 text-gray-500'
+                  }`}
+                >
+                  <div className="flex flex-col items-center gap-1">
+                    <i className={`fa-solid ${phase.icon} text-sm`}></i>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">{phase.title}</span>
+                    <span className="text-[9px] uppercase tracking-wider opacity-70 hidden md:block">{phase.desc}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {pipelineSelectedRound && (
+            <div className="mt-3 text-center text-[10px] uppercase tracking-[0.2em] text-gray-500">
+              Auto-detectado: <span className="text-amber-300">{pipelinePhaseInfo.label}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Status Messages */}
+        {pipelineStatus && (
+          <div className={`border p-4 text-xs ${
+            pipelineStatus.includes('sucesso') || pipelineStatus.includes('Importado') || pipelineStatus.includes('finalizada')
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+              : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+          }`}>
+            {pipelineStatus}
+          </div>
+        )}
+
+        {/* PHASE 1: Preparacao */}
+        {pipelinePhase === 1 && (
+          <div className="space-y-4">
+            <div className="glass-card border border-white/5 p-5 space-y-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#6366F1]">Fase 1 — Preparacao</p>
+
+              {/* Setup Mappings */}
+              <div className="flex flex-col md:flex-row md:items-center gap-4 p-4 border border-white/10 bg-black/30">
+                <div className="flex-1">
+                  <p className="text-xs text-white font-bold uppercase tracking-wider">Configurar Mappings</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">
+                    Mapeia nomes do Leaguepedia para o banco de dados (executar 1x por temporada)
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSetupCupMappings}
+                  disabled={cupMappingsLoading}
+                  className="bg-amber-600/80 hover:bg-amber-500 disabled:opacity-50 text-white text-xs uppercase tracking-wider px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
+                >
+                  {cupMappingsLoading ? (
+                    <><i className="fa-solid fa-spinner fa-spin"></i> Configurando...</>
+                  ) : (
+                    <><i className="fa-solid fa-link"></i> Configurar</>
+                  )}
+                </button>
+              </div>
+              {cupMappingsResult && (
+                <div className={`border p-3 text-xs ${cupMappingsResult.success ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'}`}>
+                  {cupMappingsResult.message}
+                </div>
+              )}
+
+              {/* Market Control */}
+              <div className="flex flex-col md:flex-row md:items-center gap-4 p-4 border border-white/10 bg-black/30">
+                <div className="flex-1">
+                  <p className="text-xs text-white font-bold uppercase tracking-wider">Mercado</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">
+                    Abra o mercado para os usuarios montarem seus times antes dos jogos
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePipelineMarketAction('open')}
+                    disabled={!pipelineRoundId || marketActionLoading}
+                    className="btn-primary text-xs uppercase tracking-wider disabled:opacity-50"
+                  >
+                    Abrir mercado
+                  </button>
+                  <button
+                    onClick={() => handlePipelineMarketAction('close')}
+                    disabled={!pipelineRoundId || marketActionLoading}
+                    className="text-xs uppercase tracking-wider text-red-300 border border-red-500/40 px-3 py-2 disabled:opacity-50"
+                  >
+                    Fechar mercado
+                  </button>
+                </div>
+              </div>
+
+              {/* Reset (collapsible) */}
+              <details className="border border-red-500/20 bg-black/20">
+                <summary className="p-4 cursor-pointer text-[10px] uppercase tracking-[0.3em] text-red-400">
+                  Reset de dados (uso com cuidado)
+                </summary>
+                <div className="px-4 pb-4 space-y-3 border-t border-red-500/10">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider pt-3">
+                    Deleta todas performances, matches e zera stats/precos dos jogadores
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleResetData}
+                    disabled={resetLoading}
+                    className="bg-red-600/80 hover:bg-red-500 disabled:opacity-50 text-white text-xs uppercase tracking-wider px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                  >
+                    {resetLoading ? (
+                      <><i className="fa-solid fa-spinner fa-spin"></i> Resetando...</>
+                    ) : (
+                      <><i className="fa-solid fa-trash"></i> Resetar tudo</>
+                    )}
+                  </button>
+                  {resetResult && (
+                    <div className={`border p-3 text-xs ${resetResult.success ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'}`}>
+                      {resetResult.message}
+                    </div>
+                  )}
+                </div>
+              </details>
+
+              <button
+                onClick={() => setPipelinePhase(2)}
+                disabled={!pipelineRoundId}
+                className="btn-primary text-xs uppercase tracking-wider w-full disabled:opacity-50"
+              >
+                Avancar para Fase 2 — Execucao
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* PHASE 2: Execucao */}
+        {pipelinePhase === 2 && (
+          <div className="space-y-4">
+            <div className="glass-card border border-white/5 p-5 space-y-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#6366F1]">Fase 2 — Execucao</p>
+
+              <div className="p-6 border border-white/10 bg-black/30 text-center space-y-3">
+                <i className="fa-solid fa-gamepad text-3xl text-gray-500"></i>
+                <p className="text-sm text-gray-300 uppercase tracking-wider">Jogos em andamento</p>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                  O mercado deve estar fechado. Aguarde os jogos terminarem para importar os dados.
+                </p>
+                {pipelineSelectedRound?.is_market_open && (
+                  <div className="border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+                    Atencao: O mercado ainda esta aberto. Feche-o antes dos jogos comecarem.
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4 p-4 border border-white/10 bg-black/30">
+                <div className="flex-1">
+                  <p className="text-xs text-white font-bold uppercase tracking-wider">Fechar mercado</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">
+                    Trava as escalacoes dos usuarios
+                  </p>
+                </div>
+                <button
+                  onClick={() => handlePipelineMarketAction('close')}
+                  disabled={!pipelineRoundId || marketActionLoading}
+                  className="text-xs uppercase tracking-wider text-red-300 border border-red-500/40 px-3 py-2 disabled:opacity-50"
+                >
+                  Fechar mercado
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPipelinePhase(1)}
+                  className="btn-secondary text-xs uppercase tracking-wider flex-1"
+                >
+                  Voltar
+                </button>
+                <button
+                  onClick={() => setPipelinePhase(3)}
+                  className="btn-primary text-xs uppercase tracking-wider flex-1"
+                >
+                  Avancar para Fase 3 — Validacao
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PHASE 3: Validacao */}
+        {pipelinePhase === 3 && (
+          <div className="space-y-4">
+            <div className="glass-card border border-white/5 p-5 space-y-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#6366F1]">Fase 3 — Importar e validar dados</p>
+
+              {/* Leaguepedia Import */}
+              <div className="p-4 border border-emerald-500/20 bg-black/30 space-y-4">
+                <div className="flex items-center gap-2">
+                  <i className="fa-solid fa-download text-emerald-400"></i>
+                  <p className="text-xs text-white font-bold uppercase tracking-wider">Importar do Leaguepedia</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-gray-500 uppercase tracking-wider">Season</label>
+                    <select
+                      value={leaguepediaImportForm.season}
+                      onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, season: e.target.value }))}
+                      className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
+                    >
+                      <option value="cup">Cup</option>
+                      <option value="3">Season 3</option>
+                      <option value="2">Season 2</option>
+                      <option value="1">Season 1</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-gray-500 uppercase tracking-wider">Rodada</label>
+                    {leaguepediaImportForm.season === 'cup' ? (
+                      <select
+                        value={leaguepediaImportForm.roundNumber}
+                        onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, roundNumber: e.target.value }))}
+                        className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
+                      >
+                        <option value="">Selecione...</option>
+                        <option value="Day 1">Day 1 (Grupos)</option>
+                        <option value="Day 2">Day 2 (Grupos)</option>
+                        <option value="Day 3">Day 3 (Grupos)</option>
+                        <option value="Quarterfinals">Quartas de final</option>
+                        <option value="Semifinals">Semifinais</option>
+                        <option value="Finals">Final</option>
+                      </select>
+                    ) : (
+                      <input
+                        type="number"
+                        min={1}
+                        value={leaguepediaImportForm.roundNumber}
+                        onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, roundNumber: e.target.value }))}
+                        className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
+                        placeholder="Ex: 1"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handlePipelineImport}
+                  disabled={leaguepediaImportLoading || !leaguepediaImportForm.season || !leaguepediaImportForm.roundNumber}
+                  className="btn-primary text-xs uppercase tracking-wider flex items-center gap-2 w-full justify-center disabled:opacity-50"
+                >
+                  {leaguepediaImportLoading ? (
+                    <><i className="fa-solid fa-spinner fa-spin"></i> Importando...</>
+                  ) : (
+                    <><i className="fa-solid fa-download"></i> Importar rodada</>
+                  )}
+                </button>
+              </div>
+
+              {/* Checklist */}
+              <div className="p-4 border border-white/10 bg-black/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-white font-bold uppercase tracking-wider">Checklist de validacao</p>
+                  <button
+                    type="button"
+                    onClick={handlePipelineCheck}
+                    disabled={finalizeCheckLoading || !pipelineRoundId}
+                    className="text-[10px] uppercase tracking-[0.2em] text-amber-200 border border-amber-500/30 px-3 py-2 rounded-lg disabled:opacity-50"
+                  >
+                    {finalizeCheckLoading ? 'Verificando...' : 'Verificar'}
+                  </button>
+                </div>
+
+                {finalizeCheckResult ? (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[10px] uppercase tracking-[0.18em] text-gray-400">
+                      <div>Partidas: <span className="text-white">{finalizeCheckResult.totalMatches}</span></div>
+                      <div>Sem resultado: <span className="text-white">{finalizeCheckResult.matchesMissingResults}</span></div>
+                      <div>Perf. esperadas: <span className="text-white">{finalizeCheckResult.expectedPerformances}</span></div>
+                      <div>Perf. lancadas: <span className="text-white">{finalizeCheckResult.totalPerformances}</span></div>
+                    </div>
+                    {finalizeCheckResult.pendingItems?.length > 0 ? (
+                      <div className="border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
+                        {finalizeCheckResult.pendingItems.map((item: string) => (
+                          <p key={item} className="text-xs text-amber-200">- {item}</p>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-emerald-200">
+                        Tudo certo. A rodada pode ser finalizada.
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-[10px] text-gray-500">Clique em "Verificar" para validar os dados da rodada.</p>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPipelinePhase(2)}
+                  className="btn-secondary text-xs uppercase tracking-wider flex-1"
+                >
+                  Voltar
+                </button>
+                <button
+                  onClick={() => setPipelinePhase(4)}
+                  className="btn-primary text-xs uppercase tracking-wider flex-1"
+                >
+                  Avancar para Fase 4 — Finalizar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PHASE 4: Finalizar */}
+        {pipelinePhase === 4 && (
+          <div className="space-y-4">
+            <div className="glass-card border border-white/5 p-5 space-y-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#6366F1]">Fase 4 — Finalizar rodada</p>
+
+              <div className="p-4 border border-white/10 bg-black/30 space-y-3">
+                <p className="text-xs text-gray-300 uppercase tracking-wider">
+                  Ao finalizar, o sistema executa em cascata:
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] uppercase tracking-[0.18em]">
+                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
+                    <span className="w-5 h-5 rounded-full border border-gray-600 flex items-center justify-center text-[9px]">1</span>
+                    Calcular pontos dos user_teams
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
+                    <span className="w-5 h-5 rounded-full border border-gray-600 flex items-center justify-center text-[9px]">2</span>
+                    Atualizar precos dos jogadores
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
+                    <span className="w-5 h-5 rounded-full border border-gray-600 flex items-center justify-center text-[9px]">3</span>
+                    Recalcular patrimonio dos usuarios
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
+                    <span className="w-5 h-5 rounded-full border border-gray-600 flex items-center justify-center text-[9px]">4</span>
+                    Marcar rodada como finalizada
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handlePipelineFinalize}
+                disabled={finalizeRoundLoading || !pipelineRoundId}
+                className="w-full py-3 text-sm font-bold uppercase tracking-wider bg-emerald-600/80 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                {finalizeRoundLoading ? (
+                  <><i className="fa-solid fa-spinner fa-spin"></i> Finalizando rodada...</>
+                ) : (
+                  <><i className="fa-solid fa-flag-checkered"></i> Finalizar rodada</>
+                )}
+              </button>
+
+              {/* Reopen market for next round */}
+              {pipelineSelectedRound?.status === 'finished' && (
+                <div className="p-4 border border-emerald-500/20 bg-emerald-500/5 space-y-3">
+                  <p className="text-xs text-emerald-200 font-bold uppercase tracking-wider">Rodada finalizada com sucesso!</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">
+                    Selecione a proxima rodada no topo e abra o mercado para os usuarios.
+                  </p>
+                </div>
+              )}
+
+              <button
+                onClick={() => setPipelinePhase(3)}
+                className="btn-secondary text-xs uppercase tracking-wider w-full"
+              >
+                Voltar para Validacao
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderPlayers = () => {
     if (playersLoading) {
@@ -2748,15 +3345,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-xs text-gray-500">Rodada (Week)</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={leaguepediaImportForm.roundNumber}
-                  onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, roundNumber: e.target.value }))}
-                  className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
-                  placeholder="Ex: 1"
-                />
+                <label className="text-xs text-gray-500">Rodada</label>
+                {leaguepediaImportForm.season === 'cup' ? (
+                  <select
+                    value={leaguepediaImportForm.roundNumber}
+                    onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, roundNumber: e.target.value }))}
+                    className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
+                  >
+                    <option value="">Selecione...</option>
+                    <option value="Day 1">Day 1 (Grupos)</option>
+                    <option value="Day 2">Day 2 (Grupos)</option>
+                    <option value="Day 3">Day 3 (Grupos)</option>
+                    <option value="Quarterfinals">Quartas de final</option>
+                    <option value="Semifinals">Semifinais</option>
+                    <option value="Finals">Final</option>
+                  </select>
+                ) : (
+                  <input
+                    type="number"
+                    min={1}
+                    value={leaguepediaImportForm.roundNumber}
+                    onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, roundNumber: e.target.value }))}
+                    className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
+                    placeholder="Ex: 1"
+                  />
+                )}
               </div>
             </div>
 
@@ -3743,6 +4356,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
           <div className="mt-4 flex flex-col gap-2">
             {groupedSections.flat().map((section) => {
               const isEnabled =
+                section.id === 'pipeline' ||
                 section.id === 'players' ||
                 section.id === 'teams' ||
                 section.id === 'rounds' ||
@@ -3783,6 +4397,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
             </p>
           </div>
 
+          {activeSection === 'pipeline' && renderPipeline()}
           {activeSection === 'players' && renderPlayers()}
           {activeSection === 'teams' && renderTeams()}
           {activeSection === 'rounds' && renderRounds()}

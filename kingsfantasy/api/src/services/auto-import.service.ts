@@ -40,7 +40,7 @@ class AutoImportService {
    * @param roundNumber - Round number (1-7 for regular season)
    * @returns ImportRoundResult with stats and errors
    */
-  async importRound(overviewPage: string, roundNumber: number): Promise<ImportRoundResult> {
+  async importRound(overviewPage: string, roundNumber: number | string): Promise<ImportRoundResult> {
     const result: ImportRoundResult = {
       success: false,
       roundId: 0,
@@ -68,8 +68,11 @@ class AutoImportService {
       // Determine season from OverviewPage
       const season = this.extractSeasonFromOverviewPage(overviewPage);
 
+      // Convert roundNumber to numeric for DB (e.g., "Day 1" → 1, "Quarterfinals" → 4)
+      const dbRoundNumber = this.resolveRoundNumber(roundNumber);
+
       // Find or create the round in database
-      const round = await this.findOrCreateRound(season, roundNumber);
+      const round = await this.findOrCreateRound(season, dbRoundNumber);
       result.roundId = round.id;
       console.log(`📋 Using round ID: ${round.id}`);
 
@@ -221,6 +224,28 @@ class AutoImportService {
   /**
    * Extract season number from OverviewPage
    */
+  /**
+   * Convert round identifier to numeric value for DB storage
+   * "Day 1" → 1, "Quarterfinals" → 4, "Semifinals" → 5, "Finals" → 6, number → number
+   */
+  private resolveRoundNumber(round: number | string): number {
+    if (typeof round === 'number') return round;
+
+    // Try extracting number from string like "Day 1", "Week 2"
+    const numMatch = round.match(/(\d+)/);
+    if (numMatch) return parseInt(numMatch[1]);
+
+    // Map playoff stages to round numbers
+    const stageMap: Record<string, number> = {
+      'quarterfinals': 4,
+      'semifinals': 5,
+      'finals': 6,
+    };
+
+    const lower = round.toLowerCase().trim();
+    return stageMap[lower] || 1;
+  }
+
   private extractSeasonFromOverviewPage(overviewPage: string): number {
     // "IDL Kings Lendas Cup" -> Season 5 (cup)
     if (overviewPage.toLowerCase().includes('cup')) {
@@ -306,7 +331,7 @@ class AutoImportService {
   /**
    * Get available weeks/rounds for a season
    */
-  async getAvailableRounds(season: number | string): Promise<number[]> {
+  async getAvailableRounds(season: number | string): Promise<(number | string)[]> {
     const overviewPage = this.getOverviewPage(season);
     const weeks = await leaguepediaService.getAvailableWeeks(overviewPage);
     return weeks;

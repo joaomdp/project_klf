@@ -119,18 +119,44 @@ class LeaguepediaService {
   
   /**
    * Buscar partidas de uma rodada específica
+   * Suporta Week numérico (1, 2, 3) ou texto ("Day 1", "Quarterfinals", etc.)
    */
-  async getMatches(overviewPage: string, week: number): Promise<MatchData[]> {
-    console.log(`📅 Buscando partidas: ${overviewPage}, Week ${week}`);
-    
-    const results = await this.cargoQuery({
+  async getMatches(overviewPage: string, week: number | string): Promise<MatchData[]> {
+    console.log(`📅 Buscando partidas: ${overviewPage}, Week/Tab ${week}`);
+
+    // Try with exact week value first
+    let results = await this.cargoQuery({
       tables: 'ScoreboardGames',
       fields: 'GameId,MatchId,Team1,Team2,Winner,DateTime_UTC,Week,Game',
       where: `OverviewPage="${overviewPage}" AND Week="${week}"`,
       order_by: 'DateTime_UTC',
       limit: 50
     });
-    
+
+    // If no results with numeric week, try "Day X" format (for Cup tournaments)
+    if (results.length === 0 && typeof week === 'number') {
+      console.log(`⚠️  Nenhum resultado com Week=${week}, tentando "Day ${week}"...`);
+      results = await this.cargoQuery({
+        tables: 'ScoreboardGames',
+        fields: 'GameId,MatchId,Team1,Team2,Winner,DateTime_UTC,Week,Game',
+        where: `OverviewPage="${overviewPage}" AND Week="Day ${week}"`,
+        order_by: 'DateTime_UTC',
+        limit: 50
+      });
+    }
+
+    // If still no results, try Tab field (some tournaments use Tab instead of Week)
+    if (results.length === 0) {
+      console.log(`⚠️  Nenhum resultado com Week, tentando Tab="${week}"...`);
+      results = await this.cargoQuery({
+        tables: 'ScoreboardGames',
+        fields: 'GameId,MatchId,Team1,Team2,Winner,DateTime_UTC,Week,Game',
+        where: `OverviewPage="${overviewPage}" AND Tab="Day ${typeof week === 'number' ? week : week}"`,
+        order_by: 'DateTime_UTC',
+        limit: 50
+      });
+    }
+
     console.log(`✅ Encontradas ${results.length} partidas`);
     return results;
   }
@@ -230,11 +256,12 @@ class LeaguepediaService {
   }
   
   /**
-   * Buscar weeks disponíveis para um torneio
+   * Buscar weeks/tabs disponíveis para um torneio
+   * Retorna valores como números quando possível, ou strings como "Day 1", "Quarterfinals"
    */
-  async getAvailableWeeks(overviewPage: string): Promise<number[]> {
+  async getAvailableWeeks(overviewPage: string): Promise<(number | string)[]> {
     console.log(`📋 Buscando weeks disponíveis: ${overviewPage}`);
-    
+
     const results = await this.cargoQuery({
       tables: 'ScoreboardGames',
       fields: 'Week',
@@ -243,12 +270,18 @@ class LeaguepediaService {
       order_by: 'Week',
       limit: 50
     });
-    
-    const weeks = results
-      .map(r => parseInt(r.Week))
-      .filter(w => !isNaN(w))
-      .sort((a, b) => a - b);
-    
+
+    const weeks: (number | string)[] = [];
+    for (const r of results) {
+      const weekVal = r.Week;
+      const num = parseInt(weekVal);
+      if (!isNaN(num) && String(num) === weekVal) {
+        weeks.push(num);
+      } else if (weekVal) {
+        weeks.push(weekVal);
+      }
+    }
+
     console.log(`✅ Weeks disponíveis: ${weeks.join(', ')}`);
     return weeks;
   }

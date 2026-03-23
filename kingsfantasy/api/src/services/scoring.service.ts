@@ -163,7 +163,19 @@ class ScoringService {
     }
   }
 
+  /**
+   * FINALIZAÇÃO DE RODADA — CASCATA ESTRITA
+   *
+   * Ordem obrigatória (ACID-like):
+   *   FASE 1: Calcular pontuações de todos os user_teams
+   *   FASE 2: Calcular flutuação de preços dos jogadores
+   *   FASE 3: Recalcular patrimônio (budget + lineup) de todos os usuários
+   *   FASE 4: Marcar rodada como finalizada
+   *
+   * Se qualquer fase falhar, as fases seguintes NÃO executam.
+   */
   private async _doFinalizeRound(roundId: number) {
+    // ── Validação ──────────────────────────────────────────────
     const { data: round, error: roundError } = await adminSupabase
       .from('rounds')
       .select('id, status')
@@ -186,13 +198,7 @@ class ScoringService {
 
     const matchIds = (matches || []).map((match: any) => match.id);
     if (matchIds.length === 0) {
-      return {
-        totalPerformances: 0,
-        remainingNulls: 0,
-        updatedTeams: 0,
-        updatedPlayers: 0,
-        updatedBudgets: 0
-      };
+      return { totalPerformances: 0, remainingNulls: 0, updatedTeams: 0, updatedPlayers: 0, updatedBudgets: 0, priceUpdates: 0 };
     }
 
     const { data: performances, error: perfError } = await adminSupabase
@@ -204,95 +210,78 @@ class ScoringService {
 
     const totalPerformances = performances?.length || 0;
     const remainingNulls = (performances || []).filter((perf: any) => perf.fantasy_points === null).length;
+
     if (remainingNulls > 0) {
-      return {
-        totalPerformances,
-        remainingNulls,
-        updatedTeams: 0,
-        updatedPlayers: 0,
-        updatedBudgets: 0
-      };
+      return { totalPerformances, remainingNulls, updatedTeams: 0, updatedPlayers: 0, updatedBudgets: 0, priceUpdates: 0 };
     }
 
-    await this.calculateAllScoresForRound(roundId, {
-      updatePlayerPrices: !isRecalculation
-    });
+    // ── FASE 1: Calcular pontuações dos user_teams ─────────────
+    console.log(`\n🔷 FASE 1: Calculando pontuações dos user_teams...`);
 
-    const { data: scores, error: scoresError } = await adminSupabase
-      .from('round_scores')
-      .select('user_team_id, round_id, total_points')
-      .in('round_id', [roundId]);
+    const { data: userTeamsAll, error: teamsError } = await adminSupabase
+      .from('user_teams')
+      .select('id');
 
-    if (scoresError) throw scoresError;
+    if (teamsError) throw teamsError;
 
-    const roundTotalsByTeam = (scores || []).reduce((map: Map<number, number>, row: any) => {
-      const id = Number(row.user_team_id);
-      const total = map.get(id) || 0;
-      map.set(id, total + (row.total_points || 0));
-      return map;
-    }, new Map<number, number>());
-
-    const userTeamIds = Array.from(roundTotalsByTeam.keys());
     let updatedTeams = 0;
-
-    if (userTeamIds.length > 0) {
-      const { data: allScores, error: allScoresError } = await adminSupabase
-        .from('round_scores')
-        .select('user_team_id, total_points')
-        .in('user_team_id', userTeamIds);
-
-      if (allScoresError) throw allScoresError;
-
-      const totalsByTeam = (allScores || []).reduce((map: Map<number, number>, row: any) => {
-        const id = Number(row.user_team_id);
-        const total = map.get(id) || 0;
-        map.set(id, total + (row.total_points || 0));
-        return map;
-      }, new Map<number, number>());
-
-      for (const teamId of userTeamIds) {
-        const { error } = await adminSupabase
-          .from('user_teams')
-          .update({
-            current_round_points: roundTotalsByTeam.get(teamId) || 0,
-            total_points: parseFloat(((totalsByTeam.get(teamId) || 0)).toFixed(2))
-          })
-          .eq('id', teamId);
-
-        if (!error) updatedTeams++;
+    for (const team of userTeamsAll || []) {
+      try {
+        await this.saveRoundScore(team.id, roundId);
+        updatedTeams++;
+      } catch (err) {
+        console.error(`❌ Failed score for team ${team.id}:`, err);
       }
     }
+    console.log(`   ✅ ${updatedTeams}/${(userTeamsAll || []).length} user_teams pontuados`);
 
+    // ── FASE 2: Flutuação de preços dos jogadores ──────────────
+    console.log(`🔷 FASE 2: Calculando flutuação de preços...`);
+
+    let priceUpdates = 0;
+    let priceChanges = new Map<string, { oldPrice: number; newPrice: number }>();
+
+    if (!isRecalculation) {
+      const priceResult = await this.updatePlayerPricesForRound(roundId);
+      priceUpdates = priceResult.updated;
+      priceChanges = priceResult.priceChanges;
+    } else {
+      console.log(`   ℹ️  Recálculo — preços NÃO alterados`);
+    }
+
+    // Atualizar aggregates dos jogadores (points, avg_points)
     const updatedPlayers = await this.refreshPlayerAggregates(
       (performances || []).map((perf: any) => String(perf.player_id)),
       roundId
     );
 
-    const playerPriceMap = new Map<string, number>();
+    // ── FASE 3: Recalcular patrimônio dos usuários ─────────────
+    console.log(`🔷 FASE 3: Recalculando patrimônio dos usuários...`);
 
-    const { data: userTeams, error: teamsError } = await adminSupabase
+    const { data: userTeams, error: budgetTeamsError } = await adminSupabase
       .from('user_teams')
       .select('id, lineup, budget');
 
-    if (teamsError) throw teamsError;
+    if (budgetTeamsError) throw budgetTeamsError;
 
+    // Buscar preços ATUALIZADOS de todos os jogadores nos lineups
     const lineupPlayerIds = new Set<string>();
     for (const team of userTeams || []) {
       const lineup = team.lineup || {};
-      const lineupPlayers = Object.values(lineup).filter(Boolean) as Array<{ id: string }>;
-      lineupPlayers.forEach((player) => lineupPlayerIds.add(String(player.id)));
+      const players = Object.values(lineup).filter(Boolean) as Array<{ id: string }>;
+      players.forEach((p) => lineupPlayerIds.add(String(p.id)));
     }
 
+    const currentPriceMap = new Map<string, number>();
     if (lineupPlayerIds.size > 0) {
-      const { data: lineupPlayers, error: lineupPlayersError } = await adminSupabase
+      const { data: freshPlayers, error: freshError } = await adminSupabase
         .from('players')
         .select('id, price')
         .in('id', Array.from(lineupPlayerIds));
 
-      if (lineupPlayersError) throw lineupPlayersError;
-
-      for (const player of lineupPlayers || []) {
-        playerPriceMap.set(String(player.id), Number(player.price || 0));
+      if (freshError) throw freshError;
+      for (const p of freshPlayers || []) {
+        currentPriceMap.set(String(p.id), Number(p.price || 0));
       }
     }
 
@@ -300,40 +289,46 @@ class ScoringService {
     for (const team of userTeams || []) {
       const lineup = (team.lineup || {}) as Record<string, any>;
       const lineupPlayers = Object.values(lineup).filter(Boolean) as Array<{ id: string; price?: number }>;
-      const oldLineupValue = lineupPlayers.reduce((sum, player) => sum + Number(player.price || 0), 0);
-      const newLineupValue = lineupPlayers.reduce((sum, player) => {
-        const mapped = playerPriceMap.get(String(player.id));
-        const fallbackPrice = Number(player.price || 0);
-        return sum + (mapped ?? fallbackPrice);
+
+      // Valor antigo = soma dos preços no snapshot do lineup
+      const oldLineupValue = lineupPlayers.reduce((sum, p) => sum + Number(p.price || 0), 0);
+
+      // Valor novo = soma dos preços ATUAIS do banco (pós-flutuação)
+      const newLineupValue = lineupPlayers.reduce((sum, p) => {
+        return sum + (currentPriceMap.get(String(p.id)) ?? Number(p.price || 0));
       }, 0);
 
+      // Budget ajustado: se elenco valorizou, budget sobe; se desvalorizou, budget cai
       const nextBudget = parseFloat((Number(team.budget || 0) + (newLineupValue - oldLineupValue)).toFixed(2));
 
-      const normalizedLineup = Object.entries(lineup).reduce<Record<string, any>>((acc, [role, player]) => {
+      // Atualizar lineup com preços novos (snapshot atualizado)
+      const updatedLineup = Object.entries(lineup).reduce<Record<string, any>>((acc, [role, player]) => {
         if (!player) return acc;
-        const mappedPrice = playerPriceMap.get(String(player.id));
         acc[role] = {
           ...player,
-          price: mappedPrice ?? Number(player.price || 0)
+          price: currentPriceMap.get(String(player.id)) ?? Number(player.price || 0)
         };
         return acc;
       }, {});
 
       const { error } = await adminSupabase
         .from('user_teams')
-        .update({
-          budget: nextBudget,
-          lineup: normalizedLineup
-        })
+        .update({ budget: nextBudget, lineup: updatedLineup })
         .eq('id', team.id);
 
       if (!error) updatedBudgets++;
     }
+    console.log(`   ✅ ${updatedBudgets} patrimônios atualizados`);
+
+    // ── FASE 4: Marcar rodada como finalizada ──────────────────
+    console.log(`🔷 FASE 4: Finalizando rodada...`);
 
     await adminSupabase
       .from('rounds')
       .update({ status: 'finished' })
       .eq('id', roundId);
+
+    console.log(`\n✅ Rodada ${roundId} finalizada com sucesso!\n`);
 
     return {
       recalculated: isRecalculation,
@@ -341,7 +336,8 @@ class ScoringService {
       remainingNulls,
       updatedTeams,
       updatedPlayers,
-      updatedBudgets
+      updatedBudgets,
+      priceUpdates
     };
   }
 
@@ -861,13 +857,21 @@ class ScoringService {
 
   /**
    * Atualiza preços dos jogadores com base na performance da rodada
+   *
+   * Fórmula de flutuação:
+   *   Meta = Preco_Atual × 0.45
+   *   Variacao = (Pontuacao_Real - Meta) / 2.5
+   *   Novo_Preco = max(1.00, round(Preco_Atual + Variacao, 2))
+   *
+   * Retorna map de player_id → { oldPrice, newPrice } para cálculo de patrimônio
    */
-  async updatePlayerPricesForRound(roundId: number) {
+  async updatePlayerPricesForRound(roundId: number): Promise<{
+    updated: number;
+    priceChanges: Map<string, { oldPrice: number; newPrice: number }>;
+  }> {
     console.log(`💰 Updating player prices for round ${roundId}...`);
 
-    const config = await this.loadConfig();
-    const minPrice = typeof config.min_player_price === 'number' ? config.min_player_price : 8;
-    const maxPrice = typeof config.max_player_price === 'number' ? config.max_player_price : 15;
+    const MIN_PRICE = 1.00;
 
     const { data: matches } = await adminSupabase
       .from('matches')
@@ -876,7 +880,7 @@ class ScoringService {
 
     if (!matches || matches.length === 0) {
       console.log('ℹ️  No matches found for price update');
-      return { updated: 0 };
+      return { updated: 0, priceChanges: new Map() };
     }
 
     const matchIds = matches.map((match: any) => match.id);
@@ -896,64 +900,69 @@ class ScoringService {
 
     if (!performances || performances.length === 0) {
       console.log('ℹ️  No performances found for price update');
-      return { updated: 0 };
+      return { updated: 0, priceChanges: new Map() };
     }
 
-    const playerStats = new Map<string, { totalPoints: number; count: number }>();
+    // Agrupar pontos por jogador (média por match, normalizada por games_count)
+    const playerMatchPoints = new Map<string, Map<number, number>>();
 
     for (const perf of performances) {
-      const gamesCount = Number(matchGamesCount.get(Number(perf.match_id)) || 1);
-      const normalizedPoints = Number(perf.fantasy_points || 0) / Math.max(gamesCount, 1);
       const playerId = String(perf.player_id);
-      const existing = playerStats.get(playerId) || { totalPoints: 0, count: 0 };
-      existing.totalPoints += normalizedPoints;
-      existing.count += 1;
-      playerStats.set(playerId, existing);
+      const matchId = Number(perf.match_id);
+      const points = Number(perf.fantasy_points || 0);
+
+      if (!playerMatchPoints.has(playerId)) {
+        playerMatchPoints.set(playerId, new Map());
+      }
+      const matchMap = playerMatchPoints.get(playerId)!;
+      matchMap.set(matchId, (matchMap.get(matchId) || 0) + points);
     }
 
-    const playerIds = Array.from(playerStats.keys());
+    // Calcular média real de cada jogador na rodada
+    const playerAvgPoints = new Map<string, number>();
+    for (const [playerId, matchMap] of playerMatchPoints) {
+      let totalNormalized = 0;
+      let matchCount = 0;
+
+      for (const [matchId, totalPoints] of matchMap) {
+        const gamesCount = Number(matchGamesCount.get(matchId) || 1);
+        totalNormalized += totalPoints / Math.max(gamesCount, 1);
+        matchCount++;
+      }
+
+      playerAvgPoints.set(playerId, matchCount > 0 ? totalNormalized / matchCount : 0);
+    }
+
+    const playerIds = Array.from(playerAvgPoints.keys());
     const { data: players, error: playersError } = await adminSupabase
       .from('players')
       .select('id, price')
       .in('id', playerIds);
 
     if (playersError) throw playersError;
-
     if (!players || players.length === 0) {
-      console.log('ℹ️  No players found for price update');
-      return { updated: 0 };
+      return { updated: 0, priceChanges: new Map() };
     }
 
     let updated = 0;
+    const priceChanges = new Map<string, { oldPrice: number; newPrice: number }>();
 
     for (const player of players) {
-      const stats = playerStats.get(player.id);
-      if (!stats || stats.count === 0) continue;
+      const avgPoints = playerAvgPoints.get(player.id) || 0;
+      const currentPrice = Number(player.price || 0);
 
-      const avgPoints = stats.totalPoints / stats.count;
-      let delta = 0;
+      // Fórmula: Variacao = (Pontuacao_Real - (Preco_Atual * 0.45)) / 2.5
+      const meta = currentPrice * 0.45;
+      const variacao = (avgPoints - meta) / 2.5;
+      const newPrice = Math.max(MIN_PRICE, parseFloat((currentPrice + variacao).toFixed(2)));
 
-      if (avgPoints >= 22) {
-        delta = 0.6;
-      } else if (avgPoints >= 16) {
-        delta = 0.3;
-      } else if (avgPoints <= 6) {
-        delta = -0.6;
-      } else if (avgPoints <= 10) {
-        delta = -0.3;
-      }
+      priceChanges.set(player.id, { oldPrice: currentPrice, newPrice });
 
-      if (delta === 0) continue;
-
-      const currentPrice = typeof player.price === 'number' ? player.price : 0;
-      const nextPrice = Math.max(minPrice, Math.min(maxPrice, currentPrice + delta));
-      const roundedPrice = parseFloat(nextPrice.toFixed(2));
-
-      if (roundedPrice === currentPrice) continue;
+      if (newPrice === currentPrice) continue;
 
       const { error: updateError } = await adminSupabase
         .from('players')
-        .update({ price: roundedPrice })
+        .update({ price: newPrice })
         .eq('id', player.id);
 
       if (updateError) {
@@ -961,11 +970,13 @@ class ScoringService {
         continue;
       }
 
+      const direction = variacao > 0 ? '📈' : '📉';
+      console.log(`   ${direction} ${player.id}: ${currentPrice} → ${newPrice} (pts=${avgPoints.toFixed(1)}, meta=${meta.toFixed(1)}, var=${variacao.toFixed(2)})`);
       updated++;
     }
 
-    console.log(`✅ Player prices updated: ${updated}`);
-    return { updated };
+    console.log(`✅ Player prices updated: ${updated}/${players.length}`);
+    return { updated, priceChanges };
   }
 }
 

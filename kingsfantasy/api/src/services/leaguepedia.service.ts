@@ -71,15 +71,26 @@ interface PicksBans {
 
 class LeaguepediaService {
   private baseUrl = 'https://lol.fandom.com/api.php';
+  private lastQueryTime = 0;
+  private readonly QUERY_DELAY_MS = 1500; // 1.5s between queries to avoid rate limit
+
+  private async rateLimit(): Promise<void> {
+    const elapsed = Date.now() - this.lastQueryTime;
+    if (elapsed < this.QUERY_DELAY_MS) {
+      await new Promise(resolve => setTimeout(resolve, this.QUERY_DELAY_MS - elapsed));
+    }
+    this.lastQueryTime = Date.now();
+  }
   
   /**
    * Fazer query genérica no Cargo API
    */
   private async cargoQuery(params: Record<string, any>): Promise<any[]> {
     try {
-      console.log(`🔍 Cargo Query: ${params.tables}`);
-      
-      const response = await axios.get<CargoResponse>(this.baseUrl, {
+      await this.rateLimit();
+      console.log(`🔍 Cargo Query: ${params.tables} | where: ${params.where || 'N/A'}`);
+
+      const response = await axios.get<any>(this.baseUrl, {
         params: {
           action: 'cargoquery',
           format: 'json',
@@ -88,12 +99,20 @@ class LeaguepediaService {
         headers: {
           'User-Agent': 'KingsFantasy/1.0 (contact@kingsfantasy.com)'
         },
-        timeout: 30000 // 30 segundos
+        timeout: 30000
       });
-      
-      const results = response.data.cargoquery?.map(item => item.title) || [];
+
+      // Check for API-level errors (returned as HTTP 200 with error object)
+      if (response.data?.error) {
+        const errCode = response.data.error.code || 'unknown';
+        const errInfo = response.data.error.info || '';
+        console.error(`❌ Leaguepedia API error: [${errCode}] ${errInfo}`);
+        throw new Error(`Leaguepedia API error [${errCode}]: ${errInfo}`);
+      }
+
+      const results = response.data.cargoquery?.map((item: any) => item.title) || [];
       console.log(`✅ Cargo Query retornou ${results.length} resultados`);
-      
+
       return results;
     } catch (error: any) {
       console.error('❌ Cargo API error:', error.message);

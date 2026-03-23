@@ -445,6 +445,45 @@ router.get('/available-rounds/:season', async (req: AuthenticatedRequest, res: R
   }
 });
 
+// GET /api/admin/debug-leaguepedia/:season/:round - Test Leaguepedia queries directly
+router.get('/debug-leaguepedia/:season/:round', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { season, round } = req.params;
+    const overviewPage = autoImportService.getOverviewPage(season);
+
+    const results: any = {
+      overviewPage,
+      season,
+      round,
+      timestamp: new Date().toISOString(),
+      steps: []
+    };
+
+    // Step 1: Test getAvailableWeeks
+    try {
+      const weeks = await autoImportService.getAvailableRounds(season as any);
+      results.availableWeeks = weeks;
+      results.steps.push({ step: 'getAvailableWeeks', success: true, count: weeks.length });
+    } catch (err: any) {
+      results.steps.push({ step: 'getAvailableWeeks', success: false, error: err.message });
+    }
+
+    // Step 2: Test getMatches
+    try {
+      const { leaguepediaService } = await import('../../services/leaguepedia.service');
+      const matches = await leaguepediaService.getMatches(overviewPage, round);
+      results.matches = matches;
+      results.steps.push({ step: 'getMatches', success: true, count: matches.length });
+    } catch (err: any) {
+      results.steps.push({ step: 'getMatches', success: false, error: err.message });
+    }
+
+    res.json({ success: true, debug: results });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 /**
  * ============================================================================
  * AUTO IMPORT FROM RIOT API

@@ -1337,10 +1337,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       const result = await DataService.setupCupMappings();
       if (result.ok) {
         const teamOk = result.teams?.results?.filter((t: any) => t.status !== 'ERROR' && t.status !== 'NOT_FOUND').length || 0;
+        const teamFail = result.teams?.results?.filter((t: any) => t.status === 'NOT_FOUND' || t.status === 'ERROR') || [];
         const playerOk = result.players?.results?.filter((p: any) => p.status !== 'ERROR').length || 0;
+        const playerFail = result.players?.results?.filter((p: any) => p.status === 'ERROR') || [];
+        const failDetails = [
+          ...teamFail.map((t: any) => `Time: ${t.error || t.db_name}`),
+          ...playerFail.map((p: any) => `Player: ${p.name} - ${p.error}`)
+        ];
+        const detailStr = failDetails.length > 0 ? ` | Erros: ${failDetails.join('; ')}` : '';
+        const dbTeamNames = result.db_teams?.map((t: any) => t.name).join(', ') || 'N/A';
+        const debugStr = teamOk === 0 ? ` | Times no banco: [${dbTeamNames}]` : '';
         setCupMappingsResult({
-          success: true,
-          message: `Mappings configurados! ${teamOk} times e ${playerOk} jogadores mapeados.`,
+          success: teamOk > 0 || playerOk > 0,
+          message: `Mappings: ${teamOk} times e ${playerOk} jogadores mapeados.${detailStr}${debugStr}`,
           details: { teams: result.teams, players: result.players }
         });
       } else {
@@ -2076,11 +2085,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
               <button
                 onClick={() => setPipelinePhase(2)}
-                disabled={!pipelineRoundId}
-                className="btn-primary text-xs uppercase tracking-wider w-full disabled:opacity-50"
+                className="btn-primary text-xs uppercase tracking-wider w-full"
               >
                 Avancar para Fase 2 — Execucao
               </button>
+              {!pipelineRoundId && (
+                <p className="text-[10px] text-amber-400 uppercase tracking-wider text-center">
+                  Selecione uma rodada acima para operar. Caso nao exista, crie uma na aba "Rodadas".
+                </p>
+              )}
             </div>
           </div>
         )}

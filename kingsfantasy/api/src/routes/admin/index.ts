@@ -251,9 +251,11 @@ router.post('/setup-cup-mappings', async (req: AuthenticatedRequest, res: Respon
 
     const teamResults: any[] = [];
     for (const mapping of teamMappings) {
-      const team = teams.find(t => t.name === mapping.db_name);
+      // Case-insensitive + trim match
+      const dbNameNorm = mapping.db_name.toLowerCase().trim();
+      const team = teams.find(t => t.name.toLowerCase().trim() === dbNameNorm);
       if (!team) {
-        teamResults.push({ ...mapping, status: 'NOT_FOUND', error: `Time "${mapping.db_name}" não encontrado no banco` });
+        teamResults.push({ ...mapping, status: 'NOT_FOUND', error: `Time "${mapping.db_name}" não encontrado no banco. Times disponíveis: ${teams.map(t => t.name).join(', ')}` });
         continue;
       }
 

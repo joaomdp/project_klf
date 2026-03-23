@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import { adminSupabase } from '../config/supabase';
 import { leaguepediaService } from './leaguepedia.service';
 import { mapperService } from './mapper.service';
 import { scoringService } from './scoring.service';
@@ -52,7 +52,8 @@ class AutoImportService {
     try {
       console.log(`🚀 Starting import for ${overviewPage}, Round ${roundNumber}`);
 
-      // Initialize mapper caches
+      // Initialize mapper caches (force refresh to pick up new mappings)
+      mapperService.clearCaches();
       await mapperService.initializeCaches();
       console.log('✅ Mapper caches initialized');
 
@@ -137,8 +138,26 @@ class AutoImportService {
       // Parse date (format: "2024-01-28 19:00:00")
       const matchDate = new Date(lpMatch.DateTime_UTC);
 
+      // Check for existing match to avoid duplicates on re-import
+      const { data: existingMatch } = await adminSupabase
+        .from('matches')
+        .select('id')
+        .eq('round_id', roundId)
+        .eq('team_a_id', team1Id)
+        .eq('team_b_id', team2Id)
+        .maybeSingle();
+
+      if (existingMatch) {
+        console.log(`⏭️ Match already exists: ${lpMatch.Team1} vs ${lpMatch.Team2} (id: ${existingMatch.id}), skipping`);
+        return {
+          success: true,
+          matchId: existingMatch.id,
+          performancesCreated: 0
+        };
+      }
+
       // Create match record
-      const { data: match, error: matchError } = await supabase
+      const { data: match, error: matchError } = await adminSupabase
         .from('matches')
         .insert({
           round_id: roundId,
@@ -146,7 +165,8 @@ class AutoImportService {
           team_b_id: team2Id,
           winner_id: winnerId,
           scheduled_time: matchDate.toISOString(),
-          status: 'completed'
+          status: 'completed',
+          games_count: 1
         })
         .select()
         .single();
@@ -189,10 +209,11 @@ class AutoImportService {
           });
 
           // Create performance record
-          const { error: perfError } = await supabase
+          const { error: perfError } = await adminSupabase
             .from('player_performances')
             .insert({
               ...performance,
+              game_number: 1,
               fantasy_points: basePoints // Will be recalculated later with buffs
             });
 
@@ -263,7 +284,7 @@ class AutoImportService {
    */
   private async findOrCreateRound(season: number, roundNumber: number) {
     // Check if round already exists
-    const { data: existingRound } = await supabase
+    const { data: existingRound } = await adminSupabase
       .from('rounds')
       .select('*')
       .eq('season', season)
@@ -275,7 +296,7 @@ class AutoImportService {
     }
 
     // Create new round
-    const { data: newRound, error } = await supabase
+    const { data: newRound, error } = await adminSupabase
       .from('rounds')
       .insert({
         season,
@@ -299,7 +320,7 @@ class AutoImportService {
    * Mark a round as completed
    */
   private async markRoundAsCompleted(roundId: number) {
-    const { error } = await supabase
+    const { error } = await adminSupabase
       .from('rounds')
       .update({ status: 'completed' })
       .eq('id', roundId);
@@ -341,7 +362,7 @@ class AutoImportService {
    * Get import status for a round
    */
   async getRoundImportStatus(season: number, roundNumber: number) {
-    const { data: round } = await supabase
+    const { data: round } = await adminSupabase
       .from('rounds')
       .select('*, matches(count)')
       .eq('season', season)

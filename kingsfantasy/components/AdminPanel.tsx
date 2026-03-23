@@ -1829,12 +1829,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       });
 
       if (result.ok) {
-        setPipelineStatus(`Importado! ${result.stats?.matchesImported || 0} partidas, ${result.stats?.performancesImported || 0} performances.`);
+        const errList = result.errors?.length ? `\nAvisos: ${result.errors.join(' | ')}` : '';
+        setPipelineStatus(`Importado! ${result.stats?.matchesImported || 0} partidas, ${result.stats?.performancesImported || 0} performances.${errList}`);
         await Promise.all([loadPlayers(), loadRounds(), loadMatches()]);
         window.dispatchEvent(new Event('players:refresh'));
         window.dispatchEvent(new Event('leagues:refresh'));
       } else {
-        setPipelineStatus(result.error || 'Erro na importacao');
+        const errList = result.errors?.length ? `\nDetalhes: ${result.errors.join(' | ')}` : '';
+        setPipelineStatus(`${result.error || 'Erro na importacao'}${errList}`);
       }
     } catch (error) {
       setPipelineStatus(String(error));

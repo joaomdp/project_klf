@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import { adminSupabase } from '../config/supabase';
 
 /**
  * MAPPER SERVICE
@@ -47,7 +47,7 @@ class MapperService {
     
     try {
       // Cache de jogadores - use player_mappings for Leaguepedia name resolution
-      const { data: playerMappings, error: mappingsError } = await supabase
+      const { data: playerMappings, error: mappingsError } = await adminSupabase
         .from('player_mappings')
         .select(`
           leaguepedia_name,
@@ -67,7 +67,7 @@ class MapperService {
       }
       
       // Also load players directly for backwards compatibility
-      const { data: players, error: playersError } = await supabase
+      const { data: players, error: playersError } = await adminSupabase
         .from('players')
         .select('id, name');
       
@@ -82,7 +82,7 @@ class MapperService {
       });
       
       // Cache de campeões
-      const { data: champions, error: championsError } = await supabase
+      const { data: champions, error: championsError } = await adminSupabase
         .from('champions')
         .select('id, name, key_name');
       
@@ -94,7 +94,7 @@ class MapperService {
       });
       
       // Cache de times - use team_mappings for Leaguepedia name resolution
-      const { data: teamMappings, error: teamMappingsError } = await supabase
+      const { data: teamMappings, error: teamMappingsError } = await adminSupabase
         .from('team_mappings')
         .select(`
           leaguepedia_name,
@@ -114,7 +114,7 @@ class MapperService {
       }
       
       // Also load teams directly for backwards compatibility
-      const { data: teams, error: teamsError } = await supabase
+      const { data: teams, error: teamsError } = await adminSupabase
         .from('teams')
         .select('id, name');
       

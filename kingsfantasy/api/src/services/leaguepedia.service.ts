@@ -124,41 +124,65 @@ class LeaguepediaService {
   async getMatches(overviewPage: string, week: number | string): Promise<MatchData[]> {
     console.log(`📅 Buscando partidas: ${overviewPage}, Week/Tab ${week}`);
 
-    // Try with exact week value first
-    let results = await this.cargoQuery({
+    const fields = 'GameId,MatchId,Team1,Team2,Winner,DateTime_UTC,Week,Game';
+    const weekStr = String(week);
+
+    // Build list of queries to try in order
+    const attempts: Array<{ label: string; where: string }> = [
+      // 1. Exact Week match
+      { label: `Week="${weekStr}"`, where: `OverviewPage="${overviewPage}" AND Week="${weekStr}"` },
+      // 2. Tab exact match
+      { label: `Tab="${weekStr}"`, where: `OverviewPage="${overviewPage}" AND Tab="${weekStr}"` },
+    ];
+
+    // If numeric, also try "Day X" format
+    if (typeof week === 'number' || /^\d+$/.test(weekStr)) {
+      const num = typeof week === 'number' ? week : parseInt(weekStr);
+      attempts.push(
+        { label: `Week="Day ${num}"`, where: `OverviewPage="${overviewPage}" AND Week="Day ${num}"` },
+        { label: `Tab="Day ${num}"`, where: `OverviewPage="${overviewPage}" AND Tab="Day ${num}"` },
+      );
+    }
+
+    // If "Day X" string, also try just the number
+    const dayMatch = weekStr.match(/^Day\s+(\d+)$/i);
+    if (dayMatch) {
+      attempts.push(
+        { label: `Week="${dayMatch[1]}"`, where: `OverviewPage="${overviewPage}" AND Week="${dayMatch[1]}"` },
+        { label: `Tab="${dayMatch[1]}"`, where: `OverviewPage="${overviewPage}" AND Tab="${dayMatch[1]}"` },
+      );
+    }
+
+    for (const attempt of attempts) {
+      console.log(`🔍 Tentando: ${attempt.label}`);
+      const results = await this.cargoQuery({
+        tables: 'ScoreboardGames',
+        fields,
+        where: attempt.where,
+        order_by: 'DateTime_UTC',
+        limit: 50
+      });
+
+      if (results.length > 0) {
+        console.log(`✅ Encontradas ${results.length} partidas com ${attempt.label}`);
+        return results;
+      }
+    }
+
+    // Last resort: fetch ALL matches and log available Week/Tab values for debugging
+    console.log(`⚠️  Nenhuma partida encontrada. Buscando valores de Week disponíveis...`);
+    const allMatches = await this.cargoQuery({
       tables: 'ScoreboardGames',
-      fields: 'GameId,MatchId,Team1,Team2,Winner,DateTime_UTC,Week,Game',
-      where: `OverviewPage="${overviewPage}" AND Week="${week}"`,
-      order_by: 'DateTime_UTC',
+      fields: 'Week,Tab,N_MatchInTab',
+      where: `OverviewPage="${overviewPage}"`,
+      group_by: 'Week',
       limit: 50
     });
+    const weekValues = allMatches.map(m => `Week="${m.Week}" Tab="${m.Tab}"`).join(', ');
+    console.log(`📋 Valores de Week/Tab disponíveis: ${weekValues}`);
 
-    // If no results with numeric week, try "Day X" format (for Cup tournaments)
-    if (results.length === 0 && typeof week === 'number') {
-      console.log(`⚠️  Nenhum resultado com Week=${week}, tentando "Day ${week}"...`);
-      results = await this.cargoQuery({
-        tables: 'ScoreboardGames',
-        fields: 'GameId,MatchId,Team1,Team2,Winner,DateTime_UTC,Week,Game',
-        where: `OverviewPage="${overviewPage}" AND Week="Day ${week}"`,
-        order_by: 'DateTime_UTC',
-        limit: 50
-      });
-    }
-
-    // If still no results, try Tab field (some tournaments use Tab instead of Week)
-    if (results.length === 0) {
-      console.log(`⚠️  Nenhum resultado com Week, tentando Tab="${week}"...`);
-      results = await this.cargoQuery({
-        tables: 'ScoreboardGames',
-        fields: 'GameId,MatchId,Team1,Team2,Winner,DateTime_UTC,Week,Game',
-        where: `OverviewPage="${overviewPage}" AND Tab="Day ${typeof week === 'number' ? week : week}"`,
-        order_by: 'DateTime_UTC',
-        limit: 50
-      });
-    }
-
-    console.log(`✅ Encontradas ${results.length} partidas`);
-    return results;
+    console.log(`❌ Nenhuma partida encontrada para ${overviewPage} ${weekStr}`);
+    return [];
   }
   
   /**

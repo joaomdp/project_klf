@@ -62,7 +62,9 @@ class AutoImportService {
       console.log(`📥 Fetched ${lpMatches.length} matches from Leaguepedia`);
 
       if (lpMatches.length === 0) {
-        result.errors.push(`No matches found for ${overviewPage} Round ${roundNumber}`);
+        // Fetch available weeks for debug info
+        const availableWeeks = await leaguepediaService.getAvailableWeeks(overviewPage);
+        result.errors.push(`No matches found for ${overviewPage} Round "${roundNumber}". Available weeks: [${availableWeeks.join(', ')}]`);
         return result;
       }
 

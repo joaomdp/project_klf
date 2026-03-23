@@ -167,10 +167,10 @@ router.post('/reset-data', async (req: AuthenticatedRequest, res: Response) => {
       return res.status(500).json({ success: false, error: `Erro ao deletar matches: ${matchError.message}` });
     }
 
-    // 3. Zerar stats dos jogadores
+    // 3. Zerar stats dos jogadores e resetar preço para 20
     const { error: playersError } = await adminSupabase
       .from('players')
-      .update({ points: 0, avg_points: 0, kda: '0/0/0' })
+      .update({ points: 0, avg_points: 0, kda: '0/0/0', price: 20 })
       .neq('id', '00000000-0000-0000-0000-000000000000');
 
     if (playersError) {

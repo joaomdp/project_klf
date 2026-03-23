@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -type f \\\\\\(-name *.sql -o -name schema* -o -name *schema* \\\\\\))",
+      "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -name README* -o -name SCHEMA* -o -name DATABASE*)",
+      "Bash(xargs grep:*)",
+      "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -name .env* -o -name *.env.example)",
+      "WebFetch(domain:projectklf-production.up.railway.app)",
+      "Bash(grep:*)",
+      "WebFetch(domain:lol.fandom.com)"
     ]
   }
 }

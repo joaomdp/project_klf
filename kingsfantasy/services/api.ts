@@ -1881,6 +1881,193 @@ export const DataService = {
     }
   },
 
+  async resetData(): Promise<{ ok: boolean; error?: string; verification?: any }> {
+    const anonKey = this.getAnonKey();
+    const userToken = this.getUserToken();
+
+    if (!userToken) {
+      return { ok: false, error: 'Usuário não autenticado' };
+    }
+
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/admin/reset-data`, {
+        method: 'POST',
+        headers: buildAuthHeaders(anonKey, userToken, {
+          allowAnonFallback: false,
+          includeContentType: true
+        }),
+        body: JSON.stringify({ confirm: 'RESET' })
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        return { ok: false, error: data?.error || 'Erro ao resetar dados' };
+      }
+
+      return { ok: true, verification: data.verification };
+    } catch (error) {
+      return { ok: false, error: String(error) };
+    }
+  },
+
+  async setupCupMappings(): Promise<{
+    ok: boolean;
+    error?: string;
+    teams?: any;
+    players?: any;
+    db_teams?: any;
+    db_players?: any;
+  }> {
+    const anonKey = this.getAnonKey();
+    const userToken = this.getUserToken();
+
+    if (!userToken) {
+      return { ok: false, error: 'Usuário não autenticado' };
+    }
+
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/admin/setup-cup-mappings`, {
+        method: 'POST',
+        headers: buildAuthHeaders(anonKey, userToken, {
+          allowAnonFallback: false,
+          includeContentType: true
+        })
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        return { ok: false, error: data?.error || 'Erro ao configurar mappings' };
+      }
+
+      return {
+        ok: true,
+        teams: data.teams,
+        players: data.players,
+        db_teams: data.db_teams,
+        db_players: data.db_players
+      };
+    } catch (error) {
+      return { ok: false, error: String(error) };
+    }
+  },
+
+  async importFromLeaguepedia(payload: {
+    season: number | string;
+    roundNumber: number;
+  }): Promise<{
+    ok: boolean;
+    error?: string;
+    message?: string;
+    stats?: {
+      roundId: number;
+      matchesImported: number;
+      performancesImported: number;
+    };
+    errors?: string[];
+  }> {
+    const anonKey = this.getAnonKey();
+    const userToken = this.getUserToken();
+
+    if (!userToken) {
+      return { ok: false, error: 'Usuário não autenticado' };
+    }
+
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/admin/import-round`, {
+        method: 'POST',
+        headers: buildAuthHeaders(anonKey, userToken, {
+          allowAnonFallback: false,
+          includeContentType: true
+        }),
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        return {
+          ok: false,
+          error: data?.message || data?.error || 'Erro ao importar do Leaguepedia',
+          errors: data?.errors
+        };
+      }
+
+      return {
+        ok: true,
+        message: data.message,
+        stats: data.stats,
+        errors: data.errors
+      };
+    } catch (error) {
+      return { ok: false, error: String(error) };
+    }
+  },
+
+  async importFromRiotAPI(payload: {
+    season: number;
+    roundNumber: number;
+    startDate: string;
+    endDate: string;
+  }): Promise<{
+    ok: boolean;
+    error?: string;
+    message?: string;
+    stats?: {
+      roundId: number;
+      season: number;
+      roundNumber: number;
+      matchesImported: number;
+      performancesImported: number;
+    };
+    matches?: Array<{
+      matchId: number;
+      team1: string;
+      team2: string;
+      winner: string;
+    }>;
+    errors?: string[];
+  }> {
+    const anonKey = this.getAnonKey();
+    const userToken = this.getUserToken();
+
+    if (!userToken) {
+      return { ok: false, error: 'Usuário não autenticado' };
+    }
+
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/admin/import-riot`, {
+        method: 'POST',
+        headers: buildAuthHeaders(anonKey, userToken, {
+          allowAnonFallback: false,
+          includeContentType: true
+        }),
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        return {
+          ok: false,
+          error: data?.message || data?.error || 'Erro ao importar via Riot API',
+          errors: data?.errors
+        };
+      }
+
+      return {
+        ok: true,
+        message: data.message,
+        stats: data.stats,
+        matches: data.matches,
+        errors: data.errors
+      };
+    } catch (error) {
+      return { ok: false, error: String(error) };
+    }
+  },
+
   async getCurrentRoundMatchups(): Promise<{
     round: {
       id: number;

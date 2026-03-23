@@ -222,6 +222,10 @@ class AutoImportService {
    * Extract season number from OverviewPage
    */
   private extractSeasonFromOverviewPage(overviewPage: string): number {
+    // "IDL Kings Lendas Cup" -> Season 5 (cup)
+    if (overviewPage.toLowerCase().includes('cup')) {
+      return 5;
+    }
     // "IDL Kings Lendas" -> Season 1
     // "IDL Kings Lendas Season 2" -> Season 2
     // "IDL Kings Lendas Season 3" -> Season 3
@@ -283,21 +287,26 @@ class AutoImportService {
   /**
    * Get the season's OverviewPage for Leaguepedia
    */
-  getOverviewPage(season: number): string {
+  getOverviewPage(season: number | string): string {
+    // Support "cup" as a season identifier
+    if (String(season).toLowerCase() === 'cup') {
+      return 'IDL Kings Lendas Cup';
+    }
+
     const overviewPages: Record<number, string> = {
       1: 'IDL Kings Lendas',
       2: 'IDL Kings Lendas Season 2',
       3: 'IDL Kings Lendas Season 3',
-      4: 'IDL Kings Lendas Season 4' // Will exist when Season 4 starts
+      4: 'IDL Kings Lendas Season 4'
     };
 
-    return overviewPages[season] || overviewPages[1];
+    return overviewPages[Number(season)] || overviewPages[1];
   }
 
   /**
    * Get available weeks/rounds for a season
    */
-  async getAvailableRounds(season: number): Promise<number[]> {
+  async getAvailableRounds(season: number | string): Promise<number[]> {
     const overviewPage = this.getOverviewPage(season);
     const weeks = await leaguepediaService.getAvailableWeeks(overviewPage);
     return weeks;

@@ -151,6 +151,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     message: string;
   }> | null>(null);
   const [imagePreviewScore, setImagePreviewScore] = useState<{ team_a: number; team_b: number } | null>(null);
+  const [riotImportForm, setRiotImportForm] = useState({ season: '', roundNumber: '', startDate: '', endDate: '' });
+  const [riotImportLoading, setRiotImportLoading] = useState(false);
+  const [riotImportResult, setRiotImportResult] = useState<{
+    success: boolean;
+    message: string;
+    matches?: Array<{ matchId: number; team1: string; team2: string; winner: string }>;
+    errors?: string[];
+  } | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetResult, setResetResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [cupMappingsLoading, setCupMappingsLoading] = useState(false);
+  const [cupMappingsResult, setCupMappingsResult] = useState<{ success: boolean; message: string; details?: any } | null>(null);
+  const [leaguepediaImportForm, setLeaguepediaImportForm] = useState({ season: 'cup', roundNumber: '' });
+  const [leaguepediaImportLoading, setLeaguepediaImportLoading] = useState(false);
+  const [leaguepediaImportResult, setLeaguepediaImportResult] = useState<{
+    success: boolean;
+    message: string;
+    errors?: string[];
+  } | null>(null);
   const [recalculatePlayersLoading, setRecalculatePlayersLoading] = useState(false);
   const [marketRoundId, setMarketRoundId] = useState('');
   const [marketCloseTimeInput, setMarketCloseTimeInput] = useState('');
@@ -1220,6 +1239,147 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       setPerformancesError(String(error));
     } finally {
       setRecalculatePlayersLoading(false);
+    }
+  };
+
+  const handleRiotImport = async () => {
+    setRiotImportResult(null);
+    setPerformancesError(null);
+
+    const { season, roundNumber, startDate, endDate } = riotImportForm;
+    if (!season || !roundNumber || !startDate || !endDate) {
+      setPerformancesError('Preencha todos os campos para importar via Riot API.');
+      return;
+    }
+
+    setRiotImportLoading(true);
+
+    try {
+      const result = await DataService.importFromRiotAPI({
+        season: parseInt(season),
+        roundNumber: parseInt(roundNumber),
+        startDate,
+        endDate
+      });
+
+      if (result.ok) {
+        setRiotImportResult({
+          success: true,
+          message: result.message || 'Importação concluída!',
+          matches: result.matches,
+          errors: result.errors
+        });
+        await loadPlayers();
+        await loadRounds();
+        await loadMatches();
+        window.dispatchEvent(new Event('players:refresh'));
+        window.dispatchEvent(new Event('leagues:refresh'));
+      } else {
+        setRiotImportResult({
+          success: false,
+          message: result.error || 'Erro na importação',
+          errors: result.errors
+        });
+      }
+    } catch (error) {
+      setPerformancesError(String(error));
+    } finally {
+      setRiotImportLoading(false);
+    }
+  };
+
+  const handleResetData = async () => {
+    if (!window.confirm('ATENÇÃO: Isso vai deletar TODAS as performances, matches e zerar stats dos jogadores. Tem certeza?')) {
+      return;
+    }
+    if (!window.confirm('SEGUNDA CONFIRMAÇÃO: Essa ação é irreversível. Deseja continuar?')) {
+      return;
+    }
+
+    setResetLoading(true);
+    setResetResult(null);
+
+    try {
+      const result = await DataService.resetData();
+      if (result.ok) {
+        setResetResult({ success: true, message: `Reset concluído! Performances: ${result.verification?.performances_remaining || 0}, Matches: ${result.verification?.matches_remaining || 0}` });
+        await loadPlayers();
+        await loadRounds();
+        await loadMatches();
+        window.dispatchEvent(new Event('players:refresh'));
+      } else {
+        setResetResult({ success: false, message: result.error || 'Erro ao resetar' });
+      }
+    } catch (error) {
+      setResetResult({ success: false, message: String(error) });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleSetupCupMappings = async () => {
+    setCupMappingsLoading(true);
+    setCupMappingsResult(null);
+
+    try {
+      const result = await DataService.setupCupMappings();
+      if (result.ok) {
+        const teamOk = result.teams?.results?.filter((t: any) => t.status !== 'ERROR' && t.status !== 'NOT_FOUND').length || 0;
+        const playerOk = result.players?.results?.filter((p: any) => p.status !== 'ERROR').length || 0;
+        setCupMappingsResult({
+          success: true,
+          message: `Mappings configurados! ${teamOk} times e ${playerOk} jogadores mapeados.`,
+          details: { teams: result.teams, players: result.players }
+        });
+      } else {
+        setCupMappingsResult({ success: false, message: result.error || 'Erro ao configurar mappings' });
+      }
+    } catch (error) {
+      setCupMappingsResult({ success: false, message: String(error) });
+    } finally {
+      setCupMappingsLoading(false);
+    }
+  };
+
+  const handleLeaguepediaImport = async () => {
+    setLeaguepediaImportResult(null);
+
+    const { season, roundNumber } = leaguepediaImportForm;
+    if (!season || !roundNumber) {
+      setPerformancesError('Preencha season e rodada para importar do Leaguepedia.');
+      return;
+    }
+
+    setLeaguepediaImportLoading(true);
+
+    try {
+      const result = await DataService.importFromLeaguepedia({
+        season,
+        roundNumber: parseInt(roundNumber)
+      });
+
+      if (result.ok) {
+        setLeaguepediaImportResult({
+          success: true,
+          message: result.message || `Importado! ${result.stats?.matchesImported || 0} partidas, ${result.stats?.performancesImported || 0} performances.`,
+          errors: result.errors
+        });
+        await loadPlayers();
+        await loadRounds();
+        await loadMatches();
+        window.dispatchEvent(new Event('players:refresh'));
+        window.dispatchEvent(new Event('leagues:refresh'));
+      } else {
+        setLeaguepediaImportResult({
+          success: false,
+          message: result.error || 'Erro na importação',
+          errors: result.errors
+        });
+      }
+    } catch (error) {
+      setPerformancesError(String(error));
+    } finally {
+      setLeaguepediaImportLoading(false);
     }
   };
 
@@ -2493,6 +2653,250 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
     return (
       <div className="space-y-6">
+        {/* Reset Data + Setup Mappings */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Reset */}
+          <div className="glass-card border border-red-500/20 overflow-hidden">
+            <div className="p-5 border-b border-red-500/10">
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Reset</p>
+              <h3 className="mt-2 text-lg font-orbitron font-black text-white uppercase tracking-tight">
+                Limpar dados
+              </h3>
+              <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">
+                Deleta performances, matches e zera stats dos jogadores
+              </p>
+            </div>
+            <div className="p-5 space-y-3">
+              <button
+                type="button"
+                onClick={handleResetData}
+                disabled={resetLoading}
+                className="bg-red-600/80 hover:bg-red-500 disabled:opacity-50 text-white text-xs uppercase tracking-wider px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                {resetLoading ? (
+                  <><i className="fa-solid fa-spinner fa-spin"></i> Resetando...</>
+                ) : (
+                  <><i className="fa-solid fa-trash"></i> Resetar tudo</>
+                )}
+              </button>
+              {resetResult && (
+                <div className={`border p-3 rounded ${resetResult.success ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-red-500/30 bg-red-500/10'}`}>
+                  <p className={`text-xs ${resetResult.success ? 'text-emerald-200' : 'text-red-200'}`}>{resetResult.message}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Setup Cup Mappings */}
+          <div className="glass-card border border-amber-500/20 overflow-hidden">
+            <div className="p-5 border-b border-amber-500/10">
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-amber-400">Mappings</p>
+              <h3 className="mt-2 text-lg font-orbitron font-black text-white uppercase tracking-tight">
+                Config Cup
+              </h3>
+              <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">
+                Mapeia nomes do Leaguepedia para IDs do banco (execute antes de importar)
+              </p>
+            </div>
+            <div className="p-5 space-y-3">
+              <button
+                type="button"
+                onClick={handleSetupCupMappings}
+                disabled={cupMappingsLoading}
+                className="bg-amber-600/80 hover:bg-amber-500 disabled:opacity-50 text-white text-xs uppercase tracking-wider px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                {cupMappingsLoading ? (
+                  <><i className="fa-solid fa-spinner fa-spin"></i> Configurando...</>
+                ) : (
+                  <><i className="fa-solid fa-link"></i> Configurar mappings</>
+                )}
+              </button>
+              {cupMappingsResult && (
+                <div className={`border p-3 rounded ${cupMappingsResult.success ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-red-500/30 bg-red-500/10'}`}>
+                  <p className={`text-xs ${cupMappingsResult.success ? 'text-emerald-200' : 'text-red-200'}`}>{cupMappingsResult.message}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Import via Leaguepedia */}
+        <div className="glass-card border border-emerald-500/20 overflow-hidden">
+          <div className="p-5 border-b border-emerald-500/10">
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-400">Import automatico</p>
+            <h3 className="mt-2 text-xl font-orbitron font-black text-white uppercase tracking-tight">
+              Importar via Leaguepedia
+            </h3>
+            <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">
+              Busca dados de partidas e performances automaticamente do Leaguepedia (não precisa de Riot API Key)
+            </p>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">Season</label>
+                <select
+                  value={leaguepediaImportForm.season}
+                  onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, season: e.target.value }))}
+                  className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
+                >
+                  <option value="cup">Cup (mais recente)</option>
+                  <option value="3">Season 3</option>
+                  <option value="2">Season 2</option>
+                  <option value="1">Season 1</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">Rodada (Week)</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={leaguepediaImportForm.roundNumber}
+                  onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, roundNumber: e.target.value }))}
+                  className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
+                  placeholder="Ex: 1"
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLeaguepediaImport}
+              disabled={leaguepediaImportLoading || !leaguepediaImportForm.season || !leaguepediaImportForm.roundNumber}
+              className="btn-primary text-xs uppercase tracking-wider flex items-center gap-2"
+            >
+              {leaguepediaImportLoading ? (
+                <><i className="fa-solid fa-spinner fa-spin"></i> Importando do Leaguepedia...</>
+              ) : (
+                <><i className="fa-solid fa-download"></i> Importar rodada do Leaguepedia</>
+              )}
+            </button>
+
+            {leaguepediaImportResult && (
+              <div className={`border p-4 space-y-3 ${leaguepediaImportResult.success ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-red-500/30 bg-red-500/10'}`}>
+                <p className={`text-xs font-bold uppercase tracking-wider ${leaguepediaImportResult.success ? 'text-emerald-200' : 'text-red-200'}`}>
+                  {leaguepediaImportResult.message}
+                </p>
+                {leaguepediaImportResult.errors && leaguepediaImportResult.errors.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-amber-400">Avisos:</p>
+                    {leaguepediaImportResult.errors.map((err, i) => (
+                      <p key={i} className="text-xs text-amber-200">- {err}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Import via Riot API */}
+        <div className="glass-card border border-cyan-500/20 overflow-hidden">
+          <div className="p-5 border-b border-cyan-500/10">
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-cyan-400">Import automatico</p>
+            <h3 className="mt-2 text-xl font-orbitron font-black text-white uppercase tracking-tight">
+              Importar via Riot API
+            </h3>
+            <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">
+              Busca automaticamente custom games dos jogadores cadastrados e importa todas as stats
+            </p>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">Season</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={riotImportForm.season}
+                  onChange={(e) => setRiotImportForm(prev => ({ ...prev, season: e.target.value }))}
+                  className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
+                  placeholder="Ex: 3"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">Rodada</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={riotImportForm.roundNumber}
+                  onChange={(e) => setRiotImportForm(prev => ({ ...prev, roundNumber: e.target.value }))}
+                  className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
+                  placeholder="Ex: 1"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">Data inicio</label>
+                <input
+                  type="date"
+                  value={riotImportForm.startDate}
+                  onChange={(e) => setRiotImportForm(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">Data fim</label>
+                <input
+                  type="date"
+                  value={riotImportForm.endDate}
+                  onChange={(e) => setRiotImportForm(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleRiotImport}
+              disabled={riotImportLoading || !riotImportForm.season || !riotImportForm.roundNumber || !riotImportForm.startDate || !riotImportForm.endDate}
+              className="btn-primary text-xs uppercase tracking-wider flex items-center gap-2"
+            >
+              {riotImportLoading ? (
+                <>
+                  <i className="fa-solid fa-spinner fa-spin"></i>
+                  Importando... (pode levar alguns minutos)
+                </>
+              ) : (
+                <>
+                  <i className="fa-solid fa-download"></i>
+                  Importar partidas da Riot API
+                </>
+              )}
+            </button>
+
+            {riotImportResult && (
+              <div className={`border p-4 space-y-3 ${riotImportResult.success ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-red-500/30 bg-red-500/10'}`}>
+                <p className={`text-xs font-bold uppercase tracking-wider ${riotImportResult.success ? 'text-emerald-200' : 'text-red-200'}`}>
+                  {riotImportResult.message}
+                </p>
+
+                {riotImportResult.matches && riotImportResult.matches.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500">Partidas importadas:</p>
+                    {riotImportResult.matches.map((m, i) => (
+                      <p key={i} className="text-xs text-gray-300">
+                        {m.team1} vs {m.team2} — Vencedor: <span className="text-emerald-300">{m.winner}</span>
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                {riotImportResult.errors && riotImportResult.errors.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-amber-400">Erros:</p>
+                    {riotImportResult.errors.map((err, i) => (
+                      <p key={i} className="text-xs text-amber-200">- {err}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Lancamento manual por partida */}
         <div className="glass-card border border-white/5 overflow-hidden">
           <div className="p-5 border-b border-white/5">
             <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">Performances</p>

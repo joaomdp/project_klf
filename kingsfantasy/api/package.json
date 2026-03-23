@@ -24,7 +24,8 @@
     "list-db": "ts-node scripts/list-database-state.ts",
     "verify-mappings": "ts-node scripts/verify-mappings.ts",
     "find-tournament-matches": "ts-node scripts/find-tournament-matches.ts",
-    "describe-tables": "ts-node scripts/describe-tables.ts"
+    "describe-tables": "ts-node scripts/describe-tables.ts",
+    "db:reset": "ts-node scripts/reset-performances.ts"
   },
   "keywords": [
     "fantasy",

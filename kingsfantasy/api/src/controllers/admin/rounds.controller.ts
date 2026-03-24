@@ -537,7 +537,7 @@ export async function deleteRound(req: AuthenticatedRequest, res: Response) {
     const { id } = req.params;
     const roundId = parseInt(id);
 
-    const { data: matches, error: matchesError } = await supabase
+    const { data: matches, error: matchesError } = await adminSupabase
       .from('matches')
       .select('id')
       .eq('round_id', roundId);
@@ -554,7 +554,7 @@ export async function deleteRound(req: AuthenticatedRequest, res: Response) {
     const matchIds = (matches || []).map((match) => match.id);
 
     if (matchIds.length > 0) {
-      const { error: performancesError } = await supabase
+      const { error: performancesError } = await adminSupabase
         .from('player_performances')
         .delete()
         .in('match_id', matchIds);
@@ -568,7 +568,7 @@ export async function deleteRound(req: AuthenticatedRequest, res: Response) {
         });
       }
 
-      const { error: deleteMatchesError } = await supabase
+      const { error: deleteMatchesError } = await adminSupabase
         .from('matches')
         .delete()
         .eq('round_id', roundId);
@@ -583,7 +583,7 @@ export async function deleteRound(req: AuthenticatedRequest, res: Response) {
       }
     }
 
-    const { error: deleteRoundError } = await supabase
+    const { error: deleteRoundError } = await adminSupabase
       .from('rounds')
       .delete()
       .eq('id', roundId);

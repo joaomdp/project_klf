@@ -91,7 +91,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [newRoundForm, setNewRoundForm] = useState({
     season: '',
     round_number: '',
-    status: 'upcoming'
+    status: 'active'
   });
   const [matchForm, setMatchForm] = useState({
     round_id: '',
@@ -454,7 +454,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     const result = await DataService.createAdminRound({
       season: seasonValue,
       round_number: roundValue,
-      status: newRoundForm.status || 'upcoming',
+      status: newRoundForm.status || 'active',
       start_date: resolvedStartDate,
       market_close_time: resolvedStartDate,
       is_market_open: false
@@ -468,10 +468,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     setNewRoundForm({
       season: '',
       round_number: '',
-      status: 'upcoming'
+      status: 'active'
     });
     await loadRounds();
     window.dispatchEvent(new Event('matches:refresh'));
+  };
+
+  const handleDeleteRound = async (roundId: number) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta rodada? Todas as partidas e performances associadas serao removidas.')) {
+      return;
+    }
+    const result = await DataService.deleteAdminRound(roundId);
+    if (!result.ok) {
+      setRoundsError(result.error || 'Erro ao excluir rodada');
+      return;
+    }
+    setRoundsError(null);
+    if (String(roundId) === selectedRoundIdForActions) {
+      setSelectedRoundIdForActions('');
+    }
+    await loadRounds();
+    await loadMatches();
   };
 
   const handleFinalizeRound = async () => {
@@ -2454,9 +2471,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                   onChange={(event) => setNewRoundForm((prev) => ({ ...prev, status: event.target.value }))}
                   className="mt-2 bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
                 >
-                  <option value="upcoming">Upcoming</option>
-                  <option value="active">Active</option>
-                  <option value="completed">Completed</option>
+                  <option value="active">Ativa</option>
+                  <option value="completed">Concluida</option>
                 </select>
               </div>
               <div className="flex items-end justify-end md:col-span-3">
@@ -2492,6 +2508,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Mercado</th>
                   <th className="px-4 py-3">Partidas</th>
+                  <th className="px-4 py-3">Acoes</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -2518,7 +2535,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                           round.status === 'completed' || round.status === 'finished' ? 'border-blue-500/40 text-blue-300 bg-blue-500/10' :
                           'border-gray-500/40 text-gray-400 bg-gray-500/10'
                         }`}>
-                          {round.status}
+                          {round.status === 'active' ? 'Ativa' : round.status === 'completed' || round.status === 'finished' ? 'Concluida' : round.status}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -2527,6 +2544,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-400">{roundMatches.length}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteRound(round.id);
+                          }}
+                          className="text-[10px] uppercase tracking-wider text-red-300 border border-red-500/40 px-3 py-1"
+                        >
+                          Excluir
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}

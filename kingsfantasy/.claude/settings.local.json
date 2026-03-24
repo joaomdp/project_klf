@@ -9,7 +9,10 @@
       "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -name .env* -o -name *.env.example)",
       "WebFetch(domain:projectklf-production.up.railway.app)",
       "Bash(grep:*)",
-      "WebFetch(domain:lol.fandom.com)"
+      "WebFetch(domain:lol.fandom.com)",
+      "Bash(curl -s \"https://lol.fandom.com/api.php?action=cargoquery&format=json&tables=MatchSchedule&fields=Tab&where=OverviewPage%3D%22IDL%20Kings%20Lendas%20Cup%22&group_by=Tab&limit=50\")",
+      "Bash(python -m json.tool)",
+      "Bash(curl:*)"
     ]
   }
 }

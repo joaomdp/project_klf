@@ -72,7 +72,9 @@ interface PicksBans {
 class LeaguepediaService {
   private baseUrl = 'https://lol.fandom.com/api.php';
   private lastQueryTime = 0;
-  private readonly QUERY_DELAY_MS = 1500; // 1.5s between queries to avoid rate limit
+  private readonly QUERY_DELAY_MS = 2500; // 2.5s between queries to avoid rate limit
+  private readonly MAX_RETRIES = 2;
+  private readonly RETRY_DELAY_MS = 5000; // 5s wait on rate limit before retry
 
   private async rateLimit(): Promise<void> {
     const elapsed = Date.now() - this.lastQueryTime;
@@ -81,43 +83,64 @@ class LeaguepediaService {
     }
     this.lastQueryTime = Date.now();
   }
-  
+
   /**
-   * Fazer query genérica no Cargo API
+   * Fazer query genérica no Cargo API com retry automático para rate limiting
    */
   private async cargoQuery(params: Record<string, any>): Promise<any[]> {
-    try {
-      await this.rateLimit();
-      console.log(`🔍 Cargo Query: ${params.tables} | where: ${params.where || 'N/A'}`);
+    for (let attempt = 0; attempt <= this.MAX_RETRIES; attempt++) {
+      try {
+        await this.rateLimit();
+        console.log(`🔍 Cargo Query: ${params.tables} | where: ${params.where || 'N/A'}${attempt > 0 ? ` (retry ${attempt})` : ''}`);
 
-      const response = await axios.get<any>(this.baseUrl, {
-        params: {
-          action: 'cargoquery',
-          format: 'json',
-          ...params
-        },
-        headers: {
-          'User-Agent': 'KingsFantasy/1.0 (contact@kingsfantasy.com)'
-        },
-        timeout: 30000
-      });
+        const response = await axios.get<any>(this.baseUrl, {
+          params: {
+            action: 'cargoquery',
+            format: 'json',
+            ...params
+          },
+          headers: {
+            'User-Agent': 'KingsFantasy/1.0 (contact@kingsfantasy.com)'
+          },
+          timeout: 30000
+        });
 
-      // Check for API-level errors (returned as HTTP 200 with error object)
-      if (response.data?.error) {
-        const errCode = response.data.error.code || 'unknown';
-        const errInfo = response.data.error.info || '';
-        console.error(`❌ Leaguepedia API error: [${errCode}] ${errInfo}`);
-        throw new Error(`Leaguepedia API error [${errCode}]: ${errInfo}`);
+        // Check for API-level errors (returned as HTTP 200 with error object)
+        if (response.data?.error) {
+          const errCode = response.data.error.code || 'unknown';
+          const errInfo = response.data.error.info || '';
+
+          // Retry on rate limit
+          if (errCode === 'ratelimited' && attempt < this.MAX_RETRIES) {
+            console.warn(`⏳ Rate limited, waiting ${this.RETRY_DELAY_MS}ms before retry ${attempt + 1}/${this.MAX_RETRIES}...`);
+            await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY_MS));
+            this.lastQueryTime = Date.now();
+            continue;
+          }
+
+          console.error(`❌ Leaguepedia API error: [${errCode}] ${errInfo}`);
+          throw new Error(`Leaguepedia API error [${errCode}]: ${errInfo}`);
+        }
+
+        const results = response.data.cargoquery?.map((item: any) => item.title) || [];
+        console.log(`✅ Cargo Query retornou ${results.length} resultados`);
+
+        return results;
+      } catch (error: any) {
+        // Don't retry non-rate-limit errors
+        if (attempt < this.MAX_RETRIES && error.message?.includes('ratelimited')) {
+          console.warn(`⏳ Rate limited (caught), waiting before retry...`);
+          await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY_MS));
+          this.lastQueryTime = Date.now();
+          continue;
+        }
+        console.error('❌ Cargo API error:', error.message);
+        throw new Error(`Erro ao buscar dados do Leaguepedia: ${error.message}`);
       }
-
-      const results = response.data.cargoquery?.map((item: any) => item.title) || [];
-      console.log(`✅ Cargo Query retornou ${results.length} resultados`);
-
-      return results;
-    } catch (error: any) {
-      console.error('❌ Cargo API error:', error.message);
-      throw new Error(`Erro ao buscar dados do Leaguepedia: ${error.message}`);
     }
+
+    // Should not reach here, but just in case
+    return [];
   }
   
   /**
@@ -188,21 +211,23 @@ class LeaguepediaService {
     }
 
     // 2. Fallback: ScoreboardGames (may have MWException for some tournaments)
-    try {
-      console.log(`🔍 Tentando ScoreboardGames Week="${weekVariants[0]}"`);
-      const sgResults = await this.cargoQuery({
-        tables: 'ScoreboardGames',
-        fields: 'GameId,MatchId,Team1,Team2,Winner,DateTime_UTC,Week,Game',
-        where: `OverviewPage="${overviewPage}" AND Week="${weekVariants[0]}"`,
-        order_by: 'DateTime_UTC',
-        limit: 50
-      });
-      if (sgResults.length > 0) {
-        console.log(`✅ Encontradas ${sgResults.length} partidas via ScoreboardGames`);
-        return sgResults;
+    for (const variant of weekVariants) {
+      try {
+        console.log(`🔍 Tentando ScoreboardGames Week="${variant}"`);
+        const sgResults = await this.cargoQuery({
+          tables: 'ScoreboardGames',
+          fields: 'GameId,MatchId,Team1,Team2,Winner,DateTime_UTC,Week,Game',
+          where: `OverviewPage="${overviewPage}" AND Week="${variant}"`,
+          order_by: 'DateTime_UTC',
+          limit: 50
+        });
+        if (sgResults.length > 0) {
+          console.log(`✅ Encontradas ${sgResults.length} partidas via ScoreboardGames`);
+          return sgResults;
+        }
+      } catch (err: any) {
+        console.warn(`⚠️ ScoreboardGames Week="${variant}" failed: ${err.message}`);
       }
-    } catch (err: any) {
-      console.warn(`⚠️ ScoreboardGames failed: ${err.message}`);
     }
 
     console.log(`❌ Nenhuma partida encontrada para ${overviewPage} ${weekStr}`);

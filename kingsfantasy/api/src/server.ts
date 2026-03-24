@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { supabase, adminSupabase } from './config/supabase';
-import { scraperService } from './services/scraper.service';
 import { scoringService } from './services/scoring.service';
 import { marketService } from './services/market.service';
 import { cronJobsService } from './jobs/cron';
@@ -523,56 +522,6 @@ app.post('/api/scores/calculate/:roundId', authMiddleware, adminMiddleware, asyn
   }
 });
 
-// ============================================================================
-// SCRAPER ENDPOINTS
-// ============================================================================
-app.get('/api/scraper/teams', async (req: Request, res: Response) => {
-  try {
-    const teams = await scraperService.listAvailableTeams();
-    res.json({
-      success: true,
-      teams
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-app.get('/api/scraper/players', async (req: Request, res: Response) => {
-  try {
-    const players = await scraperService.listAvailablePlayers();
-    res.json({
-      success: true,
-      players
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-app.post('/api/scraper/manual-match', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
-  try {
-    const { roundId, matchData } = req.body;
-    const result = await scraperService.insertManualMatchData(roundId, matchData);
-    
-    res.json({
-      success: true,
-      message: 'Match data inserted successfully',
-      match: result
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
 
 // ============================================================================
 // CRON JOBS ENDPOINTS

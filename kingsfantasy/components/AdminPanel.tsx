@@ -159,25 +159,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     message: string;
   }> | null>(null);
   const [imagePreviewScore, setImagePreviewScore] = useState<{ team_a: number; team_b: number } | null>(null);
-  const [riotImportForm, setRiotImportForm] = useState({ season: '', roundNumber: '', startDate: '', endDate: '' });
-  const [riotImportLoading, setRiotImportLoading] = useState(false);
-  const [riotImportResult, setRiotImportResult] = useState<{
-    success: boolean;
-    message: string;
-    matches?: Array<{ matchId: number; team1: string; team2: string; winner: string }>;
-    errors?: string[];
-  } | null>(null);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetResult, setResetResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [cupMappingsLoading, setCupMappingsLoading] = useState(false);
-  const [cupMappingsResult, setCupMappingsResult] = useState<{ success: boolean; message: string; details?: any } | null>(null);
-  const [leaguepediaImportForm, setLeaguepediaImportForm] = useState({ season: 'cup', roundNumber: '' });
-  const [leaguepediaImportLoading, setLeaguepediaImportLoading] = useState(false);
-  const [leaguepediaImportResult, setLeaguepediaImportResult] = useState<{
-    success: boolean;
-    message: string;
-    errors?: string[];
-  } | null>(null);
   const [roundPerformances, setRoundPerformances] = useState<any[] | null>(null);
   const [roundPerformancesLoading, setRoundPerformancesLoading] = useState(false);
   const [roundPerformancesTotals, setRoundPerformancesTotals] = useState<{ totalMatches: number; totalPerformances: number } | null>(null);
@@ -1257,51 +1240,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     }
   };
 
-  const handleRiotImport = async () => {
-    setRiotImportResult(null);
-    setPerformancesError(null);
-
-    const { season, roundNumber, startDate, endDate } = riotImportForm;
-    if (!season || !roundNumber || !startDate || !endDate) {
-      setPerformancesError('Preencha todos os campos para importar via Riot API.');
-      return;
-    }
-
-    setRiotImportLoading(true);
-
-    try {
-      const result = await DataService.importFromRiotAPI({
-        season: parseInt(season),
-        roundNumber: parseInt(roundNumber),
-        startDate,
-        endDate
-      });
-
-      if (result.ok) {
-        setRiotImportResult({
-          success: true,
-          message: result.message || 'Importação concluída!',
-          matches: result.matches,
-          errors: result.errors
-        });
-        await loadPlayers();
-        await loadRounds();
-        await loadMatches();
-        window.dispatchEvent(new Event('players:refresh'));
-        window.dispatchEvent(new Event('leagues:refresh'));
-      } else {
-        setRiotImportResult({
-          success: false,
-          message: result.error || 'Erro na importação',
-          errors: result.errors
-        });
-      }
-    } catch (error) {
-      setPerformancesError(String(error));
-    } finally {
-      setRiotImportLoading(false);
-    }
-  };
 
   const handleResetData = async () => {
     if (!window.confirm('ATENÇÃO: Isso vai deletar TODAS as performances, matches e zerar stats dos jogadores. Tem certeza?')) {
@@ -1329,81 +1267,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       setResetResult({ success: false, message: String(error) });
     } finally {
       setResetLoading(false);
-    }
-  };
-
-  const handleSetupCupMappings = async () => {
-    setCupMappingsLoading(true);
-    setCupMappingsResult(null);
-
-    try {
-      const result = await DataService.setupCupMappings();
-      if (result.ok) {
-        const teamOk = result.teams?.results?.filter((t: any) => t.status !== 'ERROR' && t.status !== 'NOT_FOUND').length || 0;
-        const teamFail = result.teams?.results?.filter((t: any) => t.status === 'NOT_FOUND' || t.status === 'ERROR') || [];
-        const playerOk = result.players?.results?.filter((p: any) => p.status !== 'ERROR').length || 0;
-        const playerFail = result.players?.results?.filter((p: any) => p.status === 'ERROR') || [];
-        const failDetails = [
-          ...teamFail.map((t: any) => `Time: ${t.error || t.db_name}`),
-          ...playerFail.map((p: any) => `Player: ${p.name} - ${p.error}`)
-        ];
-        const detailStr = failDetails.length > 0 ? ` | Erros: ${failDetails.join('; ')}` : '';
-        const dbTeamNames = result.db_teams?.map((t: any) => t.name).join(', ') || 'N/A';
-        const debugStr = teamOk === 0 ? ` | Times no banco: [${dbTeamNames}]` : '';
-        setCupMappingsResult({
-          success: teamOk > 0 || playerOk > 0,
-          message: `Mappings: ${teamOk} times e ${playerOk} jogadores mapeados.${detailStr}${debugStr}`,
-          details: { teams: result.teams, players: result.players }
-        });
-      } else {
-        setCupMappingsResult({ success: false, message: result.error || 'Erro ao configurar mappings' });
-      }
-    } catch (error) {
-      setCupMappingsResult({ success: false, message: String(error) });
-    } finally {
-      setCupMappingsLoading(false);
-    }
-  };
-
-  const handleLeaguepediaImport = async () => {
-    setLeaguepediaImportResult(null);
-
-    const { season, roundNumber } = leaguepediaImportForm;
-    if (!season || !roundNumber) {
-      setPerformancesError('Preencha season e rodada para importar do Leaguepedia.');
-      return;
-    }
-
-    setLeaguepediaImportLoading(true);
-
-    try {
-      const result = await DataService.importFromLeaguepedia({
-        season,
-        roundNumber
-      });
-
-      if (result.ok) {
-        setLeaguepediaImportResult({
-          success: true,
-          message: result.message || `Importado! ${result.stats?.matchesImported || 0} partidas, ${result.stats?.performancesImported || 0} performances.`,
-          errors: result.errors
-        });
-        await loadPlayers();
-        await loadRounds();
-        await loadMatches();
-        window.dispatchEvent(new Event('players:refresh'));
-        window.dispatchEvent(new Event('leagues:refresh'));
-      } else {
-        setLeaguepediaImportResult({
-          success: false,
-          message: result.error || 'Erro na importação',
-          errors: result.errors
-        });
-      }
-    } catch (error) {
-      setPerformancesError(String(error));
-    } finally {
-      setLeaguepediaImportLoading(false);
     }
   };
 
@@ -1853,36 +1716,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     }
   }, [pipelineRoundId]);
 
-  const handlePipelineImport = async () => {
-    if (!pipelineRoundId) return;
-    setPipelineStatus(null);
-    setLeaguepediaImportLoading(true);
-
-    try {
-      const result = await DataService.importFromLeaguepedia({
-        season: leaguepediaImportForm.season,
-        roundNumber: leaguepediaImportForm.roundNumber
-      });
-
-      if (result.ok) {
-        const errList = result.errors?.length ? `\nAvisos: ${result.errors.join(' | ')}` : '';
-        setPipelineStatus(`Importado! ${result.stats?.matchesImported || 0} partidas, ${result.stats?.performancesImported || 0} performances.${errList}`);
-        await Promise.all([loadPlayers(), loadRounds(), loadMatches()]);
-        window.dispatchEvent(new Event('players:refresh'));
-        window.dispatchEvent(new Event('leagues:refresh'));
-        // Auto-load performances for review
-        await loadRoundPerformances();
-      } else {
-        const errList = result.errors?.length ? `\nDetalhes: ${result.errors.join(' | ')}` : '';
-        setPipelineStatus(`${result.error || 'Erro na importacao'}${errList}`);
-      }
-    } catch (error) {
-      setPipelineStatus(String(error));
-    } finally {
-      setLeaguepediaImportLoading(false);
-    }
-  };
-
   const handlePipelineFinalize = async () => {
     const roundId = Number(pipelineRoundId);
     if (!roundId) return;
@@ -2030,33 +1863,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
             <div className="glass-card border border-white/5 p-5 space-y-4">
               <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#6366F1]">Fase 1 — Preparacao</p>
 
-              {/* Setup Mappings */}
-              <div className="flex flex-col md:flex-row md:items-center gap-4 p-4 border border-white/10 bg-black/30">
-                <div className="flex-1">
-                  <p className="text-xs text-white font-bold uppercase tracking-wider">Configurar Mappings</p>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">
-                    Mapeia nomes do Leaguepedia para o banco de dados (executar 1x por temporada)
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleSetupCupMappings}
-                  disabled={cupMappingsLoading}
-                  className="bg-amber-600/80 hover:bg-amber-500 disabled:opacity-50 text-white text-xs uppercase tracking-wider px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
-                >
-                  {cupMappingsLoading ? (
-                    <><i className="fa-solid fa-spinner fa-spin"></i> Configurando...</>
-                  ) : (
-                    <><i className="fa-solid fa-link"></i> Configurar</>
-                  )}
-                </button>
-              </div>
-              {cupMappingsResult && (
-                <div className={`border p-3 text-xs ${cupMappingsResult.success ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'}`}>
-                  {cupMappingsResult.message}
-                </div>
-              )}
-
               {/* Market Control */}
               <div className="flex flex-col md:flex-row md:items-center gap-4 p-4 border border-white/10 bg-black/30">
                 <div className="flex-1">
@@ -2184,70 +1990,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
         {pipelinePhase === 3 && (
           <div className="space-y-4">
             <div className="glass-card border border-white/5 p-5 space-y-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#6366F1]">Fase 3 — Importar e validar dados</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#6366F1]">Fase 3 — Validar dados</p>
 
-              {/* Leaguepedia Import */}
-              <div className="p-4 border border-emerald-500/20 bg-black/30 space-y-4">
-                <div className="flex items-center gap-2">
-                  <i className="fa-solid fa-download text-emerald-400"></i>
-                  <p className="text-xs text-white font-bold uppercase tracking-wider">Importar do Leaguepedia</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-gray-500 uppercase tracking-wider">Season</label>
-                    <select
-                      value={leaguepediaImportForm.season}
-                      onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, season: e.target.value }))}
-                      className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
-                    >
-                      <option value="cup">Cup</option>
-                      <option value="3">Season 3</option>
-                      <option value="2">Season 2</option>
-                      <option value="1">Season 1</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-gray-500 uppercase tracking-wider">Rodada</label>
-                    {leaguepediaImportForm.season === 'cup' ? (
-                      <select
-                        value={leaguepediaImportForm.roundNumber}
-                        onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, roundNumber: e.target.value }))}
-                        className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
-                      >
-                        <option value="">Selecione...</option>
-                        <option value="Day 1">Day 1 (Grupos)</option>
-                        <option value="Day 2">Day 2 (Grupos)</option>
-                        <option value="Day 3">Day 3 (Grupos)</option>
-                        <option value="Quarterfinals">Quartas de final</option>
-                        <option value="Semifinals">Semifinais</option>
-                        <option value="Finals">Final</option>
-                      </select>
-                    ) : (
-                      <input
-                        type="number"
-                        min={1}
-                        value={leaguepediaImportForm.roundNumber}
-                        onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, roundNumber: e.target.value }))}
-                        className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
-                        placeholder="Ex: 1"
-                      />
-                    )}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handlePipelineImport}
-                  disabled={leaguepediaImportLoading || !leaguepediaImportForm.season || !leaguepediaImportForm.roundNumber}
-                  className="btn-primary text-xs uppercase tracking-wider flex items-center gap-2 w-full justify-center disabled:opacity-50"
-                >
-                  {leaguepediaImportLoading ? (
-                    <><i className="fa-solid fa-spinner fa-spin"></i> Importando...</>
-                  ) : (
-                    <><i className="fa-solid fa-download"></i> Importar rodada</>
-                  )}
-                </button>
+              <div className="p-4 border border-white/10 bg-black/30 space-y-2">
+                <p className="text-xs text-gray-300">
+                  Insira as partidas e performances manualmente na aba <strong className="text-white">Partidas</strong> e <strong className="text-white">Performances</strong>, depois volte aqui para revisar e finalizar.
+                </p>
               </div>
 
               {/* Performance Review Table */}
@@ -3439,229 +3187,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
             </div>
           </div>
 
-          {/* Setup Cup Mappings */}
-          <div className="glass-card border border-amber-500/20 overflow-hidden">
-            <div className="p-5 border-b border-amber-500/10">
-              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-amber-400">Mappings</p>
-              <h3 className="mt-2 text-lg font-orbitron font-black text-white uppercase tracking-tight">
-                Config Cup
-              </h3>
-              <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">
-                Mapeia nomes do Leaguepedia para IDs do banco (execute antes de importar)
-              </p>
-            </div>
-            <div className="p-5 space-y-3">
-              <button
-                type="button"
-                onClick={handleSetupCupMappings}
-                disabled={cupMappingsLoading}
-                className="bg-amber-600/80 hover:bg-amber-500 disabled:opacity-50 text-white text-xs uppercase tracking-wider px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              >
-                {cupMappingsLoading ? (
-                  <><i className="fa-solid fa-spinner fa-spin"></i> Configurando...</>
-                ) : (
-                  <><i className="fa-solid fa-link"></i> Configurar mappings</>
-                )}
-              </button>
-              {cupMappingsResult && (
-                <div className={`border p-3 rounded ${cupMappingsResult.success ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-red-500/30 bg-red-500/10'}`}>
-                  <p className={`text-xs ${cupMappingsResult.success ? 'text-emerald-200' : 'text-red-200'}`}>{cupMappingsResult.message}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Import via Leaguepedia */}
-        <div className="glass-card border border-emerald-500/20 overflow-hidden">
-          <div className="p-5 border-b border-emerald-500/10">
-            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-400">Import automatico</p>
-            <h3 className="mt-2 text-xl font-orbitron font-black text-white uppercase tracking-tight">
-              Importar via Leaguepedia
-            </h3>
-            <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">
-              Busca dados de partidas e performances automaticamente do Leaguepedia (não precisa de Riot API Key)
-            </p>
-          </div>
-
-          <div className="p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500">Season</label>
-                <select
-                  value={leaguepediaImportForm.season}
-                  onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, season: e.target.value }))}
-                  className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
-                >
-                  <option value="cup">Cup (mais recente)</option>
-                  <option value="3">Season 3</option>
-                  <option value="2">Season 2</option>
-                  <option value="1">Season 1</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500">Rodada</label>
-                {leaguepediaImportForm.season === 'cup' ? (
-                  <select
-                    value={leaguepediaImportForm.roundNumber}
-                    onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, roundNumber: e.target.value }))}
-                    className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
-                  >
-                    <option value="">Selecione...</option>
-                    <option value="Day 1">Day 1 (Grupos)</option>
-                    <option value="Day 2">Day 2 (Grupos)</option>
-                    <option value="Day 3">Day 3 (Grupos)</option>
-                    <option value="Quarterfinals">Quartas de final</option>
-                    <option value="Semifinals">Semifinais</option>
-                    <option value="Finals">Final</option>
-                  </select>
-                ) : (
-                  <input
-                    type="number"
-                    min={1}
-                    value={leaguepediaImportForm.roundNumber}
-                    onChange={(e) => setLeaguepediaImportForm(prev => ({ ...prev, roundNumber: e.target.value }))}
-                    className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
-                    placeholder="Ex: 1"
-                  />
-                )}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleLeaguepediaImport}
-              disabled={leaguepediaImportLoading || !leaguepediaImportForm.season || !leaguepediaImportForm.roundNumber}
-              className="btn-primary text-xs uppercase tracking-wider flex items-center gap-2"
-            >
-              {leaguepediaImportLoading ? (
-                <><i className="fa-solid fa-spinner fa-spin"></i> Importando do Leaguepedia...</>
-              ) : (
-                <><i className="fa-solid fa-download"></i> Importar rodada do Leaguepedia</>
-              )}
-            </button>
-
-            {leaguepediaImportResult && (
-              <div className={`border p-4 space-y-3 ${leaguepediaImportResult.success ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-red-500/30 bg-red-500/10'}`}>
-                <p className={`text-xs font-bold uppercase tracking-wider ${leaguepediaImportResult.success ? 'text-emerald-200' : 'text-red-200'}`}>
-                  {leaguepediaImportResult.message}
-                </p>
-                {leaguepediaImportResult.errors && leaguepediaImportResult.errors.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-amber-400">Avisos:</p>
-                    {leaguepediaImportResult.errors.map((err, i) => (
-                      <p key={i} className="text-xs text-amber-200">- {err}</p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Import via Riot API */}
-        <div className="glass-card border border-cyan-500/20 overflow-hidden">
-          <div className="p-5 border-b border-cyan-500/10">
-            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-cyan-400">Import automatico</p>
-            <h3 className="mt-2 text-xl font-orbitron font-black text-white uppercase tracking-tight">
-              Importar via Riot API
-            </h3>
-            <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">
-              Busca automaticamente custom games dos jogadores cadastrados e importa todas as stats
-            </p>
-          </div>
-
-          <div className="p-5 space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500">Season</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={riotImportForm.season}
-                  onChange={(e) => setRiotImportForm(prev => ({ ...prev, season: e.target.value }))}
-                  className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
-                  placeholder="Ex: 3"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500">Rodada</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={riotImportForm.roundNumber}
-                  onChange={(e) => setRiotImportForm(prev => ({ ...prev, roundNumber: e.target.value }))}
-                  className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
-                  placeholder="Ex: 1"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500">Data inicio</label>
-                <input
-                  type="date"
-                  value={riotImportForm.startDate}
-                  onChange={(e) => setRiotImportForm(prev => ({ ...prev, startDate: e.target.value }))}
-                  className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500">Data fim</label>
-                <input
-                  type="date"
-                  value={riotImportForm.endDate}
-                  onChange={(e) => setRiotImportForm(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-full"
-                />
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleRiotImport}
-              disabled={riotImportLoading || !riotImportForm.season || !riotImportForm.roundNumber || !riotImportForm.startDate || !riotImportForm.endDate}
-              className="btn-primary text-xs uppercase tracking-wider flex items-center gap-2"
-            >
-              {riotImportLoading ? (
-                <>
-                  <i className="fa-solid fa-spinner fa-spin"></i>
-                  Importando... (pode levar alguns minutos)
-                </>
-              ) : (
-                <>
-                  <i className="fa-solid fa-download"></i>
-                  Importar partidas da Riot API
-                </>
-              )}
-            </button>
-
-            {riotImportResult && (
-              <div className={`border p-4 space-y-3 ${riotImportResult.success ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-red-500/30 bg-red-500/10'}`}>
-                <p className={`text-xs font-bold uppercase tracking-wider ${riotImportResult.success ? 'text-emerald-200' : 'text-red-200'}`}>
-                  {riotImportResult.message}
-                </p>
-
-                {riotImportResult.matches && riotImportResult.matches.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500">Partidas importadas:</p>
-                    {riotImportResult.matches.map((m, i) => (
-                      <p key={i} className="text-xs text-gray-300">
-                        {m.team1} vs {m.team2} — Vencedor: <span className="text-emerald-300">{m.winner}</span>
-                      </p>
-                    ))}
-                  </div>
-                )}
-
-                {riotImportResult.errors && riotImportResult.errors.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-amber-400">Erros:</p>
-                    {riotImportResult.errors.map((err, i) => (
-                      <p key={i} className="text-xs text-amber-200">- {err}</p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Lancamento manual por partida */}

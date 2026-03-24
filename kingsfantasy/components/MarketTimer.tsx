@@ -37,25 +37,33 @@ const MarketTimer: React.FC<MarketTimerProps> = ({ className = '', onMarketClose
     return () => clearInterval(statusInterval);
   }, []);
 
+  // Local countdown based on nextCloseTime — no API calls needed
   useEffect(() => {
-    if (!marketStatus?.isOpen) return;
+    if (!marketStatus?.isOpen || !marketStatus?.nextCloseTime) return;
 
-    const fetchTimeRemaining = async () => {
-      const time = await DataService.getMarketTimeRemaining();
-      setTimeRemaining(time);
+    const closeTime = new Date(marketStatus.nextCloseTime).getTime();
 
-      // Check if market just closed
-      if (time && time.totalSeconds <= 0) {
+    const tick = () => {
+      const now = Date.now();
+      const diff = Math.max(0, Math.floor((closeTime - now) / 1000));
+
+      const hours = Math.floor(diff / 3600);
+      const minutes = Math.floor((diff % 3600) / 60);
+      const seconds = diff % 60;
+
+      setTimeRemaining({ hours, minutes, seconds, totalSeconds: diff });
+
+      if (diff <= 0) {
         setMarketStatus((prev) => prev ? { ...prev, isOpen: false } : null);
         onMarketClose?.();
       }
     };
 
-    fetchTimeRemaining();
-    const timeInterval = setInterval(fetchTimeRemaining, 1000); // Update every second
+    tick();
+    const timeInterval = setInterval(tick, 1000);
 
     return () => clearInterval(timeInterval);
-  }, [marketStatus?.isOpen, onMarketClose]);
+  }, [marketStatus?.isOpen, marketStatus?.nextCloseTime, onMarketClose]);
 
   if (loading) {
     return (

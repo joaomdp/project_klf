@@ -67,7 +67,7 @@ app.use(express.json({ limit: '10mb' }));
 // Rate limiting global
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 300, // 300 requests por janela
+  max: 1000, // 1000 requests por janela
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Muitas requisições. Tente novamente em alguns minutos.' }

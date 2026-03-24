@@ -415,8 +415,8 @@ const AppContent: React.FC = () => {
   }, [fetchPlayers, loadCurrentRoundMatchups, marketIsOpen, syncUserTeamFromServer]);
 
   useEffect(() => {
-    refreshMarketStatus();
-    const interval = setInterval(refreshMarketStatus, 30000);
+    // initApp already calls refreshMarketStatus, so only set up the interval here
+    const interval = setInterval(refreshMarketStatus, 60000);
     return () => clearInterval(interval);
   }, [refreshMarketStatus]);
 

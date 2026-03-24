@@ -8,9 +8,9 @@ interface AdminPanelProps {
 
 const sections = [
   {
-    id: 'pipeline',
-    title: 'Pipeline',
-    description: 'Fluxo completo da rodada em 4 fases.'
+    id: 'rounds',
+    title: 'Rodadas & Partidas',
+    description: 'Crie rodadas, partidas e finalize o ciclo.'
   },
   {
     id: 'players',
@@ -21,16 +21,6 @@ const sections = [
     id: 'teams',
     title: 'Times',
     description: 'Atualize logos, nomes e vínculos dos times.'
-  },
-  {
-    id: 'rounds',
-    title: 'Rodadas',
-    description: 'Configure datas, status e janelas do mercado.'
-  },
-  {
-    id: 'matches',
-    title: 'Partidas',
-    description: 'Crie, edite e valide partidas do torneio.'
   },
   {
     id: 'performances',
@@ -56,10 +46,9 @@ const sections = [
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [isChecking, setIsChecking] = useState(false);
-  const [activeSection, setActiveSection] = useState<'pipeline' | 'players' | 'teams' | 'rounds' | 'matches' | 'performances' | 'market' | 'users' | 'leagues'>('pipeline');
-  const [pipelinePhase, setPipelinePhase] = useState<1 | 2 | 3 | 4>(1);
-  const [pipelineRoundId, setPipelineRoundId] = useState('');
-  const [pipelineStatus, setPipelineStatus] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<'players' | 'teams' | 'rounds' | 'performances' | 'market' | 'users' | 'leagues'>('rounds');
+  const [selectedRoundIdForActions, setSelectedRoundIdForActions] = useState('');
+  const [roundActionStatus, setRoundActionStatus] = useState<string | null>(null);
   const [players, setPlayers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
@@ -209,11 +198,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
   const handleOpenSection = (sectionId: string) => {
     if (
-      sectionId !== 'pipeline' &&
       sectionId !== 'players' &&
       sectionId !== 'teams' &&
       sectionId !== 'rounds' &&
-      sectionId !== 'matches' &&
       sectionId !== 'performances' &&
       sectionId !== 'market' &&
       sectionId !== 'users' &&
@@ -317,9 +304,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
   const loadSectionData = useCallback(async (sectionId: typeof activeSection) => {
     switch (sectionId) {
-      case 'pipeline':
-        await Promise.all([loadRounds(), loadPlayers(), loadMatches()]);
-        break;
       case 'players':
         await Promise.all([loadPlayers(), loadTeams()]);
         break;
@@ -327,10 +311,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
         await loadTeams();
         break;
       case 'rounds':
-        await loadRounds();
-        break;
-      case 'matches':
-        await Promise.all([loadMatches(), loadTeams(), loadRounds()]);
+        await Promise.all([loadRounds(), loadMatches(), loadTeams()]);
         break;
       case 'performances':
         await Promise.all([loadRounds(), loadMatches(), loadPlayers(), loadChampions()]);
@@ -370,6 +351,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       if (!marketRoundId) {
         setMarketRoundId(String(activeRound.id));
       }
+      if (!selectedRoundIdForActions) {
+        setSelectedRoundIdForActions(String(activeRound.id));
+      }
       return;
     }
     const upcomingRound = rounds.find((round) => round.status === 'upcoming');
@@ -378,8 +362,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       if (!marketRoundId) {
         setMarketRoundId(String(upcomingRound.id));
       }
+      if (!selectedRoundIdForActions) {
+        setSelectedRoundIdForActions(String(upcomingRound.id));
+      }
     }
-  }, [rounds, marketRoundId]);
+  }, [rounds, marketRoundId, selectedRoundIdForActions]);
 
   const filteredPlayers = useMemo(() => {
     if (!searchQuery) return players;
@@ -1618,51 +1605,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     setMarketCloseTimeInput(toDateTimeLocalValue(selectedRound?.market_close_time));
   }, [marketRoundId, rounds]);
 
-  const pipelineSelectedRound = useMemo(
-    () => rounds.find((r) => String(r.id) === String(pipelineRoundId)) || null,
-    [rounds, pipelineRoundId]
+  const selectedRoundForActions = useMemo(
+    () => rounds.find((r) => String(r.id) === String(selectedRoundIdForActions)) || null,
+    [rounds, selectedRoundIdForActions]
   );
 
-  const pipelineRoundMatches = useMemo(
-    () => matches.filter((m) => String(m.round_id) === String(pipelineRoundId)),
-    [matches, pipelineRoundId]
+  const selectedRoundMatches = useMemo(
+    () => matches.filter((m) => String(m.round_id) === String(selectedRoundIdForActions)),
+    [matches, selectedRoundIdForActions]
   );
-
-  const pipelinePhaseInfo = useMemo(() => {
-    const r = pipelineSelectedRound;
-    if (!r) return { detectedPhase: 0 as number, label: 'Selecione uma rodada' };
-
-    const status = r.status;
-    const isMarketOpen = r.is_market_open;
-    const matchCount = pipelineRoundMatches.length;
-    const completedMatches = pipelineRoundMatches.filter((m: any) => m.status === 'completed').length;
-
-    if (status === 'finished') {
-      return { detectedPhase: 4, label: 'Rodada finalizada' };
-    }
-    if (completedMatches > 0 && completedMatches === matchCount) {
-      return { detectedPhase: 3, label: 'Dados prontos para validacao' };
-    }
-    if (status === 'active' && !isMarketOpen) {
-      return { detectedPhase: 2, label: 'Mercado fechado, jogos em andamento' };
-    }
-    if (status === 'active' && isMarketOpen) {
-      return { detectedPhase: 1, label: 'Mercado aberto, usuarios montando times' };
-    }
-    return { detectedPhase: 1, label: 'Rodada em preparacao' };
-  }, [pipelineSelectedRound, pipelineRoundMatches]);
 
   const handlePipelineMarketAction = async (action: 'open' | 'close') => {
-    const roundId = Number(pipelineRoundId);
+    const roundId = Number(selectedRoundIdForActions);
     if (!roundId) return;
 
-    setPipelineStatus(null);
+    setRoundActionStatus(null);
 
     try {
       const anonKey = DataService.getAnonKey();
       const userToken = DataService.getUserToken();
       if (!userToken) {
-        setPipelineStatus('Usuario nao autenticado.');
+        setRoundActionStatus('Usuario nao autenticado.');
         return;
       }
 
@@ -1681,19 +1644,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        setPipelineStatus(errorText || 'Erro ao atualizar mercado');
+        setRoundActionStatus(errorText || 'Erro ao atualizar mercado');
       } else {
-        setPipelineStatus(action === 'open' ? 'Mercado aberto com sucesso!' : 'Mercado fechado com sucesso!');
+        setRoundActionStatus(action === 'open' ? 'Mercado aberto com sucesso!' : 'Mercado fechado com sucesso!');
         await loadRounds();
         window.dispatchEvent(new Event('market:refresh'));
       }
     } catch (error) {
-      setPipelineStatus(String(error));
+      setRoundActionStatus(String(error));
     }
   };
 
   const loadRoundPerformances = useCallback(async (roundId?: string) => {
-    const rid = roundId || pipelineRoundId;
+    const rid = roundId || selectedRoundIdForActions;
     if (!rid) return;
     setRoundPerformancesLoading(true);
     try {
@@ -1714,10 +1677,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     } finally {
       setRoundPerformancesLoading(false);
     }
-  }, [pipelineRoundId]);
+  }, [selectedRoundIdForActions]);
 
   const handlePipelineFinalize = async () => {
-    const roundId = Number(pipelineRoundId);
+    const roundId = Number(selectedRoundIdForActions);
     if (!roundId) return;
 
     if (!window.confirm('Finalizar rodada? Isso vai calcular pontos, atualizar precos e patrimonio dos usuarios.')) {
@@ -1725,29 +1688,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     }
 
     setFinalizeRoundLoading(true);
-    setPipelineStatus(null);
+    setRoundActionStatus(null);
 
     try {
       const result = await DataService.finalizeAdminRound(roundId);
       if (result.ok) {
-        setPipelineStatus('Rodada finalizada! Pontos calculados, precos atualizados, patrimonio recalculado.');
-        setPipelinePhase(4);
+        setRoundActionStatus('Rodada finalizada! Pontos calculados, precos atualizados, patrimonio recalculado.');
         await Promise.all([loadRounds(), loadPlayers()]);
         window.dispatchEvent(new Event('players:refresh'));
         window.dispatchEvent(new Event('leagues:refresh'));
         window.dispatchEvent(new Event('market:refresh'));
       } else {
-        setPipelineStatus(result.error || 'Erro ao finalizar rodada');
+        setRoundActionStatus(result.error || 'Erro ao finalizar rodada');
       }
     } catch (error) {
-      setPipelineStatus(String(error));
+      setRoundActionStatus(String(error));
     } finally {
       setFinalizeRoundLoading(false);
     }
   };
 
   const handlePipelineCheck = async () => {
-    const roundId = Number(pipelineRoundId);
+    const roundId = Number(selectedRoundIdForActions);
     if (!roundId) return;
 
     setFinalizeCheckLoading(true);
@@ -1756,479 +1718,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       if (result.ok) {
         setFinalizeCheckResult(result.check);
       } else {
-        setPipelineStatus(result.error || 'Erro ao verificar checklist');
+        setRoundActionStatus(result.error || 'Erro ao verificar checklist');
       }
     } catch (error) {
-      setPipelineStatus(String(error));
+      setRoundActionStatus(String(error));
     } finally {
       setFinalizeCheckLoading(false);
     }
-  };
-
-  const renderPipeline = () => {
-    const phases = [
-      { num: 1, title: 'Preparacao', icon: 'fa-cog', desc: 'Mappings, mercado aberto' },
-      { num: 2, title: 'Execucao', icon: 'fa-gamepad', desc: 'Mercado fechado, jogos' },
-      { num: 3, title: 'Validacao', icon: 'fa-check-double', desc: 'Importar dados, revisar' },
-      { num: 4, title: 'Finalizar', icon: 'fa-flag-checkered', desc: 'Pontos, precos, patrimonio' }
-    ];
-
-    return (
-      <div className="space-y-6">
-        {/* Round Selector */}
-        <div className="glass-card border border-white/5 p-5">
-          <div className="flex flex-col md:flex-row md:items-end gap-4">
-            <div className="flex-1 space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.3em] text-gray-500">Rodada ativa</label>
-              <select
-                value={pipelineRoundId}
-                onChange={(e) => {
-                  setPipelineRoundId(e.target.value);
-                  setPipelineStatus(null);
-                  setFinalizeCheckResult(null);
-                }}
-                className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
-              >
-                <option value="">Selecione a rodada</option>
-                {rounds.map((round) => (
-                  <option key={round.id} value={round.id}>
-                    Season {round.season} - Rodada {round.round_number} ({round.status})
-                  </option>
-                ))}
-              </select>
-            </div>
-            {pipelineSelectedRound && (
-              <div className="text-xs text-gray-400">
-                Status: <span className="text-white font-bold uppercase">{pipelineSelectedRound.status}</span>
-                {' | '}Mercado: <span className={pipelineSelectedRound.is_market_open ? 'text-emerald-300' : 'text-red-300'}>
-                  {pipelineSelectedRound.is_market_open ? 'Aberto' : 'Fechado'}
-                </span>
-                {' | '}Partidas: <span className="text-white">{pipelineRoundMatches.length}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Phase Stepper */}
-        <div className="glass-card border border-white/5 p-5">
-          <div className="grid grid-cols-4 gap-2">
-            {phases.map((phase) => {
-              const isActive = pipelinePhase === phase.num;
-              const isCompleted = pipelinePhaseInfo.detectedPhase > phase.num;
-              const isCurrent = pipelinePhaseInfo.detectedPhase === phase.num;
-              return (
-                <button
-                  key={phase.num}
-                  onClick={() => setPipelinePhase(phase.num as 1 | 2 | 3 | 4)}
-                  className={`p-3 border text-center transition-all ${
-                    isActive
-                      ? 'border-[#6366F1]/60 bg-[#6366F1]/10 text-[#6366F1]'
-                      : isCompleted
-                        ? 'border-emerald-500/40 bg-emerald-500/5 text-emerald-300'
-                        : isCurrent
-                          ? 'border-amber-500/40 bg-amber-500/5 text-amber-300'
-                          : 'border-white/10 text-gray-500'
-                  }`}
-                >
-                  <div className="flex flex-col items-center gap-1">
-                    <i className={`fa-solid ${phase.icon} text-sm`}></i>
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">{phase.title}</span>
-                    <span className="text-[9px] uppercase tracking-wider opacity-70 hidden md:block">{phase.desc}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          {pipelineSelectedRound && (
-            <div className="mt-3 text-center text-[10px] uppercase tracking-[0.2em] text-gray-500">
-              Auto-detectado: <span className="text-amber-300">{pipelinePhaseInfo.label}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Status Messages */}
-        {pipelineStatus && (
-          <div className={`border p-4 text-xs ${
-            pipelineStatus.includes('sucesso') || pipelineStatus.includes('Importado') || pipelineStatus.includes('finalizada')
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-              : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-          }`}>
-            {pipelineStatus}
-          </div>
-        )}
-
-        {/* PHASE 1: Preparacao */}
-        {pipelinePhase === 1 && (
-          <div className="space-y-4">
-            <div className="glass-card border border-white/5 p-5 space-y-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#6366F1]">Fase 1 — Preparacao</p>
-
-              {/* Market Control */}
-              <div className="flex flex-col md:flex-row md:items-center gap-4 p-4 border border-white/10 bg-black/30">
-                <div className="flex-1">
-                  <p className="text-xs text-white font-bold uppercase tracking-wider">Mercado</p>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">
-                    Abra o mercado para os usuarios montarem seus times antes dos jogos
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handlePipelineMarketAction('open')}
-                    disabled={!pipelineRoundId || marketActionLoading}
-                    className="btn-primary text-xs uppercase tracking-wider disabled:opacity-50"
-                  >
-                    Abrir mercado
-                  </button>
-                  <button
-                    onClick={() => handlePipelineMarketAction('close')}
-                    disabled={!pipelineRoundId || marketActionLoading}
-                    className="text-xs uppercase tracking-wider text-red-300 border border-red-500/40 px-3 py-2 disabled:opacity-50"
-                  >
-                    Fechar mercado
-                  </button>
-                </div>
-              </div>
-
-              {/* Reset (collapsible) */}
-              <details className="border border-red-500/20 bg-black/20">
-                <summary className="p-4 cursor-pointer text-[10px] uppercase tracking-[0.3em] text-red-400">
-                  Reset de dados (uso com cuidado)
-                </summary>
-                <div className="px-4 pb-4 space-y-3 border-t border-red-500/10">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider pt-3">
-                    Deleta todas performances, matches e zera stats/precos dos jogadores
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleResetData}
-                    disabled={resetLoading}
-                    className="bg-red-600/80 hover:bg-red-500 disabled:opacity-50 text-white text-xs uppercase tracking-wider px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-                  >
-                    {resetLoading ? (
-                      <><i className="fa-solid fa-spinner fa-spin"></i> Resetando...</>
-                    ) : (
-                      <><i className="fa-solid fa-trash"></i> Resetar tudo</>
-                    )}
-                  </button>
-                  {resetResult && (
-                    <div className={`border p-3 text-xs ${resetResult.success ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'}`}>
-                      {resetResult.message}
-                    </div>
-                  )}
-                </div>
-              </details>
-
-              <button
-                onClick={() => setPipelinePhase(2)}
-                className="btn-primary text-xs uppercase tracking-wider w-full"
-              >
-                Avancar para Fase 2 — Execucao
-              </button>
-              {!pipelineRoundId && (
-                <p className="text-[10px] text-amber-400 uppercase tracking-wider text-center">
-                  Selecione uma rodada acima para operar. Caso nao exista, crie uma na aba "Rodadas".
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* PHASE 2: Execucao */}
-        {pipelinePhase === 2 && (
-          <div className="space-y-4">
-            <div className="glass-card border border-white/5 p-5 space-y-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#6366F1]">Fase 2 — Execucao</p>
-
-              <div className="p-6 border border-white/10 bg-black/30 text-center space-y-3">
-                <i className="fa-solid fa-gamepad text-3xl text-gray-500"></i>
-                <p className="text-sm text-gray-300 uppercase tracking-wider">Jogos em andamento</p>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                  O mercado deve estar fechado. Aguarde os jogos terminarem para importar os dados.
-                </p>
-                {pipelineSelectedRound?.is_market_open && (
-                  <div className="border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-                    Atencao: O mercado ainda esta aberto. Feche-o antes dos jogos comecarem.
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-4 p-4 border border-white/10 bg-black/30">
-                <div className="flex-1">
-                  <p className="text-xs text-white font-bold uppercase tracking-wider">Fechar mercado</p>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-1">
-                    Trava as escalacoes dos usuarios
-                  </p>
-                </div>
-                <button
-                  onClick={() => handlePipelineMarketAction('close')}
-                  disabled={!pipelineRoundId || marketActionLoading}
-                  className="text-xs uppercase tracking-wider text-red-300 border border-red-500/40 px-3 py-2 disabled:opacity-50"
-                >
-                  Fechar mercado
-                </button>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPipelinePhase(1)}
-                  className="btn-secondary text-xs uppercase tracking-wider flex-1"
-                >
-                  Voltar
-                </button>
-                <button
-                  onClick={() => setPipelinePhase(3)}
-                  className="btn-primary text-xs uppercase tracking-wider flex-1"
-                >
-                  Avancar para Fase 3 — Validacao
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* PHASE 3: Validacao */}
-        {pipelinePhase === 3 && (
-          <div className="space-y-4">
-            <div className="glass-card border border-white/5 p-5 space-y-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#6366F1]">Fase 3 — Validar dados</p>
-
-              <div className="p-4 border border-white/10 bg-black/30 space-y-2">
-                <p className="text-xs text-gray-300">
-                  Insira as partidas e performances manualmente na aba <strong className="text-white">Partidas</strong> e <strong className="text-white">Performances</strong>, depois volte aqui para revisar e finalizar.
-                </p>
-              </div>
-
-              {/* Performance Review Table */}
-              <div className="p-4 border border-indigo-500/20 bg-black/30 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <i className="fa-solid fa-table text-indigo-400"></i>
-                    <p className="text-xs text-white font-bold uppercase tracking-wider">Revisar performances importadas</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => loadRoundPerformances()}
-                    disabled={roundPerformancesLoading || !pipelineRoundId}
-                    className="text-[10px] uppercase tracking-[0.2em] text-indigo-200 border border-indigo-500/30 px-3 py-2 rounded-lg disabled:opacity-50 hover:bg-indigo-500/10 transition-colors"
-                  >
-                    {roundPerformancesLoading ? (
-                      <><i className="fa-solid fa-spinner fa-spin mr-1"></i>Carregando...</>
-                    ) : (
-                      <><i className="fa-solid fa-eye mr-1"></i>Carregar performances</>
-                    )}
-                  </button>
-                </div>
-
-                {roundPerformancesTotals && (
-                  <div className="flex gap-4 text-[10px] uppercase tracking-[0.18em] text-gray-400">
-                    <div>Partidas: <span className="text-white font-bold">{roundPerformancesTotals.totalMatches}</span></div>
-                    <div>Performances: <span className="text-white font-bold">{roundPerformancesTotals.totalPerformances}</span></div>
-                  </div>
-                )}
-
-                {roundPerformances && roundPerformances.length > 0 ? (
-                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
-                    {roundPerformances.map((match: any) => (
-                      <div key={match.id} className="border border-white/10 bg-black/20 rounded-lg overflow-hidden">
-                        {/* Match Header */}
-                        <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-                          <div className="flex items-center gap-3 text-xs">
-                            <span className="text-white font-bold">{match.team_a?.name || '?'}</span>
-                            <span className="text-gray-500">vs</span>
-                            <span className="text-white font-bold">{match.team_b?.name || '?'}</span>
-                          </div>
-                          <div className="flex items-center gap-3 text-[10px] uppercase tracking-wider">
-                            <span className={match.winner_id ? 'text-emerald-400' : 'text-amber-400'}>
-                              {match.winner_id
-                                ? `Vencedor: ${match.winner_id === match.team_a?.id ? match.team_a?.name : match.team_b?.name}`
-                                : 'Sem resultado'}
-                            </span>
-                            <span className="text-gray-500">{match.performances?.length || 0} perfs</span>
-                          </div>
-                        </div>
-
-                        {/* Performance Table */}
-                        {match.performances && match.performances.length > 0 ? (
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-[10px]">
-                              <thead>
-                                <tr className="text-gray-500 uppercase tracking-wider border-b border-white/5">
-                                  <th className="text-left px-3 py-2">Jogador</th>
-                                  <th className="text-left px-2 py-2">Role</th>
-                                  <th className="text-left px-2 py-2">Champion</th>
-                                  <th className="text-center px-2 py-2">K</th>
-                                  <th className="text-center px-2 py-2">D</th>
-                                  <th className="text-center px-2 py-2">A</th>
-                                  <th className="text-center px-2 py-2">CS</th>
-                                  <th className="text-center px-2 py-2">Gold</th>
-                                  <th className="text-center px-2 py-2">DMG</th>
-                                  <th className="text-center px-2 py-2">W</th>
-                                  <th className="text-right px-3 py-2">Pts</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {match.performances.map((perf: any) => (
-                                  <tr
-                                    key={perf.id}
-                                    className={`border-b border-white/5 ${perf.is_winner ? 'bg-emerald-500/5' : 'bg-red-500/5'}`}
-                                  >
-                                    <td className="px-3 py-1.5 text-white font-medium">{perf.player?.name || `ID ${perf.player_id}`}</td>
-                                    <td className="px-2 py-1.5 text-gray-400">{perf.player?.role || '-'}</td>
-                                    <td className="px-2 py-1.5 text-gray-300">{perf.champion?.name || '-'}</td>
-                                    <td className="text-center px-2 py-1.5 text-emerald-300">{perf.kills ?? '-'}</td>
-                                    <td className="text-center px-2 py-1.5 text-red-300">{perf.deaths ?? '-'}</td>
-                                    <td className="text-center px-2 py-1.5 text-blue-300">{perf.assists ?? '-'}</td>
-                                    <td className="text-center px-2 py-1.5 text-gray-300">{perf.cs ?? '-'}</td>
-                                    <td className="text-center px-2 py-1.5 text-yellow-300">{perf.gold_earned ? `${(perf.gold_earned / 1000).toFixed(1)}k` : '-'}</td>
-                                    <td className="text-center px-2 py-1.5 text-orange-300">{perf.damage_dealt ? `${(perf.damage_dealt / 1000).toFixed(1)}k` : '-'}</td>
-                                    <td className="text-center px-2 py-1.5">
-                                      {perf.is_winner
-                                        ? <span className="text-emerald-400">V</span>
-                                        : <span className="text-red-400">D</span>}
-                                    </td>
-                                    <td className="text-right px-3 py-1.5 text-indigo-300 font-bold">
-                                      {perf.fantasy_points != null ? Number(perf.fantasy_points).toFixed(1) : '-'}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        ) : (
-                          <div className="px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider">
-                            Nenhuma performance registrada para esta partida
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : roundPerformances && roundPerformances.length === 0 ? (
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Nenhuma partida encontrada para esta rodada.</p>
-                ) : (
-                  <p className="text-[10px] text-gray-500">Clique em "Carregar performances" ou importe uma rodada para visualizar os dados.</p>
-                )}
-              </div>
-
-              {/* Checklist */}
-              <div className="p-4 border border-white/10 bg-black/30 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-white font-bold uppercase tracking-wider">Checklist de validacao</p>
-                  <button
-                    type="button"
-                    onClick={handlePipelineCheck}
-                    disabled={finalizeCheckLoading || !pipelineRoundId}
-                    className="text-[10px] uppercase tracking-[0.2em] text-amber-200 border border-amber-500/30 px-3 py-2 rounded-lg disabled:opacity-50"
-                  >
-                    {finalizeCheckLoading ? 'Verificando...' : 'Verificar'}
-                  </button>
-                </div>
-
-                {finalizeCheckResult ? (
-                  <>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[10px] uppercase tracking-[0.18em] text-gray-400">
-                      <div>Partidas: <span className="text-white">{finalizeCheckResult.totalMatches}</span></div>
-                      <div>Sem resultado: <span className="text-white">{finalizeCheckResult.matchesMissingResults}</span></div>
-                      <div>Perf. esperadas: <span className="text-white">{finalizeCheckResult.expectedPerformances}</span></div>
-                      <div>Perf. lancadas: <span className="text-white">{finalizeCheckResult.totalPerformances}</span></div>
-                    </div>
-                    {finalizeCheckResult.pendingItems?.length > 0 ? (
-                      <div className="border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
-                        {finalizeCheckResult.pendingItems.map((item: string) => (
-                          <p key={item} className="text-xs text-amber-200">- {item}</p>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-emerald-200">
-                        Tudo certo. A rodada pode ser finalizada.
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-[10px] text-gray-500">Clique em "Verificar" para validar os dados da rodada.</p>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPipelinePhase(2)}
-                  className="btn-secondary text-xs uppercase tracking-wider flex-1"
-                >
-                  Voltar
-                </button>
-                <button
-                  onClick={() => setPipelinePhase(4)}
-                  className="btn-primary text-xs uppercase tracking-wider flex-1"
-                >
-                  Avancar para Fase 4 — Finalizar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* PHASE 4: Finalizar */}
-        {pipelinePhase === 4 && (
-          <div className="space-y-4">
-            <div className="glass-card border border-white/5 p-5 space-y-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-[#6366F1]">Fase 4 — Finalizar rodada</p>
-
-              <div className="p-4 border border-white/10 bg-black/30 space-y-3">
-                <p className="text-xs text-gray-300 uppercase tracking-wider">
-                  Ao finalizar, o sistema executa em cascata:
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] uppercase tracking-[0.18em]">
-                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
-                    <span className="w-5 h-5 rounded-full border border-gray-600 flex items-center justify-center text-[9px]">1</span>
-                    Calcular pontos dos user_teams
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
-                    <span className="w-5 h-5 rounded-full border border-gray-600 flex items-center justify-center text-[9px]">2</span>
-                    Atualizar precos dos jogadores
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
-                    <span className="w-5 h-5 rounded-full border border-gray-600 flex items-center justify-center text-[9px]">3</span>
-                    Recalcular patrimonio dos usuarios
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
-                    <span className="w-5 h-5 rounded-full border border-gray-600 flex items-center justify-center text-[9px]">4</span>
-                    Marcar rodada como finalizada
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={handlePipelineFinalize}
-                disabled={finalizeRoundLoading || !pipelineRoundId}
-                className="w-full py-3 text-sm font-bold uppercase tracking-wider bg-emerald-600/80 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
-              >
-                {finalizeRoundLoading ? (
-                  <><i className="fa-solid fa-spinner fa-spin"></i> Finalizando rodada...</>
-                ) : (
-                  <><i className="fa-solid fa-flag-checkered"></i> Finalizar rodada</>
-                )}
-              </button>
-
-              {/* Reopen market for next round */}
-              {pipelineSelectedRound?.status === 'finished' && (
-                <div className="p-4 border border-emerald-500/20 bg-emerald-500/5 space-y-3">
-                  <p className="text-xs text-emerald-200 font-bold uppercase tracking-wider">Rodada finalizada com sucesso!</p>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">
-                    Selecione a proxima rodada no topo e abra o mercado para os usuarios.
-                  </p>
-                </div>
-              )}
-
-              <button
-                onClick={() => setPipelinePhase(3)}
-                className="btn-secondary text-xs uppercase tracking-wider w-full"
-              >
-                Voltar para Validacao
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
   };
 
   const renderPlayers = () => {
@@ -2886,12 +2382,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   };
 
   const renderRounds = () => {
-    if (roundsLoading) {
+    if (roundsLoading || matchesLoading) {
       return (
         <div className="glass-card p-6 border border-white/5">
           <div className="flex items-center gap-3 text-gray-500">
             <i className="fa-solid fa-spinner fa-spin"></i>
-            <span className="text-sm font-bold uppercase tracking-wider">Carregando rodadas...</span>
+            <span className="text-sm font-bold uppercase tracking-wider">Carregando...</span>
           </div>
         </div>
       );
@@ -2906,182 +2402,220 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     }
 
     return (
-      <div className="glass-card border border-white/5 overflow-hidden">
-        <div className="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">Rodadas</p>
-            <h3 className="mt-2 text-xl font-orbitron font-black text-white uppercase tracking-tight">
-              Criar nova rodada
-            </h3>
-            <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">Formulario: rounds</p>
-          </div>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-[10px] text-gray-500 uppercase tracking-[0.3em]">Temporada</label>
-              <input
-                type="number"
-                min={1}
-                step={1}
-                inputMode="numeric"
-                value={newRoundForm.season}
-                onChange={(event) => setNewRoundForm((prev) => ({ ...prev, season: event.target.value }))}
-                placeholder="Ex: 4"
-                className="mt-2 bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-500 uppercase tracking-[0.3em]">Numero da rodada</label>
-              <input
-                type="number"
-                min={1}
-                step={1}
-                inputMode="numeric"
-                value={newRoundForm.round_number}
-                onChange={(event) => setNewRoundForm((prev) => ({ ...prev, round_number: event.target.value }))}
-                placeholder="Ex: 7"
-                className="mt-2 bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-500 uppercase tracking-[0.3em]">Status</label>
-              <select
-                value={newRoundForm.status}
-                onChange={(event) => setNewRoundForm((prev) => ({ ...prev, status: event.target.value }))}
-                className="mt-2 bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
-              >
-                <option value="upcoming">Upcoming</option>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-              </select>
-            </div>
-            <div className="flex items-end justify-between gap-4 md:col-span-3">
-              <span className="text-[10px] text-gray-500 uppercase tracking-[0.3em]">
-                Defina o fechamento do mercado na aba Mercado
-              </span>
-              <button
-                onClick={handleCreateRound}
-                className="btn-primary text-xs uppercase tracking-wider"
-              >
-                Criar rodada
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderMatches = () => {
-    if (matchesLoading) {
-      return (
-        <div className="glass-card p-6 border border-white/5">
-          <div className="flex items-center gap-3 text-gray-500">
-            <i className="fa-solid fa-spinner fa-spin"></i>
-            <span className="text-sm font-bold uppercase tracking-wider">Carregando partidas...</span>
-          </div>
-        </div>
-      );
-    }
-
-    if (matchesError) {
-      return (
-        <div className="glass-card p-6 border border-red-500/30 bg-red-500/10 text-sm text-red-200">
-          {matchesError}
-        </div>
-      );
-    }
-
-    return (
       <div className="space-y-6">
+        {/* Status Messages */}
+        {roundActionStatus && (
+          <div className={`border p-4 text-xs ${
+            roundActionStatus.includes('sucesso') || roundActionStatus.includes('finalizada') || roundActionStatus.includes('Rodada finalizada')
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+              : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+          }`}>
+            {roundActionStatus}
+          </div>
+        )}
+
+        {/* Criar Rodada */}
         <div className="glass-card border border-white/5 overflow-hidden">
           <div className="p-5 border-b border-white/5">
-            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">Partidas</p>
-            <h3 className="mt-2 text-xl font-orbitron font-black text-white uppercase tracking-tight">
-              Criar nova partida
-            </h3>
-            <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">Formulario: matches</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">Nova rodada</p>
           </div>
-          <div className="p-6">
+          <div className="p-5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label className="text-xs text-gray-500">Rodada</label>
-              <select
-                value={matchForm.round_id}
-                onChange={(event) => handleMatchFormChange('round_id', event.target.value)}
-                className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg"
-              >
-                <option value="">Selecione a rodada</option>
-                {rounds.map((round) => (
-                  <option key={round.id} value={round.id}>
-                    Season {round.season} - Rodada {round.round_number}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs text-gray-500">Time A</label>
-              <select
-                value={matchForm.team_a_id}
-                onChange={(event) => handleMatchFormChange('team_a_id', event.target.value)}
-                className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg"
-              >
-                <option value="">Selecione o time A</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs text-gray-500">Time B</label>
-              <select
-                value={matchForm.team_b_id}
-                onChange={(event) => handleMatchFormChange('team_b_id', event.target.value)}
-                className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg"
-              >
-                <option value="">Selecione o time B</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs text-gray-500">Numero de partidas</label>
-              <input
-                type="number"
-                min={1}
-                value={matchForm.games_count}
-                onChange={(event) => handleMatchFormChange('games_count', event.target.value)}
-                placeholder="Ex: 3"
-                className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg"
-              />
-            </div>
-            <div className="md:col-span-3 flex items-end justify-end">
-              <button
-                onClick={handleCreateMatch}
-                className="btn-primary text-xs uppercase tracking-wider"
-              >
-                Criar partida
-              </button>
-            </div>
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase tracking-[0.3em]">Temporada</label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  inputMode="numeric"
+                  value={newRoundForm.season}
+                  onChange={(event) => setNewRoundForm((prev) => ({ ...prev, season: event.target.value }))}
+                  placeholder="Ex: 4"
+                  className="mt-2 bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase tracking-[0.3em]">Numero da rodada</label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  inputMode="numeric"
+                  value={newRoundForm.round_number}
+                  onChange={(event) => setNewRoundForm((prev) => ({ ...prev, round_number: event.target.value }))}
+                  placeholder="Ex: 7"
+                  className="mt-2 bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase tracking-[0.3em]">Status</label>
+                <select
+                  value={newRoundForm.status}
+                  onChange={(event) => setNewRoundForm((prev) => ({ ...prev, status: event.target.value }))}
+                  className="mt-2 bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
+                >
+                  <option value="upcoming">Upcoming</option>
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+              <div className="flex items-end justify-end md:col-span-3">
+                <button
+                  onClick={handleCreateRound}
+                  className="btn-primary text-xs uppercase tracking-wider"
+                >
+                  Criar rodada
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Lista de Rodadas */}
         <div className="glass-card border border-white/5 overflow-hidden">
-          <div className="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">Partidas</p>
-              <h3 className="mt-2 text-xl font-orbitron font-black text-white uppercase tracking-tight">
-                {matches.length} partidas cadastradas
-              </h3>
-              <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">Tabela: matches</p>
+          <div className="p-5 border-b border-white/5 flex items-center justify-between">
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">
+              {rounds.length} rodadas cadastradas
+            </p>
+            <button
+              onClick={() => loadRounds()}
+              className="btn-secondary text-xs uppercase tracking-wider"
+            >
+              Atualizar
+            </button>
+          </div>
+          <div className="overflow-x-auto max-h-[320px] overflow-y-auto">
+            <table className="min-w-full text-sm text-left">
+              <thead className="bg-black/60 text-gray-500 text-[11px] uppercase tracking-[0.3em] sticky top-0 z-10 backdrop-blur">
+                <tr>
+                  <th className="px-4 py-3">Rodada</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Mercado</th>
+                  <th className="px-4 py-3">Partidas</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {rounds.map((round) => {
+                  const roundMatches = matches.filter((m) => String(m.round_id) === String(round.id));
+                  return (
+                    <tr
+                      key={round.id}
+                      onClick={() => {
+                        setSelectedRoundIdForActions(String(round.id));
+                        setFinalizeCheckResult(null);
+                        setRoundActionStatus(null);
+                      }}
+                      className={`cursor-pointer hover:bg-white/[0.03] odd:bg-white/[0.02] ${
+                        String(round.id) === selectedRoundIdForActions ? 'ring-1 ring-[#6366F1]/50 bg-[#6366F1]/5' : ''
+                      }`}
+                    >
+                      <td className="px-4 py-3 text-xs font-bold text-gray-300 uppercase tracking-wider">
+                        S{round.season} R{round.round_number}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-[10px] uppercase tracking-wider px-2 py-1 border rounded ${
+                          round.status === 'active' ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10' :
+                          round.status === 'completed' || round.status === 'finished' ? 'border-blue-500/40 text-blue-300 bg-blue-500/10' :
+                          'border-gray-500/40 text-gray-400 bg-gray-500/10'
+                        }`}>
+                          {round.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-[10px] uppercase tracking-wider ${round.is_market_open ? 'text-emerald-300' : 'text-red-300'}`}>
+                          {round.is_market_open ? 'Aberto' : 'Fechado'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-400">{roundMatches.length}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Criar Partida */}
+        <div className="glass-card border border-white/5 overflow-hidden">
+          <div className="p-5 border-b border-white/5">
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">Nova partida</p>
+          </div>
+          <div className="p-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">Rodada</label>
+                <select
+                  value={matchForm.round_id}
+                  onChange={(event) => handleMatchFormChange('round_id', event.target.value)}
+                  className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
+                >
+                  <option value="">Selecione a rodada</option>
+                  {rounds.map((round) => (
+                    <option key={round.id} value={round.id}>
+                      Season {round.season} - Rodada {round.round_number}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">Time A</label>
+                <select
+                  value={matchForm.team_a_id}
+                  onChange={(event) => handleMatchFormChange('team_a_id', event.target.value)}
+                  className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
+                >
+                  <option value="">Selecione o time A</option>
+                  {teams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">Time B</label>
+                <select
+                  value={matchForm.team_b_id}
+                  onChange={(event) => handleMatchFormChange('team_b_id', event.target.value)}
+                  className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
+                >
+                  <option value="">Selecione o time B</option>
+                  {teams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">Numero de partidas</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={matchForm.games_count}
+                  onChange={(event) => handleMatchFormChange('games_count', event.target.value)}
+                  placeholder="Ex: 3"
+                  className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
+                />
+              </div>
+              <div className="md:col-span-3 flex items-end justify-end">
+                <button
+                  onClick={handleCreateMatch}
+                  className="btn-primary text-xs uppercase tracking-wider"
+                >
+                  Criar partida
+                </button>
+              </div>
             </div>
+          </div>
+        </div>
+
+        {/* Lista de Partidas */}
+        <div className="glass-card border border-white/5 overflow-hidden">
+          <div className="p-5 border-b border-white/5 flex items-center justify-between">
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">
+              {matches.length} partidas cadastradas
+            </p>
             <button
               onClick={() => loadMatches()}
               className="btn-secondary text-xs uppercase tracking-wider"
@@ -3089,7 +2623,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
               Atualizar
             </button>
           </div>
-          <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+          <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
             <table className="min-w-full text-sm text-left">
               <thead className="bg-black/60 text-gray-500 text-[11px] uppercase tracking-[0.3em] sticky top-0 z-10 backdrop-blur">
                 <tr>
@@ -3108,7 +2642,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                       {match.team_a?.name || match.team_a_id} vs {match.team_b?.name || match.team_b_id}
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-400 uppercase tracking-wider">
-                      {match.winner?.name || match.winner_id}
+                      {match.winner?.name || match.winner_id || '-'}
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-400 uppercase tracking-wider">
                       {match.scheduled_time || '-'}
@@ -3127,6 +2661,131 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
             </table>
           </div>
         </div>
+
+        {/* Finalizar Rodada */}
+        {selectedRoundIdForActions && (
+          <div className="glass-card border border-white/5 overflow-hidden">
+            <div className="p-5 border-b border-white/5">
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">
+                Finalizar rodada — {selectedRoundForActions ? `S${selectedRoundForActions.season} R${selectedRoundForActions.round_number}` : ''}
+              </p>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Checklist */}
+              <div className="p-4 border border-white/10 bg-black/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-white font-bold uppercase tracking-wider">Checklist de validacao</p>
+                  <button
+                    type="button"
+                    onClick={handlePipelineCheck}
+                    disabled={finalizeCheckLoading || !selectedRoundIdForActions}
+                    className="text-[10px] uppercase tracking-[0.2em] text-amber-200 border border-amber-500/30 px-3 py-2 rounded-lg disabled:opacity-50"
+                  >
+                    {finalizeCheckLoading ? 'Verificando...' : 'Verificar'}
+                  </button>
+                </div>
+                {finalizeCheckResult ? (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[10px] uppercase tracking-[0.18em] text-gray-400">
+                      <div>Partidas: <span className="text-white">{finalizeCheckResult.totalMatches}</span></div>
+                      <div>Sem resultado: <span className="text-white">{finalizeCheckResult.matchesMissingResults}</span></div>
+                      <div>Perf. esperadas: <span className="text-white">{finalizeCheckResult.expectedPerformances}</span></div>
+                      <div>Perf. lancadas: <span className="text-white">{finalizeCheckResult.totalPerformances}</span></div>
+                    </div>
+                    {finalizeCheckResult.pendingItems?.length > 0 ? (
+                      <div className="border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
+                        {finalizeCheckResult.pendingItems.map((item: string) => (
+                          <p key={item} className="text-xs text-amber-200">- {item}</p>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-emerald-200">
+                        Tudo certo. A rodada pode ser finalizada.
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-[10px] text-gray-500">Clique em "Verificar" para validar os dados da rodada.</p>
+                )}
+              </div>
+
+              {/* Cascade Info */}
+              <div className="p-4 border border-white/10 bg-black/30 space-y-2">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                  Ao finalizar, o sistema executa em cascata:
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-[10px] uppercase tracking-[0.18em]">
+                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
+                    <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">1</span>
+                    Calcular pontos dos user_teams
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
+                    <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">2</span>
+                    Atualizar precos dos jogadores
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
+                    <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">3</span>
+                    Recalcular patrimonio dos usuarios
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
+                    <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">4</span>
+                    Marcar rodada como finalizada
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handlePipelineFinalize}
+                disabled={finalizeRoundLoading || !selectedRoundIdForActions}
+                className="w-full py-3 text-sm font-bold uppercase tracking-wider bg-emerald-600/80 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                {finalizeRoundLoading ? (
+                  <><i className="fa-solid fa-spinner fa-spin"></i> Finalizando rodada...</>
+                ) : (
+                  <><i className="fa-solid fa-flag-checkered"></i> Finalizar rodada</>
+                )}
+              </button>
+
+              {selectedRoundForActions?.status === 'finished' && (
+                <div className="p-4 border border-emerald-500/20 bg-emerald-500/5 space-y-2">
+                  <p className="text-xs text-emerald-200 font-bold uppercase tracking-wider">Rodada finalizada com sucesso!</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">
+                    Selecione a proxima rodada e abra o mercado na aba Mercado.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Reset (collapsible) */}
+        <details className="glass-card border border-red-500/20">
+          <summary className="p-4 cursor-pointer text-[10px] uppercase tracking-[0.3em] text-red-400">
+            Reset de dados (uso com cuidado)
+          </summary>
+          <div className="px-5 pb-5 space-y-3 border-t border-red-500/10">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider pt-3">
+              Deleta todas performances, matches e zera stats/precos dos jogadores
+            </p>
+            <button
+              type="button"
+              onClick={handleResetData}
+              disabled={resetLoading}
+              className="bg-red-600/80 hover:bg-red-500 disabled:opacity-50 text-white text-xs uppercase tracking-wider px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            >
+              {resetLoading ? (
+                <><i className="fa-solid fa-spinner fa-spin"></i> Resetando...</>
+              ) : (
+                <><i className="fa-solid fa-trash"></i> Resetar tudo</>
+              )}
+            </button>
+            {resetResult && (
+              <div className={`border p-3 text-xs ${resetResult.success ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'}`}>
+                {resetResult.message}
+              </div>
+            )}
+          </div>
+        </details>
       </div>
     );
   };
@@ -3153,42 +2812,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
     return (
       <div className="space-y-6">
-        {/* Reset Data + Setup Mappings */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Reset */}
-          <div className="glass-card border border-red-500/20 overflow-hidden">
-            <div className="p-5 border-b border-red-500/10">
-              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400">Reset</p>
-              <h3 className="mt-2 text-lg font-orbitron font-black text-white uppercase tracking-tight">
-                Limpar dados
-              </h3>
-              <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">
-                Deleta performances, matches e zera stats dos jogadores
-              </p>
-            </div>
-            <div className="p-5 space-y-3">
-              <button
-                type="button"
-                onClick={handleResetData}
-                disabled={resetLoading}
-                className="bg-red-600/80 hover:bg-red-500 disabled:opacity-50 text-white text-xs uppercase tracking-wider px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              >
-                {resetLoading ? (
-                  <><i className="fa-solid fa-spinner fa-spin"></i> Resetando...</>
-                ) : (
-                  <><i className="fa-solid fa-trash"></i> Resetar tudo</>
-                )}
-              </button>
-              {resetResult && (
-                <div className={`border p-3 rounded ${resetResult.success ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-red-500/30 bg-red-500/10'}`}>
-                  <p className={`text-xs ${resetResult.success ? 'text-emerald-200' : 'text-red-200'}`}>{resetResult.message}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-        </div>
-
         {/* Lancamento manual por partida */}
         <div className="glass-card border border-white/5 overflow-hidden">
           <div className="p-5 border-b border-white/5">
@@ -4036,11 +3659,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
           <div className="mt-4 flex flex-col gap-2">
             {groupedSections.flat().map((section) => {
               const isEnabled =
-                section.id === 'pipeline' ||
                 section.id === 'players' ||
                 section.id === 'teams' ||
                 section.id === 'rounds' ||
-                section.id === 'matches' ||
                 section.id === 'performances' ||
                 section.id === 'market' ||
                 section.id === 'users' ||
@@ -4077,11 +3698,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
             </p>
           </div>
 
-          {activeSection === 'pipeline' && renderPipeline()}
           {activeSection === 'players' && renderPlayers()}
           {activeSection === 'teams' && renderTeams()}
           {activeSection === 'rounds' && renderRounds()}
-          {activeSection === 'matches' && renderMatches()}
           {activeSection === 'performances' && renderPerformances()}
           {activeSection === 'market' && renderMarket()}
           {activeSection === 'users' && renderUsers()}

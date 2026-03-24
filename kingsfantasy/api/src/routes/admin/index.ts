@@ -1,8 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware, adminMiddleware } from '../../middleware/auth.middleware';
 import { marketService } from '../../services/market.service';
-import { autoImportService } from '../../services/auto-import.service';
-import { idlImporterService } from '../../services/idl-importer.service';
 import { adminSupabase } from '../../config/supabase';
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware';

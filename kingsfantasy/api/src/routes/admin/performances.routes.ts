@@ -3,6 +3,7 @@ import {
   bulkInsertPerformances,
   extractPerformancesFromImage,
   getMatchPerformances,
+  getRoundPerformances,
   updatePerformance,
   updateRating,
   deletePerformance,
@@ -23,6 +24,9 @@ router.post('/bulk', bulkInsertPerformances);
 
 // POST /api/admin/performances/extract-from-image - Extrair dados de print para preenchimento assistido
 router.post('/extract-from-image', extractPerformancesFromImage);
+
+// GET /api/admin/performances/round/:roundId - Listar todas performances de uma rodada (agrupadas por partida)
+router.get('/round/:roundId', getRoundPerformances);
 
 // GET /api/admin/performances/match/:matchId - Listar performances de uma partida
 router.get('/match/:matchId', getMatchPerformances);

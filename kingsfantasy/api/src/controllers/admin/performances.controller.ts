@@ -764,6 +764,100 @@ export async function recalculatePlayerPoints(req: AuthenticatedRequest, res: Re
 }
 
 /**
+ * Listar todas as performances de uma rodada (agrupadas por partida)
+ * GET /api/admin/performances/round/:roundId
+ */
+export async function getRoundPerformances(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { roundId } = req.params;
+
+    // Get all matches for this round
+    const { data: matchesData, error: matchesError } = await adminSupabase
+      .from('matches')
+      .select(`
+        id,
+        team_a:teams!matches_team_a_id_fkey(id, name, logo_url),
+        team_b:teams!matches_team_b_id_fkey(id, name, logo_url),
+        winner_id,
+        team_a_score,
+        team_b_score,
+        scheduled_time,
+        status
+      `)
+      .eq('round_id', parseInt(roundId))
+      .order('scheduled_time', { ascending: true });
+
+    if (matchesError) {
+      return res.status(500).json({ success: false, error: 'Erro ao buscar partidas', details: matchesError.message });
+    }
+
+    if (!matchesData || matchesData.length === 0) {
+      return res.json({ success: true, round_id: roundId, totalMatches: 0, matches: [] });
+    }
+
+    const matchIds = matchesData.map((m: any) => m.id);
+
+    // Get all performances for these matches
+    const { data: performances, error: perfError } = await adminSupabase
+      .from('player_performances')
+      .select(`
+        id,
+        match_id,
+        player_id,
+        champion_id,
+        game_number,
+        kills,
+        deaths,
+        assists,
+        cs,
+        gold_earned,
+        damage_dealt,
+        wards_placed,
+        is_winner,
+        fantasy_points,
+        analyst_rating,
+        player:players(id, name, role, team_id, image),
+        champion:champions(id, name, image_url)
+      `)
+      .in('match_id', matchIds)
+      .order('match_id', { ascending: true })
+      .order('is_winner', { ascending: false })
+      .order('fantasy_points', { ascending: false });
+
+    if (perfError) {
+      return res.status(500).json({ success: false, error: 'Erro ao buscar performances', details: perfError.message });
+    }
+
+    // Group performances by match
+    const perfByMatch: Record<number, any[]> = {};
+    for (const p of performances || []) {
+      if (!perfByMatch[p.match_id]) perfByMatch[p.match_id] = [];
+      perfByMatch[p.match_id].push(p);
+    }
+
+    const result = matchesData.map((m: any) => ({
+      ...m,
+      performances: perfByMatch[m.id] || []
+    }));
+
+    return res.json({
+      success: true,
+      round_id: roundId,
+      totalMatches: matchesData.length,
+      totalPerformances: performances?.length || 0,
+      matches: result
+    });
+  } catch (error) {
+    console.error('❌ Exception in getRoundPerformances:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro interno ao buscar performances da rodada',
+      message: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+/**
  * Listar performances de uma partida
  * GET /api/admin/performances/match/:matchId
  */

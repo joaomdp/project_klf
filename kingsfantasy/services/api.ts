@@ -2005,6 +2005,34 @@ export const DataService = {
     }
   },
 
+  async getRoundPerformances(roundId: number): Promise<{
+    ok: boolean;
+    error?: string;
+    data?: {
+      round_id: string;
+      totalMatches: number;
+      totalPerformances: number;
+      matches: any[];
+    };
+  }> {
+    const anonKey = this.getAnonKey();
+    const userToken = this.getUserToken();
+    if (!userToken) return { ok: false, error: 'Usuário não autenticado' };
+
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/admin/performances/round/${roundId}`, {
+        headers: buildAuthHeaders(anonKey, userToken, { allowAnonFallback: false })
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) {
+        return { ok: false, error: data?.error || 'Erro ao buscar performances da rodada' };
+      }
+      return { ok: true, data };
+    } catch (error) {
+      return { ok: false, error: String(error) };
+    }
+  },
+
   async importFromRiotAPI(payload: {
     season: number;
     roundNumber: number;

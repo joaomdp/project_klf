@@ -178,6 +178,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     message: string;
     errors?: string[];
   } | null>(null);
+  const [roundPerformances, setRoundPerformances] = useState<any[] | null>(null);
+  const [roundPerformancesLoading, setRoundPerformancesLoading] = useState(false);
+  const [roundPerformancesTotals, setRoundPerformancesTotals] = useState<{ totalMatches: number; totalPerformances: number } | null>(null);
   const [recalculatePlayersLoading, setRecalculatePlayersLoading] = useState(false);
   const [marketRoundId, setMarketRoundId] = useState('');
   const [marketCloseTimeInput, setMarketCloseTimeInput] = useState('');
@@ -1826,6 +1829,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     }
   };
 
+  const loadRoundPerformances = useCallback(async (roundId?: string) => {
+    const rid = roundId || pipelineRoundId;
+    if (!rid) return;
+    setRoundPerformancesLoading(true);
+    try {
+      const result = await DataService.getRoundPerformances(Number(rid));
+      if (result.ok && result.data) {
+        setRoundPerformances(result.data.matches);
+        setRoundPerformancesTotals({
+          totalMatches: result.data.totalMatches,
+          totalPerformances: result.data.totalPerformances
+        });
+      } else {
+        setRoundPerformances(null);
+        setRoundPerformancesTotals(null);
+      }
+    } catch {
+      setRoundPerformances(null);
+      setRoundPerformancesTotals(null);
+    } finally {
+      setRoundPerformancesLoading(false);
+    }
+  }, [pipelineRoundId]);
+
   const handlePipelineImport = async () => {
     if (!pipelineRoundId) return;
     setPipelineStatus(null);
@@ -1843,6 +1870,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
         await Promise.all([loadPlayers(), loadRounds(), loadMatches()]);
         window.dispatchEvent(new Event('players:refresh'));
         window.dispatchEvent(new Event('leagues:refresh'));
+        // Auto-load performances for review
+        await loadRoundPerformances();
       } else {
         const errList = result.errors?.length ? `\nDetalhes: ${result.errors.join(' | ')}` : '';
         setPipelineStatus(`${result.error || 'Erro na importacao'}${errList}`);
@@ -2219,6 +2248,117 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                     <><i className="fa-solid fa-download"></i> Importar rodada</>
                   )}
                 </button>
+              </div>
+
+              {/* Performance Review Table */}
+              <div className="p-4 border border-indigo-500/20 bg-black/30 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <i className="fa-solid fa-table text-indigo-400"></i>
+                    <p className="text-xs text-white font-bold uppercase tracking-wider">Revisar performances importadas</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => loadRoundPerformances()}
+                    disabled={roundPerformancesLoading || !pipelineRoundId}
+                    className="text-[10px] uppercase tracking-[0.2em] text-indigo-200 border border-indigo-500/30 px-3 py-2 rounded-lg disabled:opacity-50 hover:bg-indigo-500/10 transition-colors"
+                  >
+                    {roundPerformancesLoading ? (
+                      <><i className="fa-solid fa-spinner fa-spin mr-1"></i>Carregando...</>
+                    ) : (
+                      <><i className="fa-solid fa-eye mr-1"></i>Carregar performances</>
+                    )}
+                  </button>
+                </div>
+
+                {roundPerformancesTotals && (
+                  <div className="flex gap-4 text-[10px] uppercase tracking-[0.18em] text-gray-400">
+                    <div>Partidas: <span className="text-white font-bold">{roundPerformancesTotals.totalMatches}</span></div>
+                    <div>Performances: <span className="text-white font-bold">{roundPerformancesTotals.totalPerformances}</span></div>
+                  </div>
+                )}
+
+                {roundPerformances && roundPerformances.length > 0 ? (
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+                    {roundPerformances.map((match: any) => (
+                      <div key={match.id} className="border border-white/10 bg-black/20 rounded-lg overflow-hidden">
+                        {/* Match Header */}
+                        <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+                          <div className="flex items-center gap-3 text-xs">
+                            <span className="text-white font-bold">{match.team_a?.name || '?'}</span>
+                            <span className="text-gray-500">vs</span>
+                            <span className="text-white font-bold">{match.team_b?.name || '?'}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[10px] uppercase tracking-wider">
+                            <span className={match.winner_id ? 'text-emerald-400' : 'text-amber-400'}>
+                              {match.winner_id
+                                ? `Vencedor: ${match.winner_id === match.team_a?.id ? match.team_a?.name : match.team_b?.name}`
+                                : 'Sem resultado'}
+                            </span>
+                            <span className="text-gray-500">{match.performances?.length || 0} perfs</span>
+                          </div>
+                        </div>
+
+                        {/* Performance Table */}
+                        {match.performances && match.performances.length > 0 ? (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-[10px]">
+                              <thead>
+                                <tr className="text-gray-500 uppercase tracking-wider border-b border-white/5">
+                                  <th className="text-left px-3 py-2">Jogador</th>
+                                  <th className="text-left px-2 py-2">Role</th>
+                                  <th className="text-left px-2 py-2">Champion</th>
+                                  <th className="text-center px-2 py-2">K</th>
+                                  <th className="text-center px-2 py-2">D</th>
+                                  <th className="text-center px-2 py-2">A</th>
+                                  <th className="text-center px-2 py-2">CS</th>
+                                  <th className="text-center px-2 py-2">Gold</th>
+                                  <th className="text-center px-2 py-2">DMG</th>
+                                  <th className="text-center px-2 py-2">W</th>
+                                  <th className="text-right px-3 py-2">Pts</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {match.performances.map((perf: any) => (
+                                  <tr
+                                    key={perf.id}
+                                    className={`border-b border-white/5 ${perf.is_winner ? 'bg-emerald-500/5' : 'bg-red-500/5'}`}
+                                  >
+                                    <td className="px-3 py-1.5 text-white font-medium">{perf.player?.name || `ID ${perf.player_id}`}</td>
+                                    <td className="px-2 py-1.5 text-gray-400">{perf.player?.role || '-'}</td>
+                                    <td className="px-2 py-1.5 text-gray-300">{perf.champion?.name || '-'}</td>
+                                    <td className="text-center px-2 py-1.5 text-emerald-300">{perf.kills ?? '-'}</td>
+                                    <td className="text-center px-2 py-1.5 text-red-300">{perf.deaths ?? '-'}</td>
+                                    <td className="text-center px-2 py-1.5 text-blue-300">{perf.assists ?? '-'}</td>
+                                    <td className="text-center px-2 py-1.5 text-gray-300">{perf.cs ?? '-'}</td>
+                                    <td className="text-center px-2 py-1.5 text-yellow-300">{perf.gold_earned ? `${(perf.gold_earned / 1000).toFixed(1)}k` : '-'}</td>
+                                    <td className="text-center px-2 py-1.5 text-orange-300">{perf.damage_dealt ? `${(perf.damage_dealt / 1000).toFixed(1)}k` : '-'}</td>
+                                    <td className="text-center px-2 py-1.5">
+                                      {perf.is_winner
+                                        ? <span className="text-emerald-400">V</span>
+                                        : <span className="text-red-400">D</span>}
+                                    </td>
+                                    <td className="text-right px-3 py-1.5 text-indigo-300 font-bold">
+                                      {perf.fantasy_points != null ? Number(perf.fantasy_points).toFixed(1) : '-'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider">
+                            Nenhuma performance registrada para esta partida
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : roundPerformances && roundPerformances.length === 0 ? (
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Nenhuma partida encontrada para esta rodada.</p>
+                ) : (
+                  <p className="text-[10px] text-gray-500">Clique em "Carregar performances" ou importe uma rodada para visualizar os dados.</p>
+                )}
               </div>
 
               {/* Checklist */}

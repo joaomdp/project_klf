@@ -1984,10 +1984,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                       <td className="px-4 py-3">
                         <span className={`text-[10px] uppercase tracking-wider px-2 py-1 border rounded ${
                           round.status === 'active' ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10' :
-                          round.status === 'completed' || round.status === 'finished' ? 'border-blue-500/40 text-blue-300 bg-blue-500/10' :
+                          round.status === 'finished' ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10' :
+                          round.status === 'completed' ? 'border-blue-500/40 text-blue-300 bg-blue-500/10' :
                           'border-gray-500/40 text-gray-400 bg-gray-500/10'
                         }`}>
-                          {round.status === 'active' ? 'Ativa' : round.status === 'completed' || round.status === 'finished' ? 'Concluida' : round.status}
+                          {round.status === 'active' ? 'Ativa' : round.status === 'finished' ? 'Finalizada' : round.status === 'completed' ? 'Concluida' : round.status}
                         </span>
                       </td>
                       <td className="px-4 py-3">

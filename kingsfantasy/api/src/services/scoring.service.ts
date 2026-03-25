@@ -223,12 +223,12 @@ class ScoringService {
     }
     console.log(`   ✅ ${pointsCalculated}/${totalPerformances} performances pontuadas`);
 
-    // Verificar se restam performances sem pontos
+    // Verificar se restam performances sem pontos calculados (null = nunca calculado)
     const { data: recheck, error: recheckError } = await adminSupabase
       .from('player_performances')
       .select('id')
       .in('match_id', matchIds)
-      .or('fantasy_points.is.null,fantasy_points.eq.0');
+      .is('fantasy_points', null);
 
     const remainingNulls = recheckError ? 0 : (recheck?.length || 0);
     if (remainingNulls > 0) {

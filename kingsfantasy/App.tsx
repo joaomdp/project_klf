@@ -394,12 +394,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const handlePlayersRefresh = () => {
       fetchPlayers();
-
-      // Quando o mercado esta fechado, sincroniza o time para refletir
-      // patrimonio e pontuacao atualizados apos finalizacao de rodada.
-      if (marketIsOpen === false) {
-        syncUserTeamFromServer();
-      }
+      syncUserTeamFromServer();
     };
 
     const handleMatchesRefresh = () => {
@@ -412,7 +407,7 @@ const AppContent: React.FC = () => {
       window.removeEventListener('players:refresh', handlePlayersRefresh as EventListener);
       window.removeEventListener('matches:refresh', handleMatchesRefresh as EventListener);
     };
-  }, [fetchPlayers, loadCurrentRoundMatchups, marketIsOpen, syncUserTeamFromServer]);
+  }, [fetchPlayers, loadCurrentRoundMatchups, syncUserTeamFromServer]);
 
   useEffect(() => {
     // initApp already calls refreshMarketStatus, so only set up the interval here

@@ -15,11 +15,11 @@ const ROUND_STATUS_INPUT_TO_DB: Record<string, 'pending' | 'open' | 'closed' | '
   completed: 'finished'
 };
 
-const ROUND_STATUS_DB_TO_API: Record<string, 'upcoming' | 'active' | 'completed'> = {
+const ROUND_STATUS_DB_TO_API: Record<string, 'upcoming' | 'active' | 'completed' | 'finished'> = {
   pending: 'upcoming',
   open: 'active',
   closed: 'completed',
-  finished: 'completed'
+  finished: 'finished'
 };
 
 function normalizeRoundStatusToDb(status?: string): 'pending' | 'open' | 'closed' | 'finished' | null {
@@ -642,12 +642,7 @@ export async function finalizeRound(req: AuthenticatedRequest, res: Response) {
     const result = await scoringService.finalizeRound(roundId);
 
     if (result.remainingNulls > 0) {
-      return res.status(409).json({
-        success: false,
-        error: 'Ainda existem performances sem pontuação',
-        remainingNulls: result.remainingNulls,
-        totalPerformances: result.totalPerformances
-      });
+      console.warn(`⚠️ ${result.remainingNulls} performances sem pontuação após cálculo (round ${roundId})`);
     }
 
     await adminSupabase

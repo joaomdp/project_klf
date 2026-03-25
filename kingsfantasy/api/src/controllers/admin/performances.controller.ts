@@ -253,119 +253,14 @@ export async function bulkInsertPerformances(req: AuthenticatedRequest, res: Res
       });
     }
 
-    console.log(`✅ Inserted ${insertedPerformances?.length} performances`);
-
-
-    // Calcular fantasy_points para cada performance inserida
-    console.log('🎯 Calculating fantasy points...');
-    const performancesWithPoints = [];
-
-    for (const perf of insertedPerformances || []) {
-      try {
-        // Usar o serviço de scoring para calcular pontos
-        const finalPoints = await scoringService.updatePerformancePoints(perf.id);
-        
-        performancesWithPoints.push({
-          ...perf,
-          fantasy_points: finalPoints
-        });
-      } catch (error) {
-        console.error(`⚠️  Error calculating points for performance ${perf.id}:`, error);
-        performancesWithPoints.push(perf);
-      }
-    }
-
-    console.log(`✅ Fantasy points calculated for all ${performancesWithPoints.length} performances`);
-
-    // Atualizar pontos agregados dos jogadores afetados
-    try {
-      const playerIds = Array.from(
-        new Set((insertedPerformances || []).map((perf: any) => perf.player_id))
-      );
-
-      if (playerIds.length > 0) {
-        const { data: allPerformances, error: perfFetchError } = await adminSupabase
-          .from('player_performances')
-          .select('player_id, fantasy_points, match_id')
-          .in('player_id', playerIds);
-
-        if (!perfFetchError && allPerformances) {
-          const matchIds = Array.from(new Set(allPerformances.map((perf: any) => perf.match_id)));
-          const { data: matches, error: matchesError } = await adminSupabase
-            .from('matches')
-            .select('id, games_count')
-            .in('id', matchIds);
-
-          if (!matchesError && matches) {
-            const matchGamesMap = new Map(
-              matches.map((match: any) => [match.id, Number(match.games_count || 1)])
-            );
-
-            const playerMatchPoints = new Map<string, Map<number, number>>();
-            const playerGameStats = new Map<string, { totalPoints: number; count: number }>();
-
-            for (const perf of allPerformances) {
-              const points = perf.fantasy_points || 0;
-              const playerId = String(perf.player_id);
-              const matchId = Number(perf.match_id);
-
-              if (!playerMatchPoints.has(playerId)) {
-                playerMatchPoints.set(playerId, new Map());
-              }
-              const matchMap = playerMatchPoints.get(playerId)!;
-              matchMap.set(matchId, (matchMap.get(matchId) || 0) + points);
-
-              const gameStats = playerGameStats.get(playerId) || { totalPoints: 0, count: 0 };
-              gameStats.totalPoints += points;
-              gameStats.count += 1;
-              playerGameStats.set(playerId, gameStats);
-            }
-
-            for (const [playerId, matchMap] of playerMatchPoints) {
-              let matchSum = 0;
-              let matchCount = 0;
-
-              for (const [matchId, matchPoints] of matchMap) {
-                const gamesCount = matchGamesMap.get(matchId) || 1;
-                matchSum += matchPoints / gamesCount;
-                matchCount += 1;
-              }
-
-              const gameStats = playerGameStats.get(playerId) || { totalPoints: 0, count: 0 };
-              const pointsPerMatch = matchCount > 0 ? matchSum / matchCount : 0;
-              const avgPointsPerGame = gameStats.count > 0 ? gameStats.totalPoints / gameStats.count : 0;
-
-              await adminSupabase
-                .from('players')
-                .update({
-                  points: pointsPerMatch,
-                  avg_points: avgPointsPerGame,
-                  games_played: gameStats.count
-                })
-                .eq('id', playerId);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('⚠️  Error updating player aggregated points:', error);
-    }
-
-    // Atualizar pontuacao de ligas (user_teams) da rodada
-    if (match?.round_id) {
-      try {
-        await scoringService.calculateAllScoresForRound(Number(match.round_id));
-      } catch (error) {
-        console.error('⚠️  Error recalculating league scores:', error);
-      }
-    }
+    console.log(`✅ Inserted ${insertedPerformances?.length} performances (draft — points will be calculated on round finalization)`);
 
     return res.status(201).json({
       success: true,
-      message: `${performancesWithPoints.length} performances inseridas e pontuadas com sucesso`,
+      message: `${insertedPerformances?.length || 0} performances salvas com sucesso (rascunho). Pontos serao calculados ao finalizar a rodada.`,
       match_id,
-      inserted: performancesWithPoints.length,
-      performances: performancesWithPoints
+      inserted: insertedPerformances?.length || 0,
+      performances: insertedPerformances || []
     });
 
   } catch (error) {

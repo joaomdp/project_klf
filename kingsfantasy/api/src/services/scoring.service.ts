@@ -209,10 +209,30 @@ class ScoringService {
     if (perfError) throw perfError;
 
     const totalPerformances = performances?.length || 0;
-    const remainingNulls = (performances || []).filter((perf: any) => perf.fantasy_points === null).length;
 
+    // ── FASE 0: Calcular fantasy_points de todas as performances ──
+    console.log(`\n🔷 FASE 0: Calculando fantasy_points para ${totalPerformances} performances...`);
+    let pointsCalculated = 0;
+    for (const perf of performances || []) {
+      try {
+        await this.updatePerformancePoints(perf.id);
+        pointsCalculated++;
+      } catch (err) {
+        console.error(`❌ Failed to calculate points for performance ${perf.id}:`, err);
+      }
+    }
+    console.log(`   ✅ ${pointsCalculated}/${totalPerformances} performances pontuadas`);
+
+    // Verificar se restam performances sem pontos
+    const { data: recheck, error: recheckError } = await adminSupabase
+      .from('player_performances')
+      .select('id')
+      .in('match_id', matchIds)
+      .or('fantasy_points.is.null,fantasy_points.eq.0');
+
+    const remainingNulls = recheckError ? 0 : (recheck?.length || 0);
     if (remainingNulls > 0) {
-      return { totalPerformances, remainingNulls, updatedTeams: 0, updatedPlayers: 0, updatedBudgets: 0, priceUpdates: 0 };
+      console.warn(`⚠️  ${remainingNulls} performances still without points after calculation`);
     }
 
     // ── FASE 1: Calcular pontuações dos user_teams ─────────────

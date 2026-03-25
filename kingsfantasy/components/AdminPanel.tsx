@@ -10,7 +10,22 @@ const sections = [
   {
     id: 'rounds',
     title: 'Rodadas & Partidas',
-    description: 'Crie rodadas, partidas e finalize o ciclo.'
+    description: 'Crie rodadas, partidas e gerencie confrontos.'
+  },
+  {
+    id: 'performances',
+    title: 'Performances',
+    description: 'Insira resultados e notas dos jogos da rodada atual.'
+  },
+  {
+    id: 'finalize',
+    title: 'Finalizar Rodada',
+    description: 'Valide o checklist e finalize a rodada para atualizar o sistema.'
+  },
+  {
+    id: 'market',
+    title: 'Mercado',
+    description: 'Controle abertura, fechamento e regras do mercado.'
   },
   {
     id: 'players',
@@ -21,16 +36,6 @@ const sections = [
     id: 'teams',
     title: 'Times',
     description: 'Atualize logos, nomes e vínculos dos times.'
-  },
-  {
-    id: 'performances',
-    title: 'Performances',
-    description: 'Insira resultados e notas analistas.'
-  },
-  {
-    id: 'market',
-    title: 'Mercado',
-    description: 'Controle abertura, fechamento e regras do mercado.'
   },
   {
     id: 'leagues',
@@ -46,9 +51,8 @@ const sections = [
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [isChecking, setIsChecking] = useState(false);
-  const [activeSection, setActiveSection] = useState<'players' | 'teams' | 'rounds' | 'performances' | 'market' | 'users' | 'leagues'>('rounds');
+  const [activeSection, setActiveSection] = useState<'players' | 'teams' | 'rounds' | 'performances' | 'finalize' | 'market' | 'users' | 'leagues'>('rounds');
   const [selectedRoundIdForActions, setSelectedRoundIdForActions] = useState('');
-  const [roundActionStatus, setRoundActionStatus] = useState<string | null>(null);
   const [players, setPlayers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
@@ -75,6 +79,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [finalizeRoundLoading, setFinalizeRoundLoading] = useState(false);
   const [finalizeCheckLoading, setFinalizeCheckLoading] = useState(false);
   const [finalizeCheckResult, setFinalizeCheckResult] = useState<any | null>(null);
+  const [finalizeTabRoundId, setFinalizeTabRoundId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [priceEdits, setPriceEdits] = useState<Record<string, string>>({});
   const [playerEditId, setPlayerEditId] = useState<string | null>(null);
@@ -109,25 +114,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     teamA: any[];
     teamB: any[];
   }>>([]);
-  const [csvPreviewRows, setCsvPreviewRows] = useState<Array<{
-    index: number;
-    gameNumber: number | null;
-    playerName: string;
-    playerId: string;
-    championName: string;
-    status: 'ok' | 'error';
-    message: string;
-  }> | null>(null);
-  const [csvPreviewUpdates, setCsvPreviewUpdates] = useState<Array<{
-    gameNumber: number;
-    playerId: string;
-    championId: string;
-    kills?: string;
-    deaths?: string;
-    assists?: string;
-    cs?: string;
-  }> | null>(null);
-  const [csvPreviewFileName, setCsvPreviewFileName] = useState<string | null>(null);
   const [imageExtractLoading, setImageExtractLoading] = useState(false);
   const [imagePreviewFileName, setImagePreviewFileName] = useState<string | null>(null);
   const [imagePreviewRows, setImagePreviewRows] = useState<Array<{
@@ -150,9 +136,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [imagePreviewScore, setImagePreviewScore] = useState<{ team_a: number; team_b: number } | null>(null);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetResult, setResetResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [roundPerformances, setRoundPerformances] = useState<any[] | null>(null);
-  const [roundPerformancesLoading, setRoundPerformancesLoading] = useState(false);
-  const [roundPerformancesTotals, setRoundPerformancesTotals] = useState<{ totalMatches: number; totalPerformances: number } | null>(null);
   const [recalculatePlayersLoading, setRecalculatePlayersLoading] = useState(false);
   const [marketRoundId, setMarketRoundId] = useState('');
   const [marketCloseTimeInput, setMarketCloseTimeInput] = useState('');
@@ -177,9 +160,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
   const groupedSections = useMemo(() => {
     return [
-      sections.slice(0, 3),
-      sections.slice(3, 6),
-      sections.slice(6)
+      sections.slice(0, 4),
+      sections.slice(4, 8)
     ];
   }, []);
 
@@ -202,6 +184,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       sectionId !== 'teams' &&
       sectionId !== 'rounds' &&
       sectionId !== 'performances' &&
+      sectionId !== 'finalize' &&
       sectionId !== 'market' &&
       sectionId !== 'users' &&
       sectionId !== 'leagues'
@@ -491,49 +474,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     await loadMatches();
   };
 
-  const handleFinalizeRound = async () => {
-    if (!performanceRoundId) {
-      setPerformancesError('Selecione uma rodada antes de finalizar.');
-      return;
-    }
-
-    const confirmed = window.confirm('Deseja finalizar esta rodada? Esta acao recalcula pontuacoes e valores.');
-    if (!confirmed) return;
-
-    setPerformancesError(null);
-    setPerformancesSuccess(null);
-    setFinalizeRoundLoading(true);
-
-    try {
-      const roundId = Number(performanceRoundId);
-      const result = await DataService.finalizeAdminRound(roundId);
-      if (!result.ok) {
-        setPerformancesError(result.error || 'Erro ao finalizar rodada');
-        await handleFinalizeCheck();
-        return;
-      }
-
-      const wasRecalculated = Boolean(result.data?.result?.recalculated);
-      const baseSuccessMessage = wasRecalculated
-        ? 'Rodada recalculada com sucesso (modo substituicao).'
-        : (result.data?.message || 'Rodada finalizada com sucesso. Mercado aberto novamente.');
-
-      const finalizeMessage = result.data?.marketWarning
-        ? `${baseSuccessMessage} ${result.data.marketWarning}`
-        : baseSuccessMessage;
-      setPerformancesSuccess(finalizeMessage);
-
-      setFinalizeCheckResult(null);
-      await loadRounds();
-      await loadPlayers();
-      window.dispatchEvent(new Event('market:refresh'));
-      window.dispatchEvent(new Event('players:refresh'));
-      window.dispatchEvent(new Event('leagues:refresh'));
-    } finally {
-      setFinalizeRoundLoading(false);
-    }
-  };
-
   const handleMatchFormChange = (field: string, value: string) => {
     setMatchForm((prev) => ({
       ...prev,
@@ -591,29 +531,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       });
     await loadMatches(roundId);
     window.dispatchEvent(new Event('matches:refresh'));
-  };
-
-  const handleFinalizeCheck = async () => {
-    if (!performanceRoundId) {
-      setPerformancesError('Selecione uma rodada para validar o checklist.');
-      setFinalizeCheckResult(null);
-      return;
-    }
-
-    setPerformancesError(null);
-    setFinalizeCheckLoading(true);
-    const roundId = Number(performanceRoundId);
-    const result = await DataService.getAdminRoundFinalizeCheck(roundId);
-
-    if (!result.ok) {
-      setPerformancesError(result.error || 'Erro ao validar checklist da rodada');
-      setFinalizeCheckResult(null);
-      setFinalizeCheckLoading(false);
-      return;
-    }
-
-    setFinalizeCheckResult(result.check || null);
-    setFinalizeCheckLoading(false);
   };
 
   const handleSaveMarketCloseTime = async () => {
@@ -676,91 +593,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     cs: ''
   });
 
-  const parseCsvLine = (line: string) => {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-        continue;
-      }
-      if (char === ',' && !inQuotes) {
-        result.push(current.trim());
-        current = '';
-        continue;
-      }
-      current += char;
-    }
-    result.push(current.trim());
-    return result;
-  };
-
-  const parseCsv = (text: string) => {
-    const lines = text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
-    if (lines.length < 2) {
-      return { headers: [], rows: [] as Record<string, string>[] };
-    }
-
-    const rawHeaders = parseCsvLine(lines[0]);
-    const headerMap = new Map<string, string>();
-    const knownHeaders: Record<string, string> = {
-      gamenumber: 'game_number',
-      game: 'game_number',
-      partida: 'game_number',
-      jogo: 'game_number',
-      playerid: 'player_id',
-      player: 'player_name',
-      playername: 'player_name',
-      nomejogador: 'player_name',
-      championid: 'champion_id',
-      championname: 'champion_name',
-      campeao: 'champion_name',
-      campeaoname: 'champion_name',
-      championkey: 'champion_key',
-      kills: 'kills',
-      deaths: 'deaths',
-      assists: 'assists',
-      cs: 'cs'
-    };
-
-    rawHeaders.forEach((header) => {
-      const normalized = normalizeCsvKey(header);
-      const canonical = knownHeaders[normalized] || header.toLowerCase();
-      headerMap.set(header, canonical);
-    });
-
-    const headers = rawHeaders.map((header) => headerMap.get(header) || header.toLowerCase());
-    const rows = lines.slice(1).map((line) => {
-      const values = parseCsvLine(line);
-      const row: Record<string, string> = {};
-      headers.forEach((header, index) => {
-        row[header] = values[index] ?? '';
-      });
-      return row;
-    });
-
-    return { headers, rows };
-  };
-
-  const escapeCsvValue = (value: string) => {
-    if (value === '') return '';
-    if (/[",\n]/.test(value)) {
-      return `"${value.replace(/"/g, '""')}"`;
-    }
-    return value;
-  };
-
   const handlePerformanceRoundChange = (roundId: string) => {
     setPerformancesSuccess(null);
     setPerformanceRoundId(roundId);
@@ -771,7 +603,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     setImagePreviewFileName(null);
     setPerformanceGamesCount(1);
     setPerformanceRowsByGame([]);
-    setFinalizeCheckResult(null);
   };
 
   const handlePerformanceMatchChange = (matchId: string) => {
@@ -813,152 +644,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
         };
       })
     );
-  };
-
-  const normalizeCsvKey = (value: string) =>
-    value
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '');
-
-  const handleImportPerformancesCsv = async (file: File | null) => {
-    if (!file) return;
-    if (!performanceMatchId) {
-      setPerformancesError('Selecione uma partida antes de importar o CSV.');
-      return;
-    }
-    if (performanceRowsByGame.length === 0) {
-      setPerformancesError('Selecione a partida para carregar os jogadores antes de importar o CSV.');
-      return;
-    }
-
-    const text = await file.text();
-    const { rows } = parseCsv(text);
-    if (rows.length === 0) {
-      setPerformancesError('CSV vazio ou inválido.');
-      return;
-    }
-
-    setCsvPreviewFileName(file.name);
-
-    const championById = new Map<string, { id: number | string; name: string; key_name?: string }>();
-    const championByName = new Map<string, { id: number | string; name: string; key_name?: string }>();
-    const championByKeyName = new Map<string, { id: number | string; name: string; key_name?: string }>();
-
-    champions.forEach((champion) => {
-      championById.set(String(champion.id), champion);
-      championByName.set(normalizeCsvKey(champion.name), champion);
-      if (champion.key_name) {
-        championByKeyName.set(normalizeCsvKey(champion.key_name), champion);
-      }
-    });
-    const playerById = new Map(players.map((player) => [String(player.id), player]));
-    const playerByName = new Map(players.map((player) => [normalizeCsvKey(player.name), player]));
-    const matchPlayerIds = new Set(
-      performanceRowsByGame.flatMap((game) => [...game.teamA, ...game.teamB]).map((row: any) => String(row.player_id))
-    );
-    const previewRows: Array<{
-      index: number;
-      gameNumber: number | null;
-      playerName: string;
-      playerId: string;
-      championName: string;
-      status: 'ok' | 'error';
-      message: string;
-    }> = [];
-    const updates: Array<{
-      gameNumber: number;
-      playerId: string;
-      championId: string;
-      kills?: string;
-      deaths?: string;
-      assists?: string;
-      cs?: string;
-    }> = [];
-
-    rows.forEach((row, index) => {
-      const rawGame = row.game_number || row.game || row.partida || row.jogo || '';
-      const gameNumber = Number(rawGame);
-      let status: 'ok' | 'error' = 'ok';
-      let message = 'Pronto para importar';
-
-      if (!gameNumber || Number.isNaN(gameNumber)) {
-        status = 'error';
-        message = 'game_number inválido';
-      }
-
-      let player = null;
-      if (row.player_id) {
-        player = playerById.get(String(row.player_id).trim());
-      }
-      if (!player && row.player_name) {
-        player = playerByName.get(normalizeCsvKey(row.player_name));
-      }
-      if (!player) {
-        status = 'error';
-        message = 'Jogador não encontrado na partida';
-      }
-
-      if (status === 'ok' && player && !matchPlayerIds.has(String(player.id))) {
-        status = 'error';
-        message = 'Jogador não pertence à partida selecionada';
-      }
-
-      let championId = '';
-      if (row.champion_id) {
-        const champion = championById.get(String(row.champion_id).trim());
-        if (!champion) {
-          status = 'error';
-          message = 'Campeão não encontrado (id)';
-        } else {
-          championId = String(champion.id);
-        }
-      }
-      if (!championId && row.champion_key) {
-        const champion = championByKeyName.get(normalizeCsvKey(row.champion_key));
-        if (!champion) {
-          status = 'error';
-          message = 'Campeão não encontrado (key)';
-        } else {
-          championId = String(champion.id);
-        }
-      }
-      if (!championId && row.champion_name) {
-        const normalizedName = normalizeCsvKey(row.champion_name);
-        const champion = championByName.get(normalizedName) || championByKeyName.get(normalizedName);
-        if (!champion) {
-          status = 'error';
-          message = 'Campeão não encontrado (nome)';
-        } else {
-          championId = String(champion.id);
-        }
-      }
-
-      if (status === 'ok' && player && gameNumber) {
-        updates.push({
-          gameNumber,
-          playerId: String(player.id),
-          championId,
-          kills: row.kills !== undefined && row.kills !== '' ? String(row.kills) : undefined,
-          deaths: row.deaths !== undefined && row.deaths !== '' ? String(row.deaths) : undefined,
-          assists: row.assists !== undefined && row.assists !== '' ? String(row.assists) : undefined,
-          cs: row.cs !== undefined && row.cs !== '' ? String(row.cs) : undefined
-        });
-      }
-
-      previewRows.push({
-        index: index + 1,
-        gameNumber: Number.isNaN(gameNumber) ? null : gameNumber,
-        playerName: player?.name || String(row.player_name || ''),
-        playerId: player ? String(player.id) : String(row.player_id || ''),
-        championName: String(row.champion_name || row.champion_key || row.champion_id || ''),
-        status,
-        message
-      });
-    });
-
-    setPerformancesError(null);
-    setCsvPreviewRows(previewRows);
-    setCsvPreviewUpdates(updates);
   };
 
   const handleImportPerformancesImage = async (file: File | null) => {
@@ -1102,93 +787,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     setImagePreviewFileName(null);
     setPerformancesError(null);
     setPerformancesSuccess('Dados do print aplicados. Confira placar/tabela e salve as performances.');
-  };
-
-  const handleApplyCsvPreview = () => {
-    if (!csvPreviewRows || !csvPreviewUpdates) return;
-    const hasErrors = csvPreviewRows.some((row) => row.status === 'error');
-    if (hasErrors) {
-      setPerformancesError('Corrija as linhas com erro antes de aplicar.');
-      return;
-    }
-
-    const updatedRows = performanceRowsByGame.map((game) => ({
-      ...game,
-      teamA: game.teamA.map((row: any) => ({ ...row })),
-      teamB: game.teamB.map((row: any) => ({ ...row }))
-    }));
-
-    const findRow = (gameNumber: number, playerId: string) => {
-      const gameIndex = updatedRows.findIndex((game) => game.gameNumber === gameNumber);
-      if (gameIndex === -1) return null;
-      const game = updatedRows[gameIndex];
-      const teamARow = game.teamA.find((row: any) => String(row.player_id) === playerId);
-      if (teamARow) return teamARow;
-      const teamBRow = game.teamB.find((row: any) => String(row.player_id) === playerId);
-      if (teamBRow) return teamBRow;
-      return null;
-    };
-
-    for (const update of csvPreviewUpdates) {
-      const target = findRow(update.gameNumber, update.playerId);
-      if (!target) continue;
-      if (update.championId) target.champion_id = update.championId;
-      if (update.kills !== undefined) target.kills = update.kills;
-      if (update.deaths !== undefined) target.deaths = update.deaths;
-      if (update.assists !== undefined) target.assists = update.assists;
-      if (update.cs !== undefined) target.cs = update.cs;
-    }
-
-    setPerformanceRowsByGame(updatedRows);
-    setCsvPreviewRows(null);
-    setCsvPreviewUpdates(null);
-    setCsvPreviewFileName(null);
-    setPerformancesError(null);
-  };
-
-  const handleDownloadPerformanceTemplate = () => {
-    if (!performanceMatchId) {
-      setPerformancesError('Selecione uma partida antes de baixar o CSV.');
-      return;
-    }
-    if (performanceRowsByGame.length === 0) {
-      setPerformancesError('Selecione a partida para carregar os jogadores antes de baixar o CSV.');
-      return;
-    }
-
-    const headers = ['game_number', 'player_id', 'player_name', 'champion_name', 'kills', 'deaths', 'assists', 'cs'];
-    const rows: string[] = [headers.join(',')];
-
-    const getPlayerName = (playerId: string) =>
-      players.find((player) => String(player.id) === String(playerId))?.name || '';
-
-    performanceRowsByGame.forEach((game) => {
-      const allRows = [...game.teamA, ...game.teamB];
-      allRows.forEach((row: any) => {
-        const values = [
-          String(game.gameNumber),
-          String(row.player_id || ''),
-          getPlayerName(String(row.player_id || '')),
-          '',
-          '',
-          '',
-          '',
-          ''
-        ].map((value) => escapeCsvValue(value));
-        rows.push(values.join(','));
-      });
-    });
-
-    const csvContent = rows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `performances_match_${performanceMatchId}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
   };
 
   const handleRecalculatePlayers = async () => {
@@ -1335,19 +933,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
         isNumericFieldFilled(row.cs)
       );
 
-    const checklistReady = Boolean(finalizeCheckResult?.canFinalize);
-
     return [
       { id: 'round', label: 'Rodada selecionada', done: hasRound },
       { id: 'match', label: 'Partida selecionada', done: hasMatch },
       { id: 'score', label: 'Placar salvo', done: hasSavedScore },
-      { id: 'performances', label: 'Tabela completa', done: performancesReady },
-      { id: 'checklist', label: 'Checklist validado', done: checklistReady }
+      { id: 'performances', label: 'Tabela completa', done: performancesReady }
     ];
   }, [performanceRoundId, selectedPerformanceMatch, performanceRowsByGame, finalizeCheckResult]);
 
   const canFinalizeFlow = performanceFlowSteps.every((step) => step.done);
-  const canFinalizeAction = Boolean(performanceRoundId);
 
   const handleSaveMatchScore = async () => {
     if (!selectedPerformanceMatch) {
@@ -1404,7 +998,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       }
 
       await loadMatches(performanceRoundId ? Number(performanceRoundId) : undefined);
-      await handleFinalizeCheck();
     } catch (error) {
       setPerformancesError(String(error));
     } finally {
@@ -1540,15 +1133,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
         return;
       }
 
-      window.dispatchEvent(new Event('players:refresh'));
-      window.dispatchEvent(new Event('leagues:refresh'));
-      await handleFinalizeCheck();
       setPerformanceRowsByGame([]);
       setPerformanceMatchId('');
       setMatchScoreInput({ teamA: '', teamB: '' });
-      setCsvPreviewRows(null);
-      setCsvPreviewUpdates(null);
-      setCsvPreviewFileName(null);
       setImagePreviewRows(null);
       setImagePreviewScore(null);
       setImagePreviewFileName(null);
@@ -1621,128 +1208,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     const selectedRound = rounds.find((round) => String(round.id) === String(marketRoundId));
     setMarketCloseTimeInput(toDateTimeLocalValue(selectedRound?.market_close_time));
   }, [marketRoundId, rounds]);
-
-  const selectedRoundForActions = useMemo(
-    () => rounds.find((r) => String(r.id) === String(selectedRoundIdForActions)) || null,
-    [rounds, selectedRoundIdForActions]
-  );
-
-  const selectedRoundMatches = useMemo(
-    () => matches.filter((m) => String(m.round_id) === String(selectedRoundIdForActions)),
-    [matches, selectedRoundIdForActions]
-  );
-
-  const handlePipelineMarketAction = async (action: 'open' | 'close') => {
-    const roundId = Number(selectedRoundIdForActions);
-    if (!roundId) return;
-
-    setRoundActionStatus(null);
-
-    try {
-      const anonKey = DataService.getAnonKey();
-      const userToken = DataService.getUserToken();
-      if (!userToken) {
-        setRoundActionStatus('Usuario nao autenticado.');
-        return;
-      }
-
-      const endpoint = action === 'open'
-        ? `${DataService.API_BASE_URL}/admin/market/force-open/${roundId}`
-        : `${DataService.API_BASE_URL}/admin/market/force-close/${roundId}`;
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          apikey: anonKey,
-          Authorization: `Bearer ${userToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        setRoundActionStatus(errorText || 'Erro ao atualizar mercado');
-      } else {
-        setRoundActionStatus(action === 'open' ? 'Mercado aberto com sucesso!' : 'Mercado fechado com sucesso!');
-        await loadRounds();
-        window.dispatchEvent(new Event('market:refresh'));
-      }
-    } catch (error) {
-      setRoundActionStatus(String(error));
-    }
-  };
-
-  const loadRoundPerformances = useCallback(async (roundId?: string) => {
-    const rid = roundId || selectedRoundIdForActions;
-    if (!rid) return;
-    setRoundPerformancesLoading(true);
-    try {
-      const result = await DataService.getRoundPerformances(Number(rid));
-      if (result.ok && result.data) {
-        setRoundPerformances(result.data.matches);
-        setRoundPerformancesTotals({
-          totalMatches: result.data.totalMatches,
-          totalPerformances: result.data.totalPerformances
-        });
-      } else {
-        setRoundPerformances(null);
-        setRoundPerformancesTotals(null);
-      }
-    } catch {
-      setRoundPerformances(null);
-      setRoundPerformancesTotals(null);
-    } finally {
-      setRoundPerformancesLoading(false);
-    }
-  }, [selectedRoundIdForActions]);
-
-  const handlePipelineFinalize = async () => {
-    const roundId = Number(selectedRoundIdForActions);
-    if (!roundId) return;
-
-    if (!window.confirm('Finalizar rodada? Isso vai calcular pontos, atualizar precos e patrimonio dos usuarios.')) {
-      return;
-    }
-
-    setFinalizeRoundLoading(true);
-    setRoundActionStatus(null);
-
-    try {
-      const result = await DataService.finalizeAdminRound(roundId);
-      if (result.ok) {
-        setRoundActionStatus('Rodada finalizada! Pontos calculados, precos atualizados, patrimonio recalculado.');
-        await Promise.all([loadRounds(), loadPlayers()]);
-        window.dispatchEvent(new Event('players:refresh'));
-        window.dispatchEvent(new Event('leagues:refresh'));
-        window.dispatchEvent(new Event('market:refresh'));
-      } else {
-        setRoundActionStatus(result.error || 'Erro ao finalizar rodada');
-      }
-    } catch (error) {
-      setRoundActionStatus(String(error));
-    } finally {
-      setFinalizeRoundLoading(false);
-    }
-  };
-
-  const handlePipelineCheck = async () => {
-    const roundId = Number(selectedRoundIdForActions);
-    if (!roundId) return;
-
-    setFinalizeCheckLoading(true);
-    try {
-      const result = await DataService.getAdminRoundFinalizeCheck(roundId);
-      if (result.ok) {
-        setFinalizeCheckResult(result.check);
-      } else {
-        setRoundActionStatus(result.error || 'Erro ao verificar checklist');
-      }
-    } catch (error) {
-      setRoundActionStatus(String(error));
-    } finally {
-      setFinalizeCheckLoading(false);
-    }
-  };
 
   const renderPlayers = () => {
     if (playersLoading) {
@@ -2420,17 +1885,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
     return (
       <div className="space-y-6">
-        {/* Status Messages */}
-        {roundActionStatus && (
-          <div className={`border p-4 text-xs ${
-            roundActionStatus.includes('sucesso') || roundActionStatus.includes('finalizada') || roundActionStatus.includes('Rodada finalizada')
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-              : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-          }`}>
-            {roundActionStatus}
-          </div>
-        )}
-
         {/* Criar Rodada */}
         <div className="glass-card border border-white/5 overflow-hidden">
           <div className="p-5 border-b border-white/5">
@@ -2519,8 +1973,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                       key={round.id}
                       onClick={() => {
                         setSelectedRoundIdForActions(String(round.id));
-                        setFinalizeCheckResult(null);
-                        setRoundActionStatus(null);
                       }}
                       className={`cursor-pointer hover:bg-white/[0.03] odd:bg-white/[0.02] ${
                         String(round.id) === selectedRoundIdForActions ? 'ring-1 ring-[#6366F1]/50 bg-[#6366F1]/5' : ''
@@ -2690,102 +2142,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
           </div>
         </div>
 
-        {/* Finalizar Rodada */}
-        {selectedRoundIdForActions && (
-          <div className="glass-card border border-white/5 overflow-hidden">
-            <div className="p-5 border-b border-white/5">
-              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">
-                Finalizar rodada — {selectedRoundForActions ? `S${selectedRoundForActions.season} R${selectedRoundForActions.round_number}` : ''}
-              </p>
-            </div>
-            <div className="p-5 space-y-4">
-              {/* Checklist */}
-              <div className="p-4 border border-white/10 bg-black/30 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-white font-bold uppercase tracking-wider">Checklist de validacao</p>
-                  <button
-                    type="button"
-                    onClick={handlePipelineCheck}
-                    disabled={finalizeCheckLoading || !selectedRoundIdForActions}
-                    className="text-[10px] uppercase tracking-[0.2em] text-amber-200 border border-amber-500/30 px-3 py-2 rounded-lg disabled:opacity-50"
-                  >
-                    {finalizeCheckLoading ? 'Verificando...' : 'Verificar'}
-                  </button>
-                </div>
-                {finalizeCheckResult ? (
-                  <>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[10px] uppercase tracking-[0.18em] text-gray-400">
-                      <div>Partidas: <span className="text-white">{finalizeCheckResult.totalMatches}</span></div>
-                      <div>Sem resultado: <span className="text-white">{finalizeCheckResult.matchesMissingResults}</span></div>
-                      <div>Perf. esperadas: <span className="text-white">{finalizeCheckResult.expectedPerformances}</span></div>
-                      <div>Perf. lancadas: <span className="text-white">{finalizeCheckResult.totalPerformances}</span></div>
-                    </div>
-                    {finalizeCheckResult.pendingItems?.length > 0 ? (
-                      <div className="border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
-                        {finalizeCheckResult.pendingItems.map((item: string) => (
-                          <p key={item} className="text-xs text-amber-200">- {item}</p>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-emerald-200">
-                        Tudo certo. A rodada pode ser finalizada.
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-[10px] text-gray-500">Clique em "Verificar" para validar os dados da rodada.</p>
-                )}
-              </div>
-
-              {/* Cascade Info */}
-              <div className="p-4 border border-white/10 bg-black/30 space-y-2">
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                  Ao finalizar, o sistema executa em cascata:
-                </p>
-                <div className="grid grid-cols-2 gap-2 text-[10px] uppercase tracking-[0.18em]">
-                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
-                    <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">1</span>
-                    Calcular pontos dos user_teams
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
-                    <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">2</span>
-                    Atualizar precos dos jogadores
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
-                    <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">3</span>
-                    Recalcular patrimonio dos usuarios
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
-                    <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">4</span>
-                    Marcar rodada como finalizada
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={handlePipelineFinalize}
-                disabled={finalizeRoundLoading || !selectedRoundIdForActions}
-                className="w-full py-3 text-sm font-bold uppercase tracking-wider bg-emerald-600/80 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
-              >
-                {finalizeRoundLoading ? (
-                  <><i className="fa-solid fa-spinner fa-spin"></i> Finalizando rodada...</>
-                ) : (
-                  <><i className="fa-solid fa-flag-checkered"></i> Finalizar rodada</>
-                )}
-              </button>
-
-              {selectedRoundForActions?.status === 'finished' && (
-                <div className="p-4 border border-emerald-500/20 bg-emerald-500/5 space-y-2">
-                  <p className="text-xs text-emerald-200 font-bold uppercase tracking-wider">Rodada finalizada com sucesso!</p>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">
-                    Selecione a proxima rodada e abra o mercado na aba Mercado.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Reset (collapsible) */}
         <details className="glass-card border border-red-500/20">
           <summary className="p-4 cursor-pointer text-[10px] uppercase tracking-[0.3em] text-red-400">
@@ -2847,7 +2203,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
             <h3 className="mt-2 text-xl font-orbitron font-black text-white uppercase tracking-tight">
               Lancamento simplificado por partida
             </h3>
-            <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">Fluxo: rodada - partida - placar - desempenho - checklist</p>
+            <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-600">Fluxo: rodada - partida - placar - desempenho</p>
           </div>
 
           <div className="p-5 space-y-4">
@@ -3073,75 +2429,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
           </div>
         </div>
 
-        <div className="glass-card border border-white/5 overflow-hidden">
-          <div className="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500">Checklist e finalizacao</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleFinalizeCheck}
-                className="text-[10px] uppercase tracking-[0.2em] text-amber-200 border border-amber-500/30 px-3 py-2 rounded-lg"
-                disabled={finalizeCheckLoading}
-              >
-                {finalizeCheckLoading ? 'Verificando...' : 'Atualizar checklist'}
-              </button>
-              <button
-                type="button"
-                onClick={handleFinalizeRound}
-                className="text-[10px] uppercase tracking-[0.2em] text-emerald-200 border border-emerald-500/30 px-3 py-2 rounded-lg"
-                disabled={finalizeRoundLoading || !canFinalizeAction}
-              >
-                {finalizeRoundLoading ? 'Finalizando...' : 'Finalizar rodada e atualizar sistema'}
-              </button>
-            </div>
-          </div>
-
-          <div className="p-5 space-y-4">
-            {finalizeCheckResult ? (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[10px] uppercase tracking-[0.18em] text-gray-400">
-                  <div>Partidas: <span className="text-white">{finalizeCheckResult.totalMatches}</span></div>
-                  <div>Sem resultado: <span className="text-white">{finalizeCheckResult.matchesMissingResults}</span></div>
-                  <div>Perf. esperadas: <span className="text-white">{finalizeCheckResult.expectedPerformances}</span></div>
-                  <div>Perf. lancadas: <span className="text-white">{finalizeCheckResult.totalPerformances}</span></div>
-                </div>
-                {finalizeCheckResult.pendingItems?.length > 0 ? (
-                  <div className="border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
-                    {finalizeCheckResult.pendingItems.map((item: string) => (
-                      <p key={item} className="text-xs text-amber-200">- {item}</p>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="border border-emerald-500/30 bg-emerald-500/5 p-4 text-xs text-emerald-200">
-                    Tudo certo. A rodada pode ser finalizada.
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="text-xs text-gray-500">Clique em "Atualizar checklist" para validar os dados da rodada.</p>
-            )}
-          </div>
-        </div>
-
         <details className="glass-card border border-white/5 overflow-hidden">
           <summary className="p-5 cursor-pointer text-[10px] uppercase tracking-[0.3em] text-gray-500">
-            Importacao CSV (opcional)
+            Ferramentas adicionais
           </summary>
           <div className="px-5 pb-5 space-y-4 border-t border-white/5">
             <div className="flex flex-col md:flex-row md:items-center gap-3 text-xs text-gray-500 pt-4">
-              <input
-                type="file"
-                accept=".csv"
-                onChange={(event) => handleImportPerformancesCsv(event.target.files?.[0] || null)}
-                className="text-[10px] uppercase tracking-[0.2em] text-gray-400"
-              />
-              <button
-                type="button"
-                onClick={handleDownloadPerformanceTemplate}
-                className="text-[10px] uppercase tracking-[0.2em] text-gray-300 border border-white/10 px-3 py-2 rounded-lg"
-              >
-                Baixar modelo
-              </button>
               <button
                 type="button"
                 onClick={handleRecalculatePlayers}
@@ -3151,51 +2444,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                 {recalculatePlayersLoading ? 'Recalculando...' : 'Recalcular pontos dos jogadores'}
               </button>
             </div>
-
-            {csvPreviewRows && (
-              <div className="border border-white/10 bg-black/30 p-4 space-y-3">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <div className="text-[10px] uppercase tracking-[0.3em] text-gray-500">
-                    Preview CSV {csvPreviewFileName ? `- ${csvPreviewFileName}` : ''}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleApplyCsvPreview}
-                    className="text-[10px] uppercase tracking-[0.2em] text-gray-200 border border-white/10 px-3 py-2 rounded-lg"
-                  >
-                    Aplicar CSV
-                  </button>
-                </div>
-                <div className="max-h-56 overflow-auto">
-                  <table className="min-w-full text-[10px] text-left">
-                    <thead className="text-gray-500 uppercase tracking-[0.3em]">
-                      <tr>
-                        <th className="px-2 py-2">#</th>
-                        <th className="px-2 py-2">Jogo</th>
-                        <th className="px-2 py-2">Jogador</th>
-                        <th className="px-2 py-2">Campeao</th>
-                        <th className="px-2 py-2">Status</th>
-                        <th className="px-2 py-2">Mensagem</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {csvPreviewRows.map((row) => (
-                        <tr key={`csv-preview-${row.index}`} className="odd:bg-white/[0.02]">
-                          <td className="px-2 py-2 text-gray-400">{row.index}</td>
-                          <td className="px-2 py-2 text-gray-300">{row.gameNumber ?? '-'}</td>
-                          <td className="px-2 py-2 text-gray-300">{row.playerName || row.playerId || '-'}</td>
-                          <td className="px-2 py-2 text-gray-300">{row.championName || '-'}</td>
-                          <td className={`px-2 py-2 ${row.status === 'error' ? 'text-red-300' : 'text-emerald-300'}`}>
-                            {row.status === 'error' ? 'Erro' : 'OK'}
-                          </td>
-                          <td className="px-2 py-2 text-gray-400">{row.message}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
           </div>
         </details>
 
@@ -3342,6 +2590,208 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
             )}
           </div>
         </details>
+      </div>
+    );
+  };
+
+  const renderFinalize = () => {
+    const selectedFinalizeRound = rounds.find((r) => String(r.id) === String(finalizeTabRoundId)) || null;
+
+    const handleFinalizeTabCheck = async () => {
+      if (!finalizeTabRoundId) return;
+      setFinalizeCheckLoading(true);
+      setPerformancesError(null);
+      try {
+        const result = await DataService.getAdminRoundFinalizeCheck(Number(finalizeTabRoundId));
+        if (result.ok) {
+          setFinalizeCheckResult(result.check);
+        } else {
+          setPerformancesError(result.error || 'Erro ao verificar checklist');
+        }
+      } catch (error) {
+        setPerformancesError(String(error));
+      } finally {
+        setFinalizeCheckLoading(false);
+      }
+    };
+
+    const handleFinalizeTabRound = async () => {
+      if (!finalizeTabRoundId) return;
+      if (!window.confirm('Finalizar rodada? Isso vai calcular pontos, atualizar precos e patrimonio dos usuarios.')) {
+        return;
+      }
+
+      setFinalizeRoundLoading(true);
+      setPerformancesError(null);
+      setPerformancesSuccess(null);
+
+      try {
+        const result = await DataService.finalizeAdminRound(Number(finalizeTabRoundId));
+        if (result.ok) {
+          const wasRecalculated = Boolean(result.data?.result?.recalculated);
+          const baseMsg = wasRecalculated
+            ? 'Rodada recalculada com sucesso (modo substituicao).'
+            : (result.data?.message || 'Rodada finalizada com sucesso.');
+          const finalMsg = result.data?.marketWarning ? `${baseMsg} ${result.data.marketWarning}` : baseMsg;
+          setPerformancesSuccess(finalMsg);
+          setFinalizeCheckResult(null);
+          await Promise.all([loadRounds(), loadPlayers()]);
+          window.dispatchEvent(new Event('players:refresh'));
+          window.dispatchEvent(new Event('leagues:refresh'));
+          window.dispatchEvent(new Event('market:refresh'));
+        } else {
+          setPerformancesError(result.error || 'Erro ao finalizar rodada');
+          await handleFinalizeTabCheck();
+        }
+      } catch (error) {
+        setPerformancesError(String(error));
+      } finally {
+        setFinalizeRoundLoading(false);
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        {performancesError && (
+          <div className="glass-card p-4 border border-red-500/30 bg-red-500/10 text-sm text-red-200">
+            {performancesError}
+          </div>
+        )}
+        {performancesSuccess && (
+          <div className="border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200">
+            {performancesSuccess}
+          </div>
+        )}
+
+        {/* Selecionar rodada */}
+        <div className="glass-card border border-white/5 overflow-hidden">
+          <div className="p-5 border-b border-white/5">
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">Selecionar rodada</p>
+          </div>
+          <div className="p-5">
+            <select
+              value={finalizeTabRoundId}
+              onChange={(event) => {
+                setFinalizeTabRoundId(event.target.value);
+                setFinalizeCheckResult(null);
+                setPerformancesError(null);
+                setPerformancesSuccess(null);
+              }}
+              className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full max-w-md"
+            >
+              <option value="">Selecione a rodada para finalizar</option>
+              {rounds.map((round) => (
+                <option key={round.id} value={round.id}>
+                  Season {round.season} - Rodada {round.round_number} ({round.status === 'active' ? 'Ativa' : round.status === 'finished' ? 'Finalizada' : round.status})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Checklist */}
+        {finalizeTabRoundId && (
+          <div className="glass-card border border-white/5 overflow-hidden">
+            <div className="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">
+                Checklist — {selectedFinalizeRound ? `S${selectedFinalizeRound.season} R${selectedFinalizeRound.round_number}` : ''}
+              </p>
+              <button
+                type="button"
+                onClick={handleFinalizeTabCheck}
+                disabled={finalizeCheckLoading}
+                className="text-[10px] uppercase tracking-[0.2em] text-amber-200 border border-amber-500/30 px-3 py-2 rounded-lg disabled:opacity-50"
+              >
+                {finalizeCheckLoading ? 'Verificando...' : 'Atualizar checklist'}
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {finalizeCheckResult ? (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[10px] uppercase tracking-[0.18em] text-gray-400">
+                    <div>Partidas: <span className="text-white">{finalizeCheckResult.totalMatches}</span></div>
+                    <div>Sem resultado: <span className="text-white">{finalizeCheckResult.matchesMissingResults}</span></div>
+                    <div>Perf. esperadas: <span className="text-white">{finalizeCheckResult.expectedPerformances}</span></div>
+                    <div>Perf. lancadas: <span className="text-white">{finalizeCheckResult.totalPerformances}</span></div>
+                  </div>
+                  {finalizeCheckResult.pendingItems?.length > 0 ? (
+                    <div className="border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
+                      {finalizeCheckResult.pendingItems.map((item: string) => (
+                        <p key={item} className="text-xs text-amber-200">- {item}</p>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="border border-emerald-500/30 bg-emerald-500/5 p-4 text-xs text-emerald-200">
+                      Tudo certo. A rodada pode ser finalizada.
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-gray-500">Clique em "Atualizar checklist" para validar os dados da rodada.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Cascade Info + Finalizar */}
+        {finalizeTabRoundId && (
+          <div className="glass-card border border-white/5 overflow-hidden">
+            <div className="p-5 border-b border-white/5">
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">Finalizar</p>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="p-4 border border-white/10 bg-black/30 space-y-2">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                  Ao finalizar, o sistema executa em cascata:
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-[10px] uppercase tracking-[0.18em]">
+                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
+                    <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">1</span>
+                    Calcular fantasy points das performances
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
+                    <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">2</span>
+                    Calcular pontos dos user_teams
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
+                    <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">3</span>
+                    Atualizar precos dos jogadores
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
+                    <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">4</span>
+                    Recalcular patrimonio dos usuarios
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
+                    <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">5</span>
+                    Marcar rodada como finalizada
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleFinalizeTabRound}
+                disabled={finalizeRoundLoading || !finalizeTabRoundId}
+                className="w-full py-3 text-sm font-bold uppercase tracking-wider bg-emerald-600/80 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                {finalizeRoundLoading ? (
+                  <><i className="fa-solid fa-spinner fa-spin"></i> Finalizando rodada...</>
+                ) : (
+                  <><i className="fa-solid fa-flag-checkered"></i> Finalizar rodada e atualizar sistema</>
+                )}
+              </button>
+
+              {selectedFinalizeRound?.status === 'finished' && (
+                <div className="p-4 border border-emerald-500/20 bg-emerald-500/5 space-y-2">
+                  <p className="text-xs text-emerald-200 font-bold uppercase tracking-wider">Esta rodada ja foi finalizada.</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">
+                    Voce pode re-finalizar para recalcular, ou selecione a proxima rodada.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -3691,6 +3141,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                 section.id === 'teams' ||
                 section.id === 'rounds' ||
                 section.id === 'performances' ||
+                section.id === 'finalize' ||
                 section.id === 'market' ||
                 section.id === 'users' ||
                 section.id === 'leagues';
@@ -3730,6 +3181,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
           {activeSection === 'teams' && renderTeams()}
           {activeSection === 'rounds' && renderRounds()}
           {activeSection === 'performances' && renderPerformances()}
+          {activeSection === 'finalize' && renderFinalize()}
           {activeSection === 'market' && renderMarket()}
           {activeSection === 'users' && renderUsers()}
           {activeSection === 'leagues' && renderLeagues()}

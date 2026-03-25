@@ -128,7 +128,7 @@ async function buildFinalizeRoundCheck(roundId: number): Promise<FinalizeRoundCh
   if (totalMatches === 0) pendingItems.push('Nenhuma partida cadastrada na rodada');
   if (matchesMissingResults > 0) pendingItems.push(`${matchesMissingResults} partida(s) sem vencedor/placar`);
   if (missingPerformances > 0) pendingItems.push(`${missingPerformances} performance(s) ainda não lançada(s)`);
-  if (performancesWithoutFantasyPoints > 0) pendingItems.push(`${performancesWithoutFantasyPoints} performance(s) sem fantasy_points`);
+  // fantasy_points serao calculados automaticamente ao finalizar a rodada
 
   return {
     roundId: Number(round.id),

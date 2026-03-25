@@ -712,7 +712,7 @@ const AppContent: React.FC = () => {
   }, [canEditMarket, userTeam, persistTeam, showToast]);
 
   const handleNavigate = useCallback((page: Page, leagueId?: string) => {
-    if (page === 'market' || page === 'dashboard') {
+    if (page === 'market' || page === 'dashboard' || page === 'squad') {
       syncUserTeamFromServer();
     }
 

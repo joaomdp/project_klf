@@ -145,7 +145,7 @@ class ScoringService {
     this.config = null;
   }
 
-  async finalizeRound(roundId: number) {
+  async finalizeRound(roundId: number, options?: { forceRecalculate?: boolean }) {
     if (!Number.isFinite(roundId)) {
       throw new Error('roundId inválido');
     }
@@ -157,7 +157,7 @@ class ScoringService {
     this.finalizingRounds.add(roundId);
 
     try {
-      return await this._doFinalizeRound(roundId);
+      return await this._doFinalizeRound(roundId, options);
     } finally {
       this.finalizingRounds.delete(roundId);
     }
@@ -174,7 +174,7 @@ class ScoringService {
    *
    * Se qualquer fase falhar, as fases seguintes NÃO executam.
    */
-  private async _doFinalizeRound(roundId: number) {
+  private async _doFinalizeRound(roundId: number, options?: { forceRecalculate?: boolean }) {
     // ── Validação ──────────────────────────────────────────────
     const { data: round, error: roundError } = await adminSupabase
       .from('rounds')
@@ -187,7 +187,7 @@ class ScoringService {
     }
 
     const roundStatus = String((round as any).status || '').toLowerCase();
-    const isRecalculation = roundStatus === 'completed' || roundStatus === 'finished';
+    const isRecalculation = (roundStatus === 'completed' || roundStatus === 'finished') && !options?.forceRecalculate;
 
     const { data: matches, error: matchesError } = await adminSupabase
       .from('matches')
@@ -319,7 +319,10 @@ class ScoringService {
       }, 0);
 
       // Budget ajustado: se elenco valorizou, budget sobe; se desvalorizou, budget cai
-      const nextBudget = parseFloat((Number(team.budget || 0) + (newLineupValue - oldLineupValue)).toFixed(2));
+      const currentBudget = Number(team.budget || 0);
+      const nextBudget = parseFloat((currentBudget + (newLineupValue - oldLineupValue)).toFixed(2));
+
+      console.log(`   📋 Team ${team.id}: players=${lineupPlayers.length}, budget=${currentBudget} → ${nextBudget}, lineup old=${oldLineupValue.toFixed(2)} new=${newLineupValue.toFixed(2)} delta=${(newLineupValue - oldLineupValue).toFixed(2)}`);
 
       // Atualizar lineup com preços novos (snapshot atualizado)
       const updatedLineup = Object.entries(lineup).reduce<Record<string, any>>((acc, [role, player]) => {
@@ -337,6 +340,7 @@ class ScoringService {
         .eq('id', team.id);
 
       if (!error) updatedBudgets++;
+      else console.error(`   ❌ Failed to update budget for team ${team.id}:`, error);
     }
     console.log(`   ✅ ${updatedBudgets} patrimônios atualizados`);
 

@@ -639,7 +639,8 @@ export async function finalizeRound(req: AuthenticatedRequest, res: Response) {
       });
     }
 
-    const result = await scoringService.finalizeRound(roundId);
+    const forceRecalculate = req.body?.forceRecalculate === true;
+    const result = await scoringService.finalizeRound(roundId, { forceRecalculate });
 
     if (result.remainingNulls > 0) {
       console.warn(`⚠️ ${result.remainingNulls} performances sem pontuação após cálculo (round ${roundId})`);

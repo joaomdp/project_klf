@@ -1417,7 +1417,7 @@ export const DataService = {
     }
   },
 
-  async finalizeAdminRound(roundId: number): Promise<{ ok: boolean; data?: any; error?: string }> {
+  async finalizeAdminRound(roundId: number, options?: { forceRecalculate?: boolean }): Promise<{ ok: boolean; data?: any; error?: string }> {
     const anonKey = this.getAnonKey();
     const userToken = this.getUserToken();
 
@@ -1428,7 +1428,8 @@ export const DataService = {
     try {
       const response = await fetch(`${this.API_BASE_URL}/admin/rounds/${roundId}/finalize`, {
         method: 'POST',
-        headers: buildAuthHeaders(anonKey, userToken, { includeContentType: true, allowAnonFallback: false })
+        headers: buildAuthHeaders(anonKey, userToken, { includeContentType: true, allowAnonFallback: false }),
+        body: JSON.stringify({ forceRecalculate: options?.forceRecalculate || false })
       });
 
       let data: any = null;

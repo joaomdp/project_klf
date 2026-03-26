@@ -159,6 +159,7 @@ const AppContent: React.FC = () => {
   const [marketMatchups, setMarketMatchups] = useState<MarketMatch[]>([]);
   const [marketRoundLabel, setMarketRoundLabel] = useState<string | null>(null);
   const lastKnownMarketState = useRef<boolean | null>(null);
+  const serverBudgetRef = useRef<number | null>(null);
   
   const { showToast } = useToast();
 
@@ -300,6 +301,9 @@ const AppContent: React.FC = () => {
       const latestTeam = await DataService.getUserTeam(userId);
       if (!latestTeam) return;
 
+      // Store authoritative server budget so merge effects can't overwrite it
+      serverBudgetRef.current = latestTeam.budget;
+
       setUserTeam((prev) => ({
         ...latestTeam,
         // Mantem preferencia local caso venha ausente do backend
@@ -387,7 +391,9 @@ const AppContent: React.FC = () => {
     setUserTeam((prev) => {
       const merged = mergeLineupWithLatest(prev, players);
       if (merged === prev) return prev;
-      return merged;
+      // Preserve authoritative server budget if available (prevents race condition)
+      const budget = serverBudgetRef.current ?? merged.budget;
+      return { ...merged, budget };
     });
   }, [players, mergeLineupWithLatest]);
 

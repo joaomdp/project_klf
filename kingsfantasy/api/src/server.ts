@@ -290,7 +290,7 @@ app.get('/api/market/matchups/current', async (req: Request, res: Response) => {
   try {
     const marketStatus = await marketService.getMarketStatus();
 
-    if (!marketStatus.currentRound?.id) {
+    if (!marketStatus.isOpen || !marketStatus.currentRound?.id) {
       return res.json({
         success: true,
         round: null,

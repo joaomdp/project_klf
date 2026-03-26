@@ -417,12 +417,12 @@ const Market: React.FC<MarketProps> = ({
                      </div>
                     <div className="flex items-center gap-10">
                       <div>
-                        <div className="flex items-end gap-1.5 mb-1"><span className="text-2xl font-black text-white font-orbitron tracking-tighter leading-none">{player.avgPoints.toFixed(1)}</span><span className="text-[10px] font-black text-[#6366F1] mb-0.5">PTS</span></div>
+                        <div className="flex items-end gap-1.5 mb-1"><span className="text-2xl font-black text-white font-orbitron tracking-tighter leading-none">{Number(player.avgPoints || 0).toFixed(1)}</span><span className="text-[10px] font-black text-[#6366F1] mb-0.5">PTS</span></div>
                         <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">MÉDIA</span>
                       </div>
                       <div className="w-px h-8 bg-white/5"></div>
                       <div>
-                        <div className="flex items-end gap-1.5 mb-1"><span className="text-2xl font-black text-white font-orbitron tracking-tighter leading-none">{player.points.toFixed(1)}</span></div>
+                        <div className="flex items-end gap-1.5 mb-1"><span className="text-2xl font-black text-white font-orbitron tracking-tighter leading-none">{Number(player.points || 0).toFixed(1)}</span></div>
                         <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">ÚLT. JOGO</span>
                       </div>
                     </div>

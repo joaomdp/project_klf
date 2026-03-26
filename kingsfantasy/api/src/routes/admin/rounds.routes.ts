@@ -6,7 +6,8 @@ import {
   listRounds,
   deleteRound,
   finalizeRound,
-  getRoundFinalizeCheck
+  getRoundFinalizeCheck,
+  resetRoundCalculations
 } from '../../controllers/admin/rounds.controller';
 
 const router = Router();
@@ -35,6 +36,9 @@ router.post('/:id/finalize', finalizeRound);
 
 // GET /api/admin/rounds/:id/finalize-check - Checklist antes de finalizar
 router.get('/:id/finalize-check', getRoundFinalizeCheck);
+
+// POST /api/admin/rounds/:id/reset-calculations - Resetar cálculos da rodada
+router.post('/:id/reset-calculations', resetRoundCalculations);
 
 // DELETE /api/admin/rounds/:id - Deletar rodada
 router.delete('/:id', deleteRound);

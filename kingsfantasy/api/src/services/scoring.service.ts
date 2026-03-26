@@ -190,7 +190,8 @@ class ScoringService {
     const isAlreadyFinished = roundStatus === 'completed' || roundStatus === 'finished';
     // Re-finalização NUNCA altera preços nem patrimônio — apenas recalcula pontuações
     // Isso evita que preços fiquem "compounding" (aplicando fórmula sobre preço já modificado)
-    const isRecalculation = isAlreadyFinished;
+    // EXCETO quando forceRecalculate=true (admin forçou recálculo completo via reset+finalize)
+    const isRecalculation = isAlreadyFinished && !options?.forceRecalculate;
 
     const { data: matches, error: matchesError } = await adminSupabase
       .from('matches')
@@ -265,6 +266,9 @@ class ScoringService {
     let priceChanges = new Map<string, { oldPrice: number; newPrice: number }>();
 
     if (!isRecalculation) {
+      // Salvar snapshot dos preços ANTES da flutuação (para possível reset futuro)
+      await this.savePriceSnapshot(roundId);
+
       const priceResult = await this.updatePlayerPricesForRound(roundId);
       priceUpdates = priceResult.updated;
       priceChanges = priceResult.priceChanges;
@@ -294,64 +298,94 @@ class ScoringService {
 
       if (budgetTeamsError) throw budgetTeamsError;
 
-      // Buscar preços ATUALIZADOS de todos os jogadores nos lineups
-      const lineupPlayerIds = new Set<string>();
-      for (const team of userTeams || []) {
-        const lineup = team.lineup || {};
-        const players = Object.values(lineup).filter(Boolean) as Array<{ id: string }>;
-        players.forEach((p) => lineupPlayerIds.add(String(p.id)));
-      }
+      if (!userTeams || userTeams.length === 0) {
+        console.log(`   ⚠️  Nenhum user_team encontrado para atualizar patrimônio`);
+      } else {
+        // Salvar snapshot dos budgets ANTES do recálculo (para possível reset futuro)
+        await this.saveBudgetSnapshot(roundId, userTeams);
 
-      const currentPriceMap = new Map<string, number>();
-      if (lineupPlayerIds.size > 0) {
-        const { data: freshPlayers, error: freshError } = await adminSupabase
-          .from('players')
-          .select('id, price')
-          .in('id', Array.from(lineupPlayerIds));
-
-        if (freshError) throw freshError;
-        for (const p of freshPlayers || []) {
-          currentPriceMap.set(String(p.id), Number(p.price || 0));
+        // Buscar preços ATUALIZADOS de todos os jogadores nos lineups
+        const lineupPlayerIds = new Set<string>();
+        for (const team of userTeams) {
+          const lineup = team.lineup || {};
+          const players = Object.values(lineup).filter(Boolean) as Array<{ id: string }>;
+          players.forEach((p) => {
+            if (p.id) lineupPlayerIds.add(String(p.id));
+          });
         }
+
+        console.log(`   📊 Total user_teams: ${userTeams.length}, jogadores únicos nos lineups: ${lineupPlayerIds.size}`);
+
+        const currentPriceMap = new Map<string, number>();
+        if (lineupPlayerIds.size > 0) {
+          const playerIdsArray = Array.from(lineupPlayerIds);
+          const { data: freshPlayers, error: freshError } = await adminSupabase
+            .from('players')
+            .select('id, price')
+            .in('id', playerIdsArray);
+
+          if (freshError) {
+            console.error(`   ❌ Erro ao buscar preços atualizados:`, freshError);
+            throw freshError;
+          }
+          for (const p of freshPlayers || []) {
+            currentPriceMap.set(String(p.id), Number(p.price || 0));
+          }
+          console.log(`   📊 Preços carregados do banco: ${currentPriceMap.size}/${playerIdsArray.length} jogadores`);
+        }
+
+        for (const team of userTeams) {
+          const lineup = (team.lineup || {}) as Record<string, any>;
+          const lineupPlayers = Object.values(lineup).filter(Boolean) as Array<{ id: string; price?: number }>;
+
+          if (lineupPlayers.length === 0) {
+            console.log(`   ⚠️  Team ${team.id}: lineup vazio, pulando`);
+            continue;
+          }
+
+          // Valor antigo = soma dos preços no snapshot do lineup
+          const oldLineupValue = lineupPlayers.reduce((sum, p) => sum + Number(p.price || 0), 0);
+
+          // Valor novo = soma dos preços ATUAIS do banco (pós-flutuação)
+          const newLineupValue = lineupPlayers.reduce((sum, p) => {
+            const currentPrice = currentPriceMap.get(String(p.id));
+            if (currentPrice === undefined) {
+              console.warn(`   ⚠️  Team ${team.id}: jogador ${p.id} não encontrado no banco, usando preço do snapshot`);
+            }
+            return sum + (currentPrice ?? Number(p.price || 0));
+          }, 0);
+
+          // Budget ajustado: se elenco valorizou, budget sobe; se desvalorizou, budget cai
+          const currentBudget = Number(team.budget || 0);
+          const delta = newLineupValue - oldLineupValue;
+          const nextBudget = parseFloat((currentBudget + delta).toFixed(2));
+
+          console.log(`   📋 Team ${team.id}: players=${lineupPlayers.length}, budget=${currentBudget} → ${nextBudget}, lineup old=${oldLineupValue.toFixed(2)} new=${newLineupValue.toFixed(2)} delta=${delta.toFixed(2)}`);
+
+          // Atualizar lineup com preços novos (snapshot atualizado)
+          const updatedLineup = Object.entries(lineup).reduce<Record<string, any>>((acc, [role, player]) => {
+            if (!player) return acc;
+            acc[role] = {
+              ...player,
+              price: currentPriceMap.get(String(player.id)) ?? Number(player.price || 0)
+            };
+            return acc;
+          }, {});
+
+          const { error } = await adminSupabase
+            .from('user_teams')
+            .update({ budget: nextBudget, lineup: updatedLineup })
+            .eq('id', team.id);
+
+          if (!error) {
+            updatedBudgets++;
+          } else {
+            console.error(`   ❌ Failed to update budget for team ${team.id}:`, error);
+            console.error(`   ❌ Dados tentados: budget=${nextBudget}, lineup keys=${Object.keys(updatedLineup).join(',')}`);
+          }
+        }
+        console.log(`   ✅ ${updatedBudgets}/${userTeams.length} patrimônios atualizados`);
       }
-
-      for (const team of userTeams || []) {
-        const lineup = (team.lineup || {}) as Record<string, any>;
-        const lineupPlayers = Object.values(lineup).filter(Boolean) as Array<{ id: string; price?: number }>;
-
-        // Valor antigo = soma dos preços no snapshot do lineup
-        const oldLineupValue = lineupPlayers.reduce((sum, p) => sum + Number(p.price || 0), 0);
-
-        // Valor novo = soma dos preços ATUAIS do banco (pós-flutuação)
-        const newLineupValue = lineupPlayers.reduce((sum, p) => {
-          return sum + (currentPriceMap.get(String(p.id)) ?? Number(p.price || 0));
-        }, 0);
-
-        // Budget ajustado: se elenco valorizou, budget sobe; se desvalorizou, budget cai
-        const currentBudget = Number(team.budget || 0);
-        const nextBudget = parseFloat((currentBudget + (newLineupValue - oldLineupValue)).toFixed(2));
-
-        console.log(`   📋 Team ${team.id}: players=${lineupPlayers.length}, budget=${currentBudget} → ${nextBudget}, lineup old=${oldLineupValue.toFixed(2)} new=${newLineupValue.toFixed(2)} delta=${(newLineupValue - oldLineupValue).toFixed(2)}`);
-
-        // Atualizar lineup com preços novos (snapshot atualizado)
-        const updatedLineup = Object.entries(lineup).reduce<Record<string, any>>((acc, [role, player]) => {
-          if (!player) return acc;
-          acc[role] = {
-            ...player,
-            price: currentPriceMap.get(String(player.id)) ?? Number(player.price || 0)
-          };
-          return acc;
-        }, {});
-
-        const { error } = await adminSupabase
-          .from('user_teams')
-          .update({ budget: nextBudget, lineup: updatedLineup })
-          .eq('id', team.id);
-
-        if (!error) updatedBudgets++;
-        else console.error(`   ❌ Failed to update budget for team ${team.id}:`, error);
-      }
-      console.log(`   ✅ ${updatedBudgets} patrimônios atualizados`);
     }
 
     // ── FASE 4: Marcar rodada como finalizada ──────────────────
@@ -887,6 +921,279 @@ class ScoringService {
       console.error('❌ Error calculating all scores:', error);
       throw error;
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SNAPSHOT & RESET — Suporte para "Resetar Cálculos da Rodada"
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Salva snapshot dos preços dos jogadores ANTES da flutuação.
+   * Armazena na tabela system_config como JSON.
+   */
+  private async savePriceSnapshot(roundId: number): Promise<void> {
+    try {
+      // Buscar todos os jogadores e seus preços atuais (pré-flutuação)
+      const { data: players, error } = await adminSupabase
+        .from('players')
+        .select('id, price');
+
+      if (error || !players) {
+        console.warn(`⚠️  Não foi possível salvar snapshot de preços para round ${roundId}`);
+        return;
+      }
+
+      const snapshot: Record<string, number> = {};
+      for (const p of players) {
+        snapshot[String(p.id)] = Number(p.price || 0);
+      }
+
+      await adminSupabase
+        .from('system_config')
+        .upsert({
+          key: `snapshot_round_${roundId}_prices`,
+          value: JSON.stringify(snapshot),
+          value_type: 'json'
+        }, { onConflict: 'key' });
+
+      console.log(`   💾 Snapshot de preços salvo (${players.length} jogadores)`);
+    } catch (err) {
+      console.warn(`⚠️  Erro ao salvar snapshot de preços:`, err);
+    }
+  }
+
+  /**
+   * Salva snapshot dos budgets e lineups dos usuários ANTES do recálculo.
+   */
+  private async saveBudgetSnapshot(roundId: number, userTeams: Array<{ id: number; lineup: any; budget: number }>): Promise<void> {
+    try {
+      const snapshot: Record<string, { budget: number; lineup: any }> = {};
+      for (const team of userTeams) {
+        snapshot[String(team.id)] = {
+          budget: Number(team.budget || 0),
+          lineup: team.lineup || {}
+        };
+      }
+
+      await adminSupabase
+        .from('system_config')
+        .upsert({
+          key: `snapshot_round_${roundId}_budgets`,
+          value: JSON.stringify(snapshot),
+          value_type: 'json'
+        }, { onConflict: 'key' });
+
+      console.log(`   💾 Snapshot de budgets salvo (${userTeams.length} times)`);
+    } catch (err) {
+      console.warn(`⚠️  Erro ao salvar snapshot de budgets:`, err);
+    }
+  }
+
+  /**
+   * RESETAR CÁLCULOS DA RODADA
+   *
+   * Reverte todos os efeitos de uma finalização:
+   *   1. Restaura preços dos jogadores (snapshot)
+   *   2. Restaura budgets e lineups dos usuários (snapshot)
+   *   3. Remove round_scores da rodada
+   *   4. Recalcula total_points dos user_teams (sem esta rodada)
+   *   5. Reseta status da rodada para 'closed'
+   *
+   * Idempotente: chamar múltiplas vezes não corrompe dados.
+   */
+  async resetRoundCalculations(roundId: number): Promise<{
+    pricesRestored: number;
+    budgetsRestored: number;
+    scoresRemoved: number;
+    roundStatusReset: boolean;
+  }> {
+    if (!Number.isFinite(roundId)) {
+      throw new Error('roundId inválido');
+    }
+
+    console.log(`\n🔄 RESETANDO CÁLCULOS DA RODADA ${roundId}...`);
+
+    // ── Validação ──────────────────────────────────────────────
+    const { data: round, error: roundError } = await adminSupabase
+      .from('rounds')
+      .select('id, status')
+      .eq('id', roundId)
+      .single();
+
+    if (roundError || !round) {
+      throw new Error('Rodada não encontrada');
+    }
+
+    const roundStatus = String((round as any).status || '').toLowerCase();
+    if (roundStatus !== 'finished' && roundStatus !== 'completed') {
+      throw new Error(`Rodada não está finalizada (status atual: ${roundStatus}). Apenas rodadas finalizadas podem ser resetadas.`);
+    }
+
+    let pricesRestored = 0;
+    let budgetsRestored = 0;
+    let scoresRemoved = 0;
+
+    // ── PASSO 1: Restaurar preços dos jogadores ──────────────
+    console.log(`🔷 Passo 1: Restaurando preços dos jogadores...`);
+
+    const { data: priceSnapshotRow } = await adminSupabase
+      .from('system_config')
+      .select('value')
+      .eq('key', `snapshot_round_${roundId}_prices`)
+      .single();
+
+    if (priceSnapshotRow?.value) {
+      try {
+        const priceSnapshot: Record<string, number> = JSON.parse(priceSnapshotRow.value);
+        const playerIds = Object.keys(priceSnapshot);
+
+        for (const playerId of playerIds) {
+          const oldPrice = priceSnapshot[playerId];
+          const { error } = await adminSupabase
+            .from('players')
+            .update({ price: oldPrice })
+            .eq('id', playerId);
+
+          if (!error) pricesRestored++;
+        }
+        console.log(`   ✅ ${pricesRestored}/${playerIds.length} preços restaurados`);
+      } catch (parseErr) {
+        console.error(`   ❌ Erro ao parsear snapshot de preços:`, parseErr);
+        throw new Error('Snapshot de preços corrompido. Reset abortado.');
+      }
+    } else {
+      console.warn(`   ⚠️  Nenhum snapshot de preços encontrado para rodada ${roundId}.`);
+      console.warn(`   ⚠️  Preços NÃO foram restaurados. Pode ser necessário ajuste manual.`);
+    }
+
+    // ── PASSO 2: Restaurar budgets e lineups dos usuários ────
+    console.log(`🔷 Passo 2: Restaurando budgets e lineups dos usuários...`);
+
+    const { data: budgetSnapshotRow } = await adminSupabase
+      .from('system_config')
+      .select('value')
+      .eq('key', `snapshot_round_${roundId}_budgets`)
+      .single();
+
+    if (budgetSnapshotRow?.value) {
+      try {
+        const budgetSnapshot: Record<string, { budget: number; lineup: any }> = JSON.parse(budgetSnapshotRow.value);
+        const teamIds = Object.keys(budgetSnapshot);
+
+        for (const teamId of teamIds) {
+          const { budget, lineup } = budgetSnapshot[teamId];
+          const { error } = await adminSupabase
+            .from('user_teams')
+            .update({ budget, lineup })
+            .eq('id', Number(teamId));
+
+          if (!error) budgetsRestored++;
+        }
+        console.log(`   ✅ ${budgetsRestored}/${teamIds.length} budgets/lineups restaurados`);
+      } catch (parseErr) {
+        console.error(`   ❌ Erro ao parsear snapshot de budgets:`, parseErr);
+        throw new Error('Snapshot de budgets corrompido. Reset abortado.');
+      }
+    } else {
+      console.warn(`   ⚠️  Nenhum snapshot de budgets encontrado para rodada ${roundId}.`);
+      console.warn(`   ⚠️  Budgets NÃO foram restaurados. Pode ser necessário ajuste manual.`);
+    }
+
+    // ── PASSO 3: Remover round_scores da rodada ──────────────
+    console.log(`🔷 Passo 3: Removendo round_scores da rodada...`);
+
+    const { data: deletedScores, error: scoresError } = await adminSupabase
+      .from('round_scores')
+      .delete()
+      .eq('round_id', roundId)
+      .select('id');
+
+    if (scoresError) {
+      console.error(`   ❌ Erro ao remover round_scores:`, scoresError);
+    } else {
+      scoresRemoved = deletedScores?.length || 0;
+      console.log(`   ✅ ${scoresRemoved} round_scores removidos`);
+    }
+
+    // ── PASSO 4: Recalcular total_points dos user_teams ──────
+    console.log(`🔷 Passo 4: Recalculando total_points dos user_teams...`);
+
+    const { data: allTeams } = await adminSupabase
+      .from('user_teams')
+      .select('id');
+
+    for (const team of allTeams || []) {
+      const { data: remainingScores } = await adminSupabase
+        .from('round_scores')
+        .select('total_points')
+        .eq('user_team_id', team.id);
+
+      const newTotalPoints = (remainingScores || [])
+        .reduce((sum: number, row: any) => sum + Number(row.total_points || 0), 0);
+
+      await adminSupabase
+        .from('user_teams')
+        .update({
+          total_points: parseFloat(newTotalPoints.toFixed(2)),
+          current_round_points: 0
+        })
+        .eq('id', team.id);
+    }
+    console.log(`   ✅ total_points recalculados para ${(allTeams || []).length} times`);
+
+    // ── PASSO 5: Resetar status da rodada ────────────────────
+    console.log(`🔷 Passo 5: Resetando status da rodada para 'closed'...`);
+
+    const { error: statusError } = await adminSupabase
+      .from('rounds')
+      .update({
+        status: 'closed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', roundId);
+
+    const roundStatusReset = !statusError;
+    if (statusError) {
+      console.error(`   ❌ Erro ao resetar status:`, statusError);
+    } else {
+      console.log(`   ✅ Status da rodada alterado para 'closed'`);
+    }
+
+    // ── PASSO 6: Atualizar aggregates dos jogadores ──────────
+    console.log(`🔷 Passo 6: Recalculando aggregates dos jogadores...`);
+
+    const { data: matches } = await adminSupabase
+      .from('matches')
+      .select('id')
+      .eq('round_id', roundId);
+
+    if (matches && matches.length > 0) {
+      const matchIds = matches.map((m: any) => m.id);
+      const { data: performances } = await adminSupabase
+        .from('player_performances')
+        .select('player_id')
+        .in('match_id', matchIds);
+
+      if (performances && performances.length > 0) {
+        const playerIds = Array.from(new Set(performances.map((p: any) => String(p.player_id))));
+        await this.refreshPlayerAggregates(playerIds);
+        console.log(`   ✅ Aggregates recalculados para ${playerIds.length} jogadores`);
+      }
+    }
+
+    // ── Limpar snapshots usados ──────────────────────────────
+    await adminSupabase.from('system_config').delete().eq('key', `snapshot_round_${roundId}_prices`);
+    await adminSupabase.from('system_config').delete().eq('key', `snapshot_round_${roundId}_budgets`);
+    console.log(`   🗑️  Snapshots limpos`);
+
+    console.log(`\n✅ Reset da rodada ${roundId} concluído!\n`);
+
+    return {
+      pricesRestored,
+      budgetsRestored,
+      scoresRemoved,
+      roundStatusReset
+    };
   }
 
   /**

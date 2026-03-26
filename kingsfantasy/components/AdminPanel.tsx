@@ -81,6 +81,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [finalizeCheckResult, setFinalizeCheckResult] = useState<any | null>(null);
   const [finalizeTabRoundId, setFinalizeTabRoundId] = useState('');
   const [forceRecalculate] = useState(false); // mantido para compatibilidade, backend ignora
+  const [resetRoundLoading, setResetRoundLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [priceEdits, setPriceEdits] = useState<Record<string, string>>({});
   const [playerEditId, setPlayerEditId] = useState<string | null>(null);
@@ -2652,6 +2653,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       }
     };
 
+    const handleResetRoundCalculations = async () => {
+      if (!finalizeTabRoundId) return;
+      if (!window.confirm('ATENÇÃO: Isso vai reverter TODOS os cálculos desta rodada (preços, patrimônios, pontuações). Deseja continuar?')) {
+        return;
+      }
+      if (!window.confirm('Tem certeza? Esta ação não pode ser desfeita. O sistema voltará ao estado pré-finalização.')) {
+        return;
+      }
+
+      setResetRoundLoading(true);
+      setPerformancesError(null);
+      setPerformancesSuccess(null);
+
+      try {
+        const result = await DataService.resetAdminRoundCalculations(Number(finalizeTabRoundId));
+        if (result.ok) {
+          const data = result.data?.result || {};
+          setPerformancesSuccess(
+            `Reset concluído! Preços restaurados: ${data.pricesRestored || 0}, ` +
+            `Budgets restaurados: ${data.budgetsRestored || 0}, ` +
+            `Scores removidos: ${data.scoresRemoved || 0}. ` +
+            `A rodada pode ser finalizada novamente.`
+          );
+          setFinalizeCheckResult(null);
+          await Promise.all([loadRounds(), loadPlayers()]);
+          window.dispatchEvent(new Event('players:refresh'));
+          window.dispatchEvent(new Event('leagues:refresh'));
+          window.dispatchEvent(new Event('market:refresh'));
+        } else {
+          setPerformancesError(result.error || 'Erro ao resetar cálculos da rodada');
+        }
+      } catch (error) {
+        setPerformancesError(String(error));
+      } finally {
+        setResetRoundLoading(false);
+      }
+    };
+
     return (
       <div className="space-y-6">
         {performancesError && (
@@ -2793,11 +2832,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
               </button>
 
               {selectedFinalizeRound?.status === 'finished' && (
-                <div className="p-4 border border-emerald-500/20 bg-emerald-500/5 space-y-2">
-                  <p className="text-xs text-emerald-200 font-bold uppercase tracking-wider">Esta rodada ja foi finalizada.</p>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">
-                    Voce pode re-finalizar para recalcular, ou selecione a proxima rodada.
-                  </p>
+                <div className="space-y-4">
+                  <div className="p-4 border border-emerald-500/20 bg-emerald-500/5 space-y-2">
+                    <p className="text-xs text-emerald-200 font-bold uppercase tracking-wider">Esta rodada ja foi finalizada.</p>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">
+                      Voce pode re-finalizar para recalcular, ou resetar os calculos para refazer do zero.
+                    </p>
+                  </div>
+
+                  <div className="p-4 border border-amber-500/20 bg-amber-500/5 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <i className="fa-solid fa-rotate-left text-amber-400 mt-0.5"></i>
+                      <div>
+                        <p className="text-xs text-amber-200 font-bold uppercase tracking-wider">Resetar Calculos da Rodada</p>
+                        <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
+                          Reverte TODOS os efeitos da finalizacao: restaura precos dos jogadores, budgets dos usuarios,
+                          remove pontuacoes da rodada e volta o status para pre-finalizacao.
+                          Apos o reset, voce pode finalizar novamente com dados corrigidos.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleResetRoundCalculations}
+                      disabled={resetRoundLoading || finalizeRoundLoading}
+                      className="w-full py-3 text-sm font-bold uppercase tracking-wider bg-amber-600/80 hover:bg-amber-500 disabled:opacity-50 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
+                    >
+                      {resetRoundLoading ? (
+                        <><i className="fa-solid fa-spinner fa-spin"></i> Resetando calculos...</>
+                      ) : (
+                        <><i className="fa-solid fa-rotate-left"></i> Resetar Calculos da Rodada</>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

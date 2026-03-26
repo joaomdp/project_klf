@@ -692,6 +692,45 @@ export async function finalizeRound(req: AuthenticatedRequest, res: Response) {
 }
 
 /**
+ * Resetar cálculos de uma rodada finalizada
+ * POST /api/admin/rounds/:id/reset-calculations
+ */
+export async function resetRoundCalculations(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const roundId = Number(id);
+
+    if (!Number.isFinite(roundId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'round_id inválido'
+      });
+    }
+
+    console.log(`🔄 Admin solicitou reset de cálculos para rodada ${roundId}`);
+
+    const result = await scoringService.resetRoundCalculations(roundId);
+
+    return res.json({
+      success: true,
+      message: 'Cálculos da rodada resetados com sucesso. A rodada pode ser finalizada novamente.',
+      result
+    });
+  } catch (error) {
+    console.error('❌ Exception in resetRoundCalculations:', error);
+    const message = error instanceof Error ? error.message : 'Erro desconhecido';
+    const statusCode = message.includes('não encontrada') ? 404
+      : message.includes('não está finalizada') ? 409
+      : 500;
+
+    return res.status(statusCode).json({
+      success: false,
+      error: message
+    });
+  }
+}
+
+/**
  * Verificar checklist de finalização de rodada
  * GET /api/admin/rounds/:id/finalize-check
  */

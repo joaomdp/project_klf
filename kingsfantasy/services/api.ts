@@ -1459,6 +1459,37 @@ export const DataService = {
     }
   },
 
+  async resetAdminRoundCalculations(roundId: number): Promise<{ ok: boolean; data?: any; error?: string }> {
+    const anonKey = this.getAnonKey();
+    const userToken = this.getUserToken();
+
+    if (!userToken) {
+      return { ok: false, error: 'Usuário não autenticado' };
+    }
+
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/admin/rounds/${roundId}/reset-calculations`, {
+        method: 'POST',
+        headers: buildAuthHeaders(anonKey, userToken, { includeContentType: true, allowAnonFallback: false })
+      });
+
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch (error) {
+        data = null;
+      }
+
+      if (!response.ok) {
+        return { ok: false, error: data?.error || 'Erro ao resetar cálculos da rodada', data };
+      }
+
+      return { ok: true, data };
+    } catch (error) {
+      return { ok: false, error: String(error) };
+    }
+  },
+
   async updateAdminRoundDates(roundId: number, payload: { start_date?: string; end_date?: string; market_close_time?: string; }): Promise<{ ok: boolean; error?: string }> {
     const anonKey = this.getAnonKey();
     const userToken = this.getUserToken();

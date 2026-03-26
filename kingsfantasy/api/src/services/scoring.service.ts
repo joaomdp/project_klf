@@ -187,7 +187,10 @@ class ScoringService {
     }
 
     const roundStatus = String((round as any).status || '').toLowerCase();
-    const isRecalculation = (roundStatus === 'completed' || roundStatus === 'finished') && !options?.forceRecalculate;
+    const isAlreadyFinished = roundStatus === 'completed' || roundStatus === 'finished';
+    // Re-finalização NUNCA altera preços nem patrimônio — apenas recalcula pontuações
+    // Isso evita que preços fiquem "compounding" (aplicando fórmula sobre preço já modificado)
+    const isRecalculation = isAlreadyFinished;
 
     const { data: matches, error: matchesError } = await adminSupabase
       .from('matches')
@@ -278,71 +281,78 @@ class ScoringService {
     // ── FASE 3: Recalcular patrimônio dos usuários ─────────────
     console.log(`🔷 FASE 3: Recalculando patrimônio dos usuários...`);
 
-    const { data: userTeams, error: budgetTeamsError } = await adminSupabase
-      .from('user_teams')
-      .select('id, lineup, budget');
-
-    if (budgetTeamsError) throw budgetTeamsError;
-
-    // Buscar preços ATUALIZADOS de todos os jogadores nos lineups
-    const lineupPlayerIds = new Set<string>();
-    for (const team of userTeams || []) {
-      const lineup = team.lineup || {};
-      const players = Object.values(lineup).filter(Boolean) as Array<{ id: string }>;
-      players.forEach((p) => lineupPlayerIds.add(String(p.id)));
-    }
-
-    const currentPriceMap = new Map<string, number>();
-    if (lineupPlayerIds.size > 0) {
-      const { data: freshPlayers, error: freshError } = await adminSupabase
-        .from('players')
-        .select('id, price')
-        .in('id', Array.from(lineupPlayerIds));
-
-      if (freshError) throw freshError;
-      for (const p of freshPlayers || []) {
-        currentPriceMap.set(String(p.id), Number(p.price || 0));
-      }
-    }
-
     let updatedBudgets = 0;
-    for (const team of userTeams || []) {
-      const lineup = (team.lineup || {}) as Record<string, any>;
-      const lineupPlayers = Object.values(lineup).filter(Boolean) as Array<{ id: string; price?: number }>;
 
-      // Valor antigo = soma dos preços no snapshot do lineup
-      const oldLineupValue = lineupPlayers.reduce((sum, p) => sum + Number(p.price || 0), 0);
-
-      // Valor novo = soma dos preços ATUAIS do banco (pós-flutuação)
-      const newLineupValue = lineupPlayers.reduce((sum, p) => {
-        return sum + (currentPriceMap.get(String(p.id)) ?? Number(p.price || 0));
-      }, 0);
-
-      // Budget ajustado: se elenco valorizou, budget sobe; se desvalorizou, budget cai
-      const currentBudget = Number(team.budget || 0);
-      const nextBudget = parseFloat((currentBudget + (newLineupValue - oldLineupValue)).toFixed(2));
-
-      console.log(`   📋 Team ${team.id}: players=${lineupPlayers.length}, budget=${currentBudget} → ${nextBudget}, lineup old=${oldLineupValue.toFixed(2)} new=${newLineupValue.toFixed(2)} delta=${(newLineupValue - oldLineupValue).toFixed(2)}`);
-
-      // Atualizar lineup com preços novos (snapshot atualizado)
-      const updatedLineup = Object.entries(lineup).reduce<Record<string, any>>((acc, [role, player]) => {
-        if (!player) return acc;
-        acc[role] = {
-          ...player,
-          price: currentPriceMap.get(String(player.id)) ?? Number(player.price || 0)
-        };
-        return acc;
-      }, {});
-
-      const { error } = await adminSupabase
+    if (isRecalculation) {
+      // Re-finalização: preços não mudaram, então patrimônio permanece igual
+      console.log(`   ℹ️  Recálculo — patrimônio NÃO alterado (preços não mudaram)`);
+    } else {
+      // Primeira finalização: ajustar budget com base na valorização/desvalorização do elenco
+      const { data: userTeams, error: budgetTeamsError } = await adminSupabase
         .from('user_teams')
-        .update({ budget: nextBudget, lineup: updatedLineup })
-        .eq('id', team.id);
+        .select('id, lineup, budget');
 
-      if (!error) updatedBudgets++;
-      else console.error(`   ❌ Failed to update budget for team ${team.id}:`, error);
+      if (budgetTeamsError) throw budgetTeamsError;
+
+      // Buscar preços ATUALIZADOS de todos os jogadores nos lineups
+      const lineupPlayerIds = new Set<string>();
+      for (const team of userTeams || []) {
+        const lineup = team.lineup || {};
+        const players = Object.values(lineup).filter(Boolean) as Array<{ id: string }>;
+        players.forEach((p) => lineupPlayerIds.add(String(p.id)));
+      }
+
+      const currentPriceMap = new Map<string, number>();
+      if (lineupPlayerIds.size > 0) {
+        const { data: freshPlayers, error: freshError } = await adminSupabase
+          .from('players')
+          .select('id, price')
+          .in('id', Array.from(lineupPlayerIds));
+
+        if (freshError) throw freshError;
+        for (const p of freshPlayers || []) {
+          currentPriceMap.set(String(p.id), Number(p.price || 0));
+        }
+      }
+
+      for (const team of userTeams || []) {
+        const lineup = (team.lineup || {}) as Record<string, any>;
+        const lineupPlayers = Object.values(lineup).filter(Boolean) as Array<{ id: string; price?: number }>;
+
+        // Valor antigo = soma dos preços no snapshot do lineup
+        const oldLineupValue = lineupPlayers.reduce((sum, p) => sum + Number(p.price || 0), 0);
+
+        // Valor novo = soma dos preços ATUAIS do banco (pós-flutuação)
+        const newLineupValue = lineupPlayers.reduce((sum, p) => {
+          return sum + (currentPriceMap.get(String(p.id)) ?? Number(p.price || 0));
+        }, 0);
+
+        // Budget ajustado: se elenco valorizou, budget sobe; se desvalorizou, budget cai
+        const currentBudget = Number(team.budget || 0);
+        const nextBudget = parseFloat((currentBudget + (newLineupValue - oldLineupValue)).toFixed(2));
+
+        console.log(`   📋 Team ${team.id}: players=${lineupPlayers.length}, budget=${currentBudget} → ${nextBudget}, lineup old=${oldLineupValue.toFixed(2)} new=${newLineupValue.toFixed(2)} delta=${(newLineupValue - oldLineupValue).toFixed(2)}`);
+
+        // Atualizar lineup com preços novos (snapshot atualizado)
+        const updatedLineup = Object.entries(lineup).reduce<Record<string, any>>((acc, [role, player]) => {
+          if (!player) return acc;
+          acc[role] = {
+            ...player,
+            price: currentPriceMap.get(String(player.id)) ?? Number(player.price || 0)
+          };
+          return acc;
+        }, {});
+
+        const { error } = await adminSupabase
+          .from('user_teams')
+          .update({ budget: nextBudget, lineup: updatedLineup })
+          .eq('id', team.id);
+
+        if (!error) updatedBudgets++;
+        else console.error(`   ❌ Failed to update budget for team ${team.id}:`, error);
+      }
+      console.log(`   ✅ ${updatedBudgets} patrimônios atualizados`);
     }
-    console.log(`   ✅ ${updatedBudgets} patrimônios atualizados`);
 
     // ── FASE 4: Marcar rodada como finalizada ──────────────────
     console.log(`🔷 FASE 4: Finalizando rodada...`);

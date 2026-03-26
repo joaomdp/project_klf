@@ -80,7 +80,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [finalizeCheckLoading, setFinalizeCheckLoading] = useState(false);
   const [finalizeCheckResult, setFinalizeCheckResult] = useState<any | null>(null);
   const [finalizeTabRoundId, setFinalizeTabRoundId] = useState('');
-  const [forceRecalculate, setForceRecalculate] = useState(false);
+  const [forceRecalculate] = useState(false); // mantido para compatibilidade, backend ignora
   const [searchQuery, setSearchQuery] = useState('');
   const [priceEdits, setPriceEdits] = useState<Record<string, string>>({});
   const [playerEditId, setPlayerEditId] = useState<string | null>(null);
@@ -2628,7 +2628,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       setPerformancesSuccess(null);
 
       try {
-        const result = await DataService.finalizeAdminRound(Number(finalizeTabRoundId), { forceRecalculate });
+        const result = await DataService.finalizeAdminRound(Number(finalizeTabRoundId));
         if (result.ok) {
           const wasRecalculated = Boolean(result.data?.result?.recalculated);
           const baseMsg = wasRecalculated
@@ -2772,20 +2772,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
               </div>
 
               {selectedFinalizeRound?.status === 'finished' && (
-                <label className="flex items-center gap-3 p-3 border border-amber-500/20 bg-amber-500/5 rounded-lg cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={forceRecalculate}
-                    onChange={(e) => setForceRecalculate(e.target.checked)}
-                    className="accent-amber-500"
-                  />
-                  <div>
-                    <p className="text-xs text-amber-200 font-bold uppercase tracking-wider">Forcar recalculo de precos</p>
-                    <p className="text-[10px] text-gray-400 mt-1">
-                      Re-executa a flutuacao de precos e atualiza patrimonios. Use quando os valores nao foram atualizados corretamente.
-                    </p>
-                  </div>
-                </label>
+                <div className="p-3 border border-blue-500/20 bg-blue-500/5 rounded-lg">
+                  <p className="text-xs text-blue-200 font-bold uppercase tracking-wider">Modo recalculo</p>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    Esta rodada ja foi finalizada. Ao clicar, apenas as pontuacoes serao recalculadas. Precos e patrimonios NAO serao alterados.
+                  </p>
+                </div>
               )}
 
               <button

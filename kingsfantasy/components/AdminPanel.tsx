@@ -2599,6 +2599,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
   const renderFinalize = () => {
     const selectedFinalizeRound = rounds.find((r) => String(r.id) === String(finalizeTabRoundId)) || null;
+    const isRoundFinished = isRoundFinished || selectedFinalizeRound?.status === 'completed';
 
     const handleFinalizeTabCheck = async () => {
       if (!finalizeTabRoundId) return;
@@ -2723,7 +2724,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
               <option value="">Selecione a rodada para finalizar</option>
               {rounds.map((round) => (
                 <option key={round.id} value={round.id}>
-                  Season {round.season} - Rodada {round.round_number} ({round.status === 'active' ? 'Ativa' : round.status === 'finished' ? 'Finalizada' : round.status})
+                  Season {round.season} - Rodada {round.round_number} ({round.status === 'active' ? 'Ativa' : (round.status === 'finished' || round.status === 'completed') ? 'Finalizada' : round.status})
                 </option>
               ))}
             </select>
@@ -2810,7 +2811,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                 </div>
               </div>
 
-              {selectedFinalizeRound?.status === 'finished' && (
+              {isRoundFinished && (
                 <div className="p-3 border border-blue-500/20 bg-blue-500/5 rounded-lg">
                   <p className="text-xs text-blue-200 font-bold uppercase tracking-wider">Modo recalculo</p>
                   <p className="text-[10px] text-gray-400 mt-1">
@@ -2831,7 +2832,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                 )}
               </button>
 
-              {selectedFinalizeRound?.status === 'finished' && (
+              {isRoundFinished && (
                 <div className="space-y-4">
                   <div className="p-4 border border-emerald-500/20 bg-emerald-500/5 space-y-2">
                     <p className="text-xs text-emerald-200 font-bold uppercase tracking-wider">Esta rodada ja foi finalizada.</p>

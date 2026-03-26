@@ -391,10 +391,28 @@ class ScoringService {
     // ── FASE 4: Marcar rodada como finalizada ──────────────────
     console.log(`🔷 FASE 4: Finalizando rodada...`);
 
-    await adminSupabase
-      .from('rounds')
-      .update({ status: 'finished' })
-      .eq('id', roundId);
+    // Tentar múltiplos valores de status para compatibilidade com constraints do banco
+    const finishedStatusCandidates = ['finished', 'completed', 'closed'];
+    let statusUpdated = false;
+
+    for (const statusCandidate of finishedStatusCandidates) {
+      const { error: statusError } = await adminSupabase
+        .from('rounds')
+        .update({ status: statusCandidate })
+        .eq('id', roundId);
+
+      if (!statusError) {
+        console.log(`   ✅ Status da rodada atualizado para '${statusCandidate}'`);
+        statusUpdated = true;
+        break;
+      }
+
+      console.warn(`   ⚠️  Falha ao setar status '${statusCandidate}': ${statusError.message}`);
+    }
+
+    if (!statusUpdated) {
+      console.error(`   ❌ Não foi possível atualizar o status da rodada ${roundId} para nenhum status de finalização`);
+    }
 
     console.log(`\n✅ Rodada ${roundId} finalizada com sucesso!\n`);
 
@@ -1142,21 +1160,32 @@ class ScoringService {
     console.log(`   ✅ total_points recalculados para ${(allTeams || []).length} times`);
 
     // ── PASSO 5: Resetar status da rodada ────────────────────
-    console.log(`🔷 Passo 5: Resetando status da rodada para 'closed'...`);
+    console.log(`🔷 Passo 5: Resetando status da rodada para pré-finalização...`);
 
-    const { error: statusError } = await adminSupabase
-      .from('rounds')
-      .update({
-        status: 'closed',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', roundId);
+    // Tentar múltiplos valores para compatibilidade com constraints do banco
+    const resetStatusCandidates = ['closed', 'completed', 'open', 'pending'];
+    let roundStatusReset = false;
 
-    const roundStatusReset = !statusError;
-    if (statusError) {
-      console.error(`   ❌ Erro ao resetar status:`, statusError);
-    } else {
-      console.log(`   ✅ Status da rodada alterado para 'closed'`);
+    for (const statusCandidate of resetStatusCandidates) {
+      const { error: statusError } = await adminSupabase
+        .from('rounds')
+        .update({
+          status: statusCandidate,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', roundId);
+
+      if (!statusError) {
+        console.log(`   ✅ Status da rodada alterado para '${statusCandidate}'`);
+        roundStatusReset = true;
+        break;
+      }
+
+      console.warn(`   ⚠️  Falha ao setar status '${statusCandidate}': ${statusError.message}`);
+    }
+
+    if (!roundStatusReset) {
+      console.error(`   ❌ Não foi possível resetar o status da rodada ${roundId}`);
     }
 
     // ── PASSO 6: Atualizar aggregates dos jogadores ──────────

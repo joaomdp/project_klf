@@ -2599,7 +2599,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
   const renderFinalize = () => {
     const selectedFinalizeRound = rounds.find((r) => String(r.id) === String(finalizeTabRoundId)) || null;
-    const isRoundFinished = isRoundFinished || selectedFinalizeRound?.status === 'completed';
+    const isRoundFinished = selectedFinalizeRound?.status === 'finished' || selectedFinalizeRound?.status === 'completed';
 
     const handleFinalizeTabCheck = async () => {
       if (!finalizeTabRoundId) return;

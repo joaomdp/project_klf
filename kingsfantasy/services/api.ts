@@ -1743,6 +1743,32 @@ export const DataService = {
     }
   },
 
+  async updateAdminUser(userId: number, payload: { budget?: number; total_points?: number; user_name?: string; team_name?: string }): Promise<{ ok: boolean; error?: string }> {
+    const anonKey = this.getAnonKey();
+    const userToken = this.getUserToken();
+
+    if (!userToken) {
+      return { ok: false, error: 'Usuário não autenticado' };
+    }
+
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: buildAuthHeaders(anonKey, userToken, { includeContentType: true, allowAnonFallback: false }),
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { ok: false, error: errorText || 'Erro ao atualizar usuario' };
+      }
+
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: String(error) };
+    }
+  },
+
   async updateAdminLeague(leagueId: number, payload: { is_public?: boolean; is_verified?: boolean }): Promise<{ ok: boolean; error?: string }> {
     const anonKey = this.getAnonKey();
     const userToken = this.getUserToken();
@@ -2075,33 +2101,38 @@ export const DataService = {
   } {
     const teams = new Set<string>();
     Object.values(lineup).forEach(player => {
-      if (player) teams.add(String(player.teamId || player.team));
+      if (player) {
+        // Usar team name como identificador principal (mais confiável que teamId numérico)
+        const teamKey = player.team || (player.teamId ? String(player.teamId) : '');
+        if (teamKey) teams.add(teamKey.toLowerCase().trim());
+      }
     });
 
     const uniqueTeams = teams.size;
     let bonusPercent = 0;
     let message = '';
 
+    // v2 Balanced Economy — valores atualizados
     switch (uniqueTeams) {
       case 5:
-        bonusPercent = 25;
-        message = '🔥 Diversidade máxima! +25%';
+        bonusPercent = 20;
+        message = 'Diversidade máxima! +20%';
         break;
       case 4:
-        bonusPercent = 20;
-        message = '⚡ Ótima diversidade! +20%';
+        bonusPercent = 15;
+        message = 'Ótima diversidade! +15%';
         break;
       case 3:
-        bonusPercent = 15;
-        message = '✅ Boa diversidade! +15%';
+        bonusPercent = 10;
+        message = 'Boa diversidade! +10%';
         break;
       case 2:
-        bonusPercent = 10;
-        message = '📊 Diversidade moderada. +10%';
+        bonusPercent = 5;
+        message = 'Diversidade moderada. +5%';
         break;
       case 1:
-        bonusPercent = 5;
-        message = '⚠️ Todos do mesmo time. +5%';
+        bonusPercent = 0;
+        message = 'Todos do mesmo time. +0%';
         break;
       default:
         bonusPercent = 0;

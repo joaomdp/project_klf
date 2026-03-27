@@ -216,21 +216,35 @@ const AppContent: React.FC = () => {
     });
   }, []);
 
-  const resetTeam = useCallback(() => {
-    setUserTeam(prev => {
-      const refund = Object.values(prev.players)
-        .filter((p): p is Player => !!p)
-        .reduce((sum, p) => sum + (p.price || 0), 0);
-      const cleared = {
-        ...prev,
-        budget: prev.budget + refund,
-        players: {},
-      };
-      DataService.saveUserTeam(cleared).catch((err) => {
-        console.error('❌ Erro ao persistir reset de time:', err);
+  const resetTeam = useCallback(async () => {
+    // Salvar lineup vazio no backend (devolve budget dos jogadores dispensados)
+    try {
+      const result = await DataService.saveLineupSecure({});
+      if (result.success && result.budget !== undefined) {
+        setUserTeam(prev => ({
+          ...prev,
+          budget: result.budget!,
+          players: {},
+        }));
+      } else {
+        // Fallback local se backend falhar
+        console.error('❌ Backend rejeitou lineup vazio:', result.error);
+        setUserTeam(prev => {
+          const refund = Object.values(prev.players)
+            .filter((p): p is Player => !!p)
+            .reduce((sum, p) => sum + (p.price || 0), 0);
+          return { ...prev, budget: prev.budget + refund, players: {} };
+        });
+      }
+    } catch (err) {
+      console.error('❌ Erro ao persistir reset de time:', err);
+      setUserTeam(prev => {
+        const refund = Object.values(prev.players)
+          .filter((p): p is Player => !!p)
+          .reduce((sum, p) => sum + (p.price || 0), 0);
+        return { ...prev, budget: prev.budget + refund, players: {} };
       });
-      return cleared;
-    });
+    }
   }, []);
 
   const showSaveError = useCallback(() => {

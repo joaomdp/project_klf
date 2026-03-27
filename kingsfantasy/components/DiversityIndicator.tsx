@@ -33,11 +33,11 @@ const DiversityIndicator: React.FC<DiversityIndicatorProps> = ({ players, classN
   }, [players]);
 
   const levels = [
-    { num: 1, percent: 5, label: 'Lvl. 1' },
-    { num: 2, percent: 10, label: 'Lvl. 2' },
-    { num: 3, percent: 15, label: 'Lvl. 3' },
-    { num: 4, percent: 20, label: 'Lvl. 4' },
-    { num: 5, percent: 25, label: 'Lvl. 5' }
+    { num: 1, percent: 0, label: 'Lvl. 1' },
+    { num: 2, percent: 5, label: 'Lvl. 2' },
+    { num: 3, percent: 10, label: 'Lvl. 3' },
+    { num: 4, percent: 15, label: 'Lvl. 4' },
+    { num: 5, percent: 20, label: 'Lvl. 5' }
   ];
 
   const isMaxLevel = diversity.uniqueTeams === 5;

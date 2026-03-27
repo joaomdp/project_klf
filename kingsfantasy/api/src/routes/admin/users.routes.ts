@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listUsers, resetUserTeam } from '../../controllers/admin/users.controller';
+import { listUsers, updateUser, resetUserTeam } from '../../controllers/admin/users.controller';
 
 const router = Router();
 
@@ -11,6 +11,9 @@ const router = Router();
 
 // GET /api/admin/users - Listar usuários
 router.get('/', listUsers);
+
+// PATCH /api/admin/users/:id - Editar usuario (budget, pontos, nome, etc.)
+router.patch('/:id', updateUser);
 
 // PATCH /api/admin/users/:id/reset - Resetar usuario
 router.patch('/:id/reset', resetUserTeam);

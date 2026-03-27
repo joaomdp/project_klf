@@ -44,6 +44,50 @@ export async function listUsers(req: AuthenticatedRequest, res: Response) {
 }
 
 /**
+ * Editar campos de um usuario
+ * PATCH /api/admin/users/:id
+ */
+export async function updateUser(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const { budget, total_points, user_name, team_name } = req.body;
+
+    const updateFields: Record<string, any> = {};
+    if (budget !== undefined) updateFields.budget = Number(budget);
+    if (total_points !== undefined) updateFields.total_points = Number(total_points);
+    if (user_name !== undefined) updateFields.user_name = String(user_name);
+    if (team_name !== undefined) updateFields.team_name = String(team_name);
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
+    }
+
+    updateFields.updated_at = new Date().toISOString();
+
+    const { data: userTeam, error } = await adminSupabase
+      .from('user_teams')
+      .update(updateFields)
+      .eq('id', parseInt(id))
+      .select('id, user_id, user_name, team_name, total_points, budget')
+      .single();
+
+    if (error || !userTeam) {
+      console.error('Error updating user:', error);
+      return res.status(404).json({ success: false, error: 'Usuario nao encontrado' });
+    }
+
+    return res.json({ success: true, message: 'Usuario atualizado', user: userTeam });
+  } catch (error) {
+    console.error('Exception in updateUser:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro interno ao atualizar usuario',
+      message: error instanceof Error ? error.message : 'Erro desconhecido'
+    });
+  }
+}
+
+/**
  * Resetar pontuacao e orcamento de um usuario
  * PATCH /api/admin/users/:id/reset
  */
@@ -54,10 +98,10 @@ export async function resetUserTeam(req: AuthenticatedRequest, res: Response) {
     const { data: budgetConfig } = await supabase
       .from('system_config')
       .select('value')
-      .eq('key', 'budget')
+      .eq('key', 'initial_budget')
       .single();
 
-    const budgetValue = budgetConfig?.value ? Number(budgetConfig.value) : 0;
+    const budgetValue = budgetConfig?.value ? Number(budgetConfig.value) : 100;
 
     const { data: userTeam, error } = await adminSupabase
       .from('user_teams')

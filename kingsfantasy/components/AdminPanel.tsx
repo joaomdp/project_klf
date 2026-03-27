@@ -145,6 +145,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [marketActionLoading, setMarketActionLoading] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+  const [editingUser, setEditingUser] = useState<number | null>(null);
+  const [editUserForm, setEditUserForm] = useState<{ budget: string; total_points: string; user_name: string; team_name: string }>({ budget: '', total_points: '', user_name: '', team_name: '' });
   const [newTeamForm, setNewTeamForm] = useState({ name: '', logo_url: '' });
   const [newPlayerForm, setNewPlayerForm] = useState({
     name: '',
@@ -2988,6 +2990,39 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       setActionLoading((prev) => ({ ...prev, [`user-reset-${userId}`]: false }));
     };
 
+    const handleEditStart = (user: any) => {
+      setEditingUser(user.id);
+      setEditUserForm({
+        budget: String(user.budget ?? ''),
+        total_points: String(user.total_points ?? ''),
+        user_name: user.user_name || '',
+        team_name: user.team_name || ''
+      });
+    };
+
+    const handleEditSave = async (userId: number) => {
+      setActionLoading((prev) => ({ ...prev, [`user-edit-${userId}`]: true }));
+      setUsersError(null);
+      const payload: any = {};
+      if (editUserForm.budget !== '') payload.budget = parseFloat(editUserForm.budget);
+      if (editUserForm.total_points !== '') payload.total_points = parseFloat(editUserForm.total_points);
+      if (editUserForm.user_name) payload.user_name = editUserForm.user_name;
+      if (editUserForm.team_name) payload.team_name = editUserForm.team_name;
+
+      const result = await DataService.updateAdminUser(userId, payload);
+      if (!result.ok) {
+        setUsersError(result.error || 'Erro ao atualizar usuario');
+      } else {
+        setEditingUser(null);
+        await loadUsers();
+      }
+      setActionLoading((prev) => ({ ...prev, [`user-edit-${userId}`]: false }));
+    };
+
+    const handleEditCancel = () => {
+      setEditingUser(null);
+    };
+
     return (
       <div className="glass-card border border-white/5 overflow-hidden">
         <div className="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -3025,28 +3060,106 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {filteredUsers.map((user) => (
+              {filteredUsers.map((user) => {
+                const isEditing = editingUser === user.id;
+                return (
                 <tr key={user.id} className="hover:bg-white/[0.03] odd:bg-white/[0.02]">
                   <td className="px-4 py-3">
-                    <div>
-                      <p className="text-sm font-bold text-white uppercase tracking-tight">{user.user_name}</p>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider">{user.user_id}</p>
+                    {isEditing ? (
+                      <div className="flex flex-col gap-1">
+                        <input
+                          value={editUserForm.user_name}
+                          onChange={(e) => setEditUserForm(prev => ({ ...prev, user_name: e.target.value }))}
+                          className="bg-black/60 border border-white/20 text-xs text-white px-2 py-1 rounded w-full"
+                          placeholder="Nome"
+                        />
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">{user.user_id}</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm font-bold text-white uppercase tracking-tight">{user.user_name}</p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">{user.user_id}</p>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isEditing ? (
+                      <input
+                        value={editUserForm.team_name}
+                        onChange={(e) => setEditUserForm(prev => ({ ...prev, team_name: e.target.value }))}
+                        className="bg-black/60 border border-white/20 text-xs text-white px-2 py-1 rounded w-24"
+                        placeholder="Time"
+                      />
+                    ) : (
+                      <span className="text-xs text-gray-400 uppercase tracking-wider">{user.team_name}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editUserForm.total_points}
+                        onChange={(e) => setEditUserForm(prev => ({ ...prev, total_points: e.target.value }))}
+                        className="bg-black/60 border border-white/20 text-xs text-white px-2 py-1 rounded w-20"
+                      />
+                    ) : (
+                      <span className="text-xs text-gray-400 uppercase tracking-wider">{user.total_points}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editUserForm.budget}
+                        onChange={(e) => setEditUserForm(prev => ({ ...prev, budget: e.target.value }))}
+                        className="bg-black/60 border border-white/20 text-xs text-white px-2 py-1 rounded w-20"
+                      />
+                    ) : (
+                      <span className="text-xs text-gray-400 uppercase tracking-wider">{user.budget}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {isEditing ? (
+                        <>
+                          <button
+                            onClick={() => handleEditSave(user.id)}
+                            className="text-[10px] uppercase tracking-wider text-green-300 border border-green-500/40 px-3 py-1 rounded"
+                            disabled={actionLoading[`user-edit-${user.id}`]}
+                          >
+                            {actionLoading[`user-edit-${user.id}`] ? 'Salvando...' : 'Salvar'}
+                          </button>
+                          <button
+                            onClick={handleEditCancel}
+                            className="text-[10px] uppercase tracking-wider text-gray-400 border border-white/10 px-3 py-1 rounded"
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleEditStart(user)}
+                            className="text-[10px] uppercase tracking-wider text-blue-300 border border-blue-500/40 px-3 py-1 rounded"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleUserReset(user.id)}
+                            className="text-[10px] uppercase tracking-wider text-yellow-300 border border-yellow-500/40 px-3 py-1 rounded"
+                            disabled={actionLoading[`user-reset-${user.id}`]}
+                          >
+                            {actionLoading[`user-reset-${user.id}`] ? 'Resetando...' : 'Resetar'}
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-400 uppercase tracking-wider">{user.team_name}</td>
-                  <td className="px-4 py-3 text-xs text-gray-400 uppercase tracking-wider">{user.total_points}</td>
-                  <td className="px-4 py-3 text-xs text-gray-400 uppercase tracking-wider">{user.budget}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleUserReset(user.id)}
-                      className="text-[10px] uppercase tracking-wider text-yellow-300 border border-yellow-500/40 px-3 py-1"
-                      disabled={actionLoading[`user-reset-${user.id}`]}
-                    >
-                      {actionLoading[`user-reset-${user.id}`] ? 'Resetando...' : 'Resetar'}
-                    </button>
-                  </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

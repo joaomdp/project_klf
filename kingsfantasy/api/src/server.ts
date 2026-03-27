@@ -356,9 +356,10 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
     }
 
     const { lineup } = req.body;
-    if (!lineup || typeof lineup !== 'object') {
+    if (lineup === undefined || lineup === null || typeof lineup !== 'object') {
       return res.status(400).json({ success: false, error: 'Lineup inválido' });
     }
+    // Lineup vazio {} é válido (limpar time)
 
     // 1. Verificar se mercado está aberto
     const marketStatus = await marketService.getMarketStatus();
@@ -381,19 +382,28 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
       return res.status(403).json({ success: false, error: 'Time está travado' });
     }
 
-    // 3. Validar roles
-    const validRoles = ['top', 'jungler', 'mid', 'adc', 'support'];
+    // 3. Validar e normalizar roles (aceita tanto formato frontend quanto backend)
+    const roleNormalize: Record<string, string> = {
+      'top': 'TOP', 'TOP': 'TOP',
+      'jungler': 'JUNGLE', 'jungle': 'JUNGLE', 'jng': 'JUNGLE', 'JUNGLE': 'JUNGLE', 'JNG': 'JUNGLE',
+      'mid': 'MID', 'middle': 'MID', 'MID': 'MID',
+      'adc': 'ADC', 'ADC': 'ADC',
+      'support': 'SUPPORT', 'sup': 'SUPPORT', 'SUPPORT': 'SUPPORT', 'SUP': 'SUPPORT',
+    };
     const lineupRoles = Object.keys(lineup);
+    const normalizedLineup: Record<string, any> = {};
     for (const role of lineupRoles) {
-      if (!validRoles.includes(role)) {
+      const normalized = roleNormalize[role];
+      if (!normalized) {
         return res.status(400).json({ success: false, error: `Role inválida: ${role}` });
       }
+      normalizedLineup[normalized] = lineup[role];
     }
 
-    // 4. Coletar IDs dos jogadores do novo lineup
+    // 4. Coletar IDs dos jogadores do novo lineup (usando normalizado)
     const newPlayerIds: string[] = [];
-    for (const role of lineupRoles) {
-      const player = lineup[role];
+    for (const role of Object.keys(normalizedLineup)) {
+      const player = normalizedLineup[role];
       if (player && player.id) {
         if (newPlayerIds.includes(String(player.id))) {
           return res.status(400).json({ success: false, error: 'Jogador duplicado na escalação' });
@@ -415,8 +425,8 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
       const dbPlayerMap = new Map((dbPlayers || []).map((p: any) => [String(p.id), p]));
 
       // Validar que todos os jogadores existem e calcular custo real
-      for (const role of lineupRoles) {
-        const player = lineup[role];
+      for (const role of Object.keys(normalizedLineup)) {
+        const player = normalizedLineup[role];
         if (!player || !player.id) continue;
 
         const dbPlayer = dbPlayerMap.get(String(player.id));
@@ -454,11 +464,11 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
       });
     }
 
-    // 8. Salvar lineup e budget validados
+    // 8. Salvar lineup normalizado e budget validados
     const { error: updateError } = await adminSupabase
       .from('user_teams')
       .update({
-        lineup,
+        lineup: normalizedLineup,
         budget: newBudget,
         updated_at: new Date().toISOString()
       })

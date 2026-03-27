@@ -1831,6 +1831,37 @@ export const DataService = {
   },
 
   /**
+   * Limpa o lineup inteiro, devolvendo o budget dos jogadores.
+   * Funciona independente do status do mercado.
+   */
+  async clearLineup(): Promise<{ success: boolean; budget?: number; error?: string }> {
+    const userToken = this.getUserToken();
+    if (!userToken) {
+      return { success: false, error: 'Usuário não autenticado' };
+    }
+
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/lineup/clear`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        }
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Erro ao limpar escalação' };
+      }
+
+      return { success: true, budget: data.budget };
+    } catch (error) {
+      console.error('❌ Erro ao limpar lineup:', error);
+      return { success: false, error: 'Erro de conexão ao limpar escalação' };
+    }
+  },
+
+  /**
    * Busca status do mercado (aberto/fechado)
    */
   async getMarketStatus(): Promise<{
@@ -2100,13 +2131,19 @@ export const DataService = {
     message: string;
   } {
     const teams = new Set<string>();
-    Object.values(lineup).forEach(player => {
+    const debugTeams: string[] = [];
+    Object.entries(lineup).forEach(([role, player]) => {
       if (player) {
         // Usar team name como identificador principal (mais confiável que teamId numérico)
         const teamKey = player.team || (player.teamId ? String(player.teamId) : '');
-        if (teamKey) teams.add(teamKey.toLowerCase().trim());
+        if (teamKey) {
+          const normalized = teamKey.toLowerCase().trim();
+          teams.add(normalized);
+          debugTeams.push(`${role}:${player.name}→"${normalized}"`);
+        }
       }
     });
+    console.log(`[Diversity] ${teams.size} unique teams from ${debugTeams.length} players:`, debugTeams.join(', '), '| unique:', Array.from(teams).join(', '));
 
     const uniqueTeams = teams.size;
     let bonusPercent = 0;

@@ -457,6 +457,8 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
     const totalBudget = Number(currentTeam.budget) + currentLineupCost;
     const newBudget = Number((totalBudget - newLineupCost).toFixed(2));
 
+    console.log(`📋 Lineup save for user ${userId}: dbBudget=${currentTeam.budget}, oldLineupCost=${currentLineupCost.toFixed(2)}, newLineupCost=${newLineupCost.toFixed(2)}, totalAvailable=${totalBudget.toFixed(2)}, newBudget=${newBudget.toFixed(2)}`);
+
     if (newBudget < 0) {
       return res.status(400).json({
         success: false,
@@ -474,7 +476,12 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
       })
       .eq('user_id', userId);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error(`❌ DB update error for user ${userId}:`, updateError);
+      throw updateError;
+    }
+
+    console.log(`✅ Lineup saved for user ${userId}: newBudget=${newBudget}`);
 
     return res.json({
       success: true,
@@ -486,6 +493,73 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
     return res.status(500).json({
       success: false,
       error: 'Erro interno ao salvar escalação'
+    });
+  }
+});
+
+// ============================================================================
+// CLEAR LINEUP ENDPOINT (independente do mercado)
+// ============================================================================
+app.post('/api/lineup/clear', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+    }
+
+    // Buscar time atual
+    const { data: currentTeam, error: teamError } = await adminSupabase
+      .from('user_teams')
+      .select('id, budget, lineup')
+      .eq('user_id', userId)
+      .single();
+
+    if (teamError || !currentTeam) {
+      return res.status(404).json({ success: false, error: 'Time não encontrado' });
+    }
+
+    // Calcular reembolso total dos jogadores no lineup atual
+    const currentLineup = currentTeam.lineup || {};
+    const currentPlayerIds = Object.values(currentLineup)
+      .filter((p: any) => p && p.id)
+      .map((p: any) => String(p.id));
+
+    let refund = 0;
+    if (currentPlayerIds.length > 0) {
+      const { data: dbPlayers } = await adminSupabase
+        .from('players')
+        .select('id, price')
+        .in('id', currentPlayerIds);
+
+      refund = (dbPlayers || []).reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
+    }
+
+    const newBudget = parseFloat((Number(currentTeam.budget) + refund).toFixed(2));
+
+    // Salvar lineup vazio e budget atualizado
+    const { error: updateError } = await adminSupabase
+      .from('user_teams')
+      .update({
+        lineup: {},
+        budget: newBudget,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId);
+
+    if (updateError) throw updateError;
+
+    console.log(`✅ Lineup cleared for user ${userId}: refund=${refund.toFixed(2)}, newBudget=${newBudget}`);
+
+    return res.json({
+      success: true,
+      budget: newBudget,
+      message: 'Escalação limpa com sucesso'
+    });
+  } catch (error) {
+    console.error('❌ Error clearing lineup:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erro interno ao limpar escalação'
     });
   }
 });

@@ -210,16 +210,15 @@ const AppContent: React.FC = () => {
   }, []);
 
   const persistTeam = useCallback((team: UserTeam) => {
+    // Atualiza apenas o state local — a persistência real acontece ao clicar CONFIRMAR
+    // via saveLineupSecure() que valida budget server-side
     setUserTeam(team);
-    DataService.saveUserTeam(team).catch((err) => {
-      console.error('❌ Erro ao persistir time:', err);
-    });
   }, []);
 
   const resetTeam = useCallback(async () => {
-    // Salvar lineup vazio no backend (devolve budget dos jogadores dispensados)
+    // Usa endpoint dedicado /lineup/clear (funciona mesmo com mercado fechado)
     try {
-      const result = await DataService.saveLineupSecure({});
+      const result = await DataService.clearLineup();
       if (result.success && result.budget !== undefined) {
         setUserTeam(prev => ({
           ...prev,
@@ -228,7 +227,7 @@ const AppContent: React.FC = () => {
         }));
       } else {
         // Fallback local se backend falhar
-        console.error('❌ Backend rejeitou lineup vazio:', result.error);
+        console.error('❌ Erro ao limpar lineup:', result.error);
         setUserTeam(prev => {
           const refund = Object.values(prev.players)
             .filter((p): p is Player => !!p)
@@ -773,6 +772,7 @@ const AppContent: React.FC = () => {
           duration: 3000
         });
       } else {
+        console.error('❌ saveLineupSecure failed:', result.error);
         showToast({
           type: 'error',
           title: 'Erro ao Salvar',
@@ -800,15 +800,6 @@ const AppContent: React.FC = () => {
             onHire={handleOpenChampionSelector}
             onFire={handleFirePlayer}
             onClear={() => {
-              if (!canEditMarket) {
-                showToast({
-                  type: 'warning',
-                  title: 'Mercado Fechado',
-                  message: 'Nao e possivel limpar a escalacao com o mercado fechado.',
-                  duration: 4000
-                });
-                return;
-              }
               resetTeam();
             }}
             onConfirm={handleConfirmLineup}

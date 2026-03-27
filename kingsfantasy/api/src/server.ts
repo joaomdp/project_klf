@@ -398,17 +398,26 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
       .from('user_teams')
       .select('id, budget, lineup, is_locked')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (teamError || !currentTeam) {
-      console.error(`[lineup/save] Team not found for user_id=${userId}`, teamError?.message, teamError?.code);
-      // Try listing all user_ids to debug
+    if (teamError) {
+      console.error(`[lineup/save] DB error for user_id=${userId}:`, teamError.message, teamError.code);
       const { data: allTeams } = await adminSupabase
         .from('user_teams')
         .select('id, user_id')
         .limit(10);
       console.log('[lineup/save] Sample user_teams:', JSON.stringify(allTeams));
-      return res.status(404).json({ success: false, error: 'Time não encontrado', debug_user_id: userId });
+      return res.status(500).json({ success: false, error: 'Erro ao buscar time', debug_user_id: userId, db_error: teamError.message });
+    }
+
+    if (!currentTeam) {
+      console.error(`[lineup/save] No team row for user_id=${userId}`);
+      const { data: allTeams } = await adminSupabase
+        .from('user_teams')
+        .select('id, user_id')
+        .limit(10);
+      console.log('[lineup/save] All user_teams user_ids:', JSON.stringify(allTeams?.map(t => t.user_id)));
+      return res.status(404).json({ success: false, error: 'Time não encontrado. Faça o cadastro primeiro.', debug_user_id: userId });
     }
 
     if (currentTeam.is_locked) {
@@ -546,10 +555,15 @@ app.post('/api/lineup/clear', authMiddleware, async (req: AuthenticatedRequest, 
       .from('user_teams')
       .select('id, budget, lineup')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (teamError || !currentTeam) {
-      console.error(`[lineup/clear] Team not found for user_id=${userId}`, teamError?.message);
+    if (teamError) {
+      console.error(`[lineup/clear] DB error for user_id=${userId}:`, teamError.message);
+      return res.status(500).json({ success: false, error: 'Erro ao buscar time', debug_user_id: userId });
+    }
+
+    if (!currentTeam) {
+      console.error(`[lineup/clear] No team row for user_id=${userId}`);
       return res.status(404).json({ success: false, error: 'Time não encontrado', debug_user_id: userId });
     }
 

@@ -58,6 +58,7 @@ export async function authMiddleware(
       role: user.user_metadata?.role || 'user'
     };
 
+    console.log(`[auth] Authenticated user: ${user.id} (${user.email})`);
     next();
 
   } catch (error) {

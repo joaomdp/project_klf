@@ -15,7 +15,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('❌ Missing Supabase credentials! Check your .env file');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 if (!supabaseServiceKey) {
   if (process.env.NODE_ENV === 'production') {
@@ -25,6 +30,11 @@ if (!supabaseServiceKey) {
 }
 
 export const adminSupabase = supabaseServiceKey
-  ? createClient(supabaseUrl, supabaseServiceKey)
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
   : supabase;
 

@@ -346,6 +346,31 @@ app.post('/api/market/validate-trade/:userTeamId', async (req: Request, res: Res
 });
 
 // ============================================================================
+// DEBUG: Team lookup diagnostic (TEMPORARY - remove after fixing)
+// ============================================================================
+app.get('/api/debug/team-lookup', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.id;
+  const { data: team, error } = await adminSupabase
+    .from('user_teams')
+    .select('id, user_id')
+    .eq('user_id', userId || '')
+    .single();
+
+  const { data: allTeams } = await adminSupabase
+    .from('user_teams')
+    .select('id, user_id')
+    .limit(10);
+
+  return res.json({
+    auth_user_id: userId,
+    team_found: !!team,
+    team,
+    error: error?.message,
+    all_teams: allTeams
+  });
+});
+
+// ============================================================================
 // LINEUP SAVE ENDPOINT (with server-side budget validation)
 // ============================================================================
 app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
@@ -368,6 +393,7 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
     }
 
     // 2. Buscar time atual do usuário
+    console.log(`[lineup/save] Looking up user_teams for user_id=${userId}`);
     const { data: currentTeam, error: teamError } = await adminSupabase
       .from('user_teams')
       .select('id, budget, lineup, is_locked')
@@ -375,7 +401,14 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
       .single();
 
     if (teamError || !currentTeam) {
-      return res.status(404).json({ success: false, error: 'Time não encontrado' });
+      console.error(`[lineup/save] Team not found for user_id=${userId}`, teamError?.message, teamError?.code);
+      // Try listing all user_ids to debug
+      const { data: allTeams } = await adminSupabase
+        .from('user_teams')
+        .select('id, user_id')
+        .limit(10);
+      console.log('[lineup/save] Sample user_teams:', JSON.stringify(allTeams));
+      return res.status(404).json({ success: false, error: 'Time não encontrado', debug_user_id: userId });
     }
 
     if (currentTeam.is_locked) {
@@ -508,6 +541,7 @@ app.post('/api/lineup/clear', authMiddleware, async (req: AuthenticatedRequest, 
     }
 
     // Buscar time atual
+    console.log(`[lineup/clear] Looking up user_teams for user_id=${userId}`);
     const { data: currentTeam, error: teamError } = await adminSupabase
       .from('user_teams')
       .select('id, budget, lineup')
@@ -515,7 +549,8 @@ app.post('/api/lineup/clear', authMiddleware, async (req: AuthenticatedRequest, 
       .single();
 
     if (teamError || !currentTeam) {
-      return res.status(404).json({ success: false, error: 'Time não encontrado' });
+      console.error(`[lineup/clear] Team not found for user_id=${userId}`, teamError?.message);
+      return res.status(404).json({ success: false, error: 'Time não encontrado', debug_user_id: userId });
     }
 
     // Calcular reembolso total dos jogadores no lineup atual

@@ -234,7 +234,7 @@ app.get('/api/rounds/current', async (req: Request, res: Response) => {
     const { data, error } = await supabase
       .from('rounds')
       .select('*')
-      .in('status', ['pending', 'open'])
+      .in('status', ['upcoming', 'live'])
       .order('start_date', { ascending: true })
       .limit(1)
       .single();

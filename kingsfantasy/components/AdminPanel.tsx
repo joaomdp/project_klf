@@ -98,7 +98,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [newRoundForm, setNewRoundForm] = useState({
     season: '',
     round_number: '',
-    status: 'active'
+    status: 'upcoming'
   });
   const [matchForm, setMatchForm] = useState({
     round_id: '',
@@ -330,7 +330,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
   useEffect(() => {
     if (!rounds.length) return;
-    const activeRound = rounds.find((round) => round.status === 'active' || round.is_market_open);
+    const activeRound = rounds.find((round) => round.status === 'live' || round.is_market_open);
     if (activeRound?.id) {
       setActiveRoundId(String(activeRound.id));
       if (!marketRoundId) {
@@ -439,7 +439,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     const result = await DataService.createAdminRound({
       season: seasonValue,
       round_number: roundValue,
-      status: newRoundForm.status || 'active',
+      status: newRoundForm.status || 'upcoming',
       start_date: resolvedStartDate,
       market_close_time: resolvedStartDate,
       is_market_open: false
@@ -453,7 +453,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     setNewRoundForm({
       season: '',
       round_number: '',
-      status: 'active'
+      status: 'upcoming'
     });
     await loadRounds();
     window.dispatchEvent(new Event('matches:refresh'));
@@ -1927,8 +1927,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                   onChange={(event) => setNewRoundForm((prev) => ({ ...prev, status: event.target.value }))}
                   className="mt-2 bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
                 >
-                  <option value="active">Ativa</option>
-                  <option value="completed">Concluida</option>
+                  <option value="upcoming">Pendente</option>
+                  <option value="live">Ativa</option>
+                  <option value="completed">Finalizada</option>
+                  <option value="cancelled">Cancelada</option>
                 </select>
               </div>
               <div className="flex items-end justify-end md:col-span-3">
@@ -1985,12 +1987,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-[10px] uppercase tracking-wider px-2 py-1 border rounded ${
-                          round.status === 'active' ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10' :
-                          round.status === 'finished' ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10' :
+                          round.status === 'live' ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10' :
                           round.status === 'completed' ? 'border-blue-500/40 text-blue-300 bg-blue-500/10' :
+                          round.status === 'upcoming' ? 'border-yellow-500/40 text-yellow-300 bg-yellow-500/10' :
                           'border-gray-500/40 text-gray-400 bg-gray-500/10'
                         }`}>
-                          {round.status === 'active' ? 'Ativa' : round.status === 'finished' ? 'Finalizada' : round.status === 'completed' ? 'Concluida' : round.status}
+                          {round.status === 'live' ? 'Ativa' : round.status === 'completed' ? 'Finalizada' : round.status === 'upcoming' ? 'Pendente' : round.status}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -2599,7 +2601,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
   const renderFinalize = () => {
     const selectedFinalizeRound = rounds.find((r) => String(r.id) === String(finalizeTabRoundId)) || null;
-    const isRoundFinished = selectedFinalizeRound?.status === 'finished' || selectedFinalizeRound?.status === 'completed';
+    const isRoundFinished = selectedFinalizeRound?.status === 'completed';
 
     const handleFinalizeTabCheck = async () => {
       if (!finalizeTabRoundId) return;
@@ -2724,7 +2726,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
               <option value="">Selecione a rodada para finalizar</option>
               {rounds.map((round) => (
                 <option key={round.id} value={round.id}>
-                  Season {round.season} - Rodada {round.round_number} ({round.status === 'active' ? 'Ativa' : (round.status === 'finished' || round.status === 'completed') ? 'Finalizada' : round.status})
+                  Season {round.season} - Rodada {round.round_number} ({round.status === 'live' ? 'Ativa' : round.status === 'completed' ? 'Finalizada' : round.status === 'upcoming' ? 'Pendente' : round.status})
                 </option>
               ))}
             </select>

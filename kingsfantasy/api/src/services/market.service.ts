@@ -25,9 +25,10 @@ export interface MarketStatus {
 }
 
 class MarketService {
-  private readonly NEXT_ROUND_STATUSES = ['upcoming', 'pending', 'active', 'open', 'live'];
+  // Status válidos no banco: 'upcoming', 'live', 'completed', 'cancelled'
+  private readonly NEXT_ROUND_STATUSES = ['upcoming', 'live'];
 
-  private readonly SCHEDULABLE_ROUND_STATUSES = ['upcoming', 'pending', 'active', 'open', 'live'];
+  private readonly SCHEDULABLE_ROUND_STATUSES = ['upcoming', 'live'];
 
   /**
    * Verifica status atual do mercado

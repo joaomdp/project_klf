@@ -38,13 +38,13 @@ export async function getDashboardStats(req: AuthenticatedRequest, res: Response
       supabase
         .from('rounds')
         .select('id')
-        .eq('status', 'pending'),
+        .eq('status', 'upcoming'),
 
-      // Rodadas ativas (open no DB)
+      // Rodadas ativas (live no DB)
       supabase
         .from('rounds')
         .select('id, is_market_open')
-        .eq('status', 'open'),
+        .eq('status', 'live'),
       
       // Última partida inserida
       supabase

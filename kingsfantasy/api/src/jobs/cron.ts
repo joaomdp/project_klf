@@ -38,7 +38,7 @@ class CronJobsService {
         const { data: rounds } = await supabase
           .from('rounds')
           .select('id, round_number')
-          .in('status', ['closed', 'finished'])
+          .in('status', ['completed'])
           .order('start_date', { ascending: false })
           .limit(1);
 
@@ -68,39 +68,41 @@ class CronJobsService {
       try {
         const now = new Date();
 
-        const { data: pendingRounds } = await supabase
+        // upcoming → live (quando start_date é atingido)
+        const { data: upcomingRounds } = await supabase
           .from('rounds')
           .select('id, start_date')
-          .eq('status', 'pending');
+          .eq('status', 'upcoming');
 
-        if (pendingRounds) {
-          for (const round of pendingRounds) {
+        if (upcomingRounds) {
+          for (const round of upcomingRounds) {
             const startDate = new Date(round.start_date);
             if (now >= startDate) {
               await supabase
                 .from('rounds')
-                .update({ status: 'open' })
+                .update({ status: 'live' })
                 .eq('id', round.id);
-              console.log(`[CRON] Round ${round.id} status: pending -> open`);
+              console.log(`[CRON] Round ${round.id} status: upcoming -> live`);
             }
           }
         }
 
-        const { data: openRounds } = await supabase
+        // live → completed (quando end_date é atingido)
+        const { data: liveRounds } = await supabase
           .from('rounds')
           .select('id, end_date')
-          .eq('status', 'open');
+          .eq('status', 'live');
 
-        if (openRounds) {
-          for (const round of openRounds) {
+        if (liveRounds) {
+          for (const round of liveRounds) {
             if (round.end_date) {
               const endDate = new Date(round.end_date);
               if (now >= endDate) {
                 await supabase
                   .from('rounds')
-                  .update({ status: 'closed' })
+                  .update({ status: 'completed' })
                   .eq('id', round.id);
-                console.log(`[CRON] Round ${round.id} status: open -> closed`);
+                console.log(`[CRON] Round ${round.id} status: live -> completed`);
               }
             }
           }

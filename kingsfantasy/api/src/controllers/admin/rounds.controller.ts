@@ -4,25 +4,28 @@ import { scoringService } from '../../services/scoring.service';
 import { marketService } from '../../services/market.service';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware';
 
-const ROUND_STATUS_INPUT_TO_DB: Record<string, 'pending' | 'open' | 'closed' | 'finished'> = {
-  pending: 'pending',
-  upcoming: 'pending',
-  open: 'open',
-  active: 'open',
-  live: 'open',
-  closed: 'closed',
-  finished: 'finished',
-  completed: 'finished'
-};
-
-const ROUND_STATUS_DB_TO_API: Record<string, 'upcoming' | 'active' | 'completed' | 'finished'> = {
+// Status válidos no banco: 'upcoming', 'live', 'completed', 'cancelled'
+const ROUND_STATUS_INPUT_TO_DB: Record<string, 'upcoming' | 'live' | 'completed' | 'cancelled'> = {
   pending: 'upcoming',
-  open: 'active',
+  upcoming: 'upcoming',
+  open: 'live',
+  active: 'live',
+  live: 'live',
   closed: 'completed',
-  finished: 'finished'
+  finished: 'completed',
+  completed: 'completed',
+  cancelled: 'cancelled'
 };
 
-function normalizeRoundStatusToDb(status?: string): 'pending' | 'open' | 'closed' | 'finished' | null {
+// DB → API: mantém os mesmos valores do banco (já são user-friendly)
+const ROUND_STATUS_DB_TO_API: Record<string, string> = {
+  upcoming: 'upcoming',
+  live: 'live',
+  completed: 'completed',
+  cancelled: 'cancelled'
+};
+
+function normalizeRoundStatusToDb(status?: string): 'upcoming' | 'live' | 'completed' | 'cancelled' | null {
   if (!status) return null;
   return ROUND_STATUS_INPUT_TO_DB[status] || null;
 }
@@ -236,14 +239,10 @@ export async function createRound(req: AuthenticatedRequest, res: Response) {
 
     const statusCandidates = Array.from(new Set([
       normalizedStatus,
-      'pending',
       'upcoming',
-      'open',
-      'active',
       'live',
-      'closed',
       'completed',
-      'finished'
+      'cancelled'
     ].filter(Boolean))) as string[];
 
     let round: any = null;
@@ -397,7 +396,7 @@ export async function updateRoundStatus(req: AuthenticatedRequest, res: Response
       return res.status(400).json({
         success: false,
         error: 'status é obrigatório',
-        allowed_values: ['upcoming', 'active', 'completed']
+        allowed_values: ['upcoming', 'live', 'completed', 'cancelled']
       });
     }
 
@@ -429,10 +428,10 @@ export async function updateRoundStatus(req: AuthenticatedRequest, res: Response
 
     // Validar transição de status (opcional - pode remover se quiser permitir qualquer transição)
     const validTransitions: Record<string, string[]> = {
-      pending: ['open', 'closed', 'finished'],
-      open: ['closed', 'finished'],
-      closed: ['finished'],
-      finished: []
+      upcoming: ['live', 'completed', 'cancelled'],
+      live: ['completed', 'cancelled'],
+      completed: ['upcoming', 'live'],
+      cancelled: ['upcoming']
     };
 
     const allowedNextStatuses = validTransitions[currentRound.status] || [];

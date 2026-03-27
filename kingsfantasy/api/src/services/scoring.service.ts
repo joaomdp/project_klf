@@ -187,7 +187,7 @@ class ScoringService {
     }
 
     const roundStatus = String((round as any).status || '').toLowerCase();
-    const isAlreadyFinished = roundStatus === 'completed' || roundStatus === 'finished';
+    const isAlreadyFinished = roundStatus === 'completed';
     // Re-finalização NUNCA altera preços nem patrimônio — apenas recalcula pontuações
     // Isso evita que preços fiquem "compounding" (aplicando fórmula sobre preço já modificado)
     // EXCETO quando forceRecalculate=true (admin forçou recálculo completo via reset+finalize)
@@ -391,8 +391,8 @@ class ScoringService {
     // ── FASE 4: Marcar rodada como finalizada ──────────────────
     console.log(`🔷 FASE 4: Finalizando rodada...`);
 
-    // Tentar múltiplos valores de status para compatibilidade com constraints do banco
-    const finishedStatusCandidates = ['finished', 'completed', 'closed'];
+    // Status válidos no banco: 'upcoming', 'live', 'completed', 'cancelled'
+    const finishedStatusCandidates = ['completed'];
     let statusUpdated = false;
 
     for (const statusCandidate of finishedStatusCandidates) {
@@ -1015,7 +1015,7 @@ class ScoringService {
    *   2. Restaura budgets e lineups dos usuários (snapshot)
    *   3. Remove round_scores da rodada
    *   4. Recalcula total_points dos user_teams (sem esta rodada)
-   *   5. Reseta status da rodada para 'closed'
+   *   5. Reseta status da rodada para 'upcoming'
    *
    * Idempotente: chamar múltiplas vezes não corrompe dados.
    */
@@ -1043,7 +1043,7 @@ class ScoringService {
     }
 
     const roundStatus = String((round as any).status || '').toLowerCase();
-    if (roundStatus !== 'finished' && roundStatus !== 'completed') {
+    if (roundStatus !== 'completed') {
       throw new Error(`Rodada não está finalizada (status atual: ${roundStatus}). Apenas rodadas finalizadas podem ser resetadas.`);
     }
 
@@ -1162,8 +1162,8 @@ class ScoringService {
     // ── PASSO 5: Resetar status da rodada ────────────────────
     console.log(`🔷 Passo 5: Resetando status da rodada para pré-finalização...`);
 
-    // Tentar múltiplos valores para compatibilidade com constraints do banco
-    const resetStatusCandidates = ['closed', 'completed', 'open', 'pending'];
+    // Status válidos no banco: 'upcoming', 'live', 'completed', 'cancelled'
+    const resetStatusCandidates = ['upcoming'];
     let roundStatusReset = false;
 
     for (const statusCandidate of resetStatusCandidates) {

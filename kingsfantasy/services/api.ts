@@ -1824,6 +1824,13 @@ export const DataService = {
         if (data.debug_user_id) {
           console.error(`[DEBUG] Server looked for user_id=${data.debug_user_id}`);
         }
+        // Auto-diagnose on failure
+        if (response.status === 404 || response.status === 500) {
+          try {
+            const diag = await this.debugTeamLookup();
+            console.error('[AUTO-DIAG] Team lookup result:', JSON.stringify(diag, null, 2));
+          } catch {}
+        }
         return { success: false, error: data.error || 'Erro ao salvar escalação' };
       }
 

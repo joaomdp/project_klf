@@ -1820,6 +1820,10 @@ export const DataService = {
 
       const data = await response.json();
       if (!response.ok) {
+        console.error('❌ saveLineupSecure failed:', data);
+        if (data.debug_user_id) {
+          console.error(`[DEBUG] Server looked for user_id=${data.debug_user_id}`);
+        }
         return { success: false, error: data.error || 'Erro ao salvar escalação' };
       }
 
@@ -1858,6 +1862,20 @@ export const DataService = {
     } catch (error) {
       console.error('❌ Erro ao limpar lineup:', error);
       return { success: false, error: 'Erro de conexão ao limpar escalação' };
+    }
+  },
+
+  /** TEMPORARY: Debug team lookup */
+  async debugTeamLookup(): Promise<any> {
+    const userToken = this.getUserToken();
+    if (!userToken) return { error: 'Not authenticated' };
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/debug/team-lookup`, {
+        headers: { 'Authorization': `Bearer ${userToken}` }
+      });
+      return await response.json();
+    } catch (e) {
+      return { error: String(e) };
     }
   },
 

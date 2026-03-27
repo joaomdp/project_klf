@@ -1820,9 +1820,12 @@ export const DataService = {
 
       const data = await response.json();
       if (!response.ok) {
-        console.error('❌ saveLineupSecure failed:', data);
+        console.error('❌ saveLineupSecure failed:', JSON.stringify(data, null, 2));
         if (data.debug_user_id) {
           console.error(`[DEBUG] Server looked for user_id=${data.debug_user_id}`);
+        }
+        if (data.db_error) {
+          console.error(`[DEBUG] DB error: ${data.db_error}`);
         }
         // Auto-diagnose on failure
         if (response.status === 404 || response.status === 500) {

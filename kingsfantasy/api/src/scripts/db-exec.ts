@@ -113,10 +113,10 @@ async function resetToInitialState() {
   console.log(`   ✅ ${lineupsSynced} lineups atualizados com preços reais`);
 
   // 5. Resetar user_teams (budget, pontos)
-  console.log('5️⃣  Resetando user_teams (budget=60, pontos=0)...');
+  console.log('5️⃣  Resetando user_teams (budget=100, pontos=0)...');
   const { error: e5 } = await adminSupabase
     .from('user_teams')
-    .update({ budget: 60, total_points: 0 })
+    .update({ budget: 100, total_points: 0 })
     .neq('id', 0);
   if (e5) console.error('   ❌', e5.message);
   else console.log(`   ✅ user_teams resetados`);
@@ -146,9 +146,9 @@ async function resetToInitialState() {
 
   const teamCount = await count('user_teams');
   const { data: budgetCheck } = await adminSupabase.from('user_teams').select('budget, total_points');
-  const allBudget60 = (budgetCheck || []).every(t => Number(t.budget) === 60);
+  const allBudget100 = (budgetCheck || []).every(t => Number(t.budget) === 100);
   const allPoints0 = (budgetCheck || []).every(t => Number(t.total_points) === 0);
-  console.log(`   User Teams: ${teamCount} | Budget=60: ${allBudget60 ? '✅' : '❌'} | Points=0: ${allPoints0 ? '✅' : '❌'}`);
+  console.log(`   User Teams: ${teamCount} | Budget=100: ${allBudget100 ? '✅' : '❌'} | Points=0: ${allPoints0 ? '✅' : '❌'}`);
 
   const roundCount = await count('rounds');
   const scoreCount = await count('round_scores');

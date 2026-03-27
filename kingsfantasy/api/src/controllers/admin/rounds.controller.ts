@@ -759,3 +759,30 @@ export async function getRoundFinalizeCheck(req: AuthenticatedRequest, res: Resp
     });
   }
 }
+
+/**
+ * POST /admin/market/compress
+ * Comprime preços do mercado em direção ao preço-base (anti-inflação).
+ * Uso manual pelo admin quando o mercado está inflacionado.
+ */
+export async function compressMarketPrices(req: AuthenticatedRequest, res: Response) {
+  try {
+    const basePrice = Number(req.body?.basePrice) || 12.5;
+    const result = await scoringService.compressMarketPrices(basePrice);
+
+    return res.json({
+      success: true,
+      message: `${result.compressed} preços comprimidos`,
+      data: {
+        compressed: result.compressed,
+        changes: result.changes.slice(0, 20) // Limitar resposta
+      }
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erro desconhecido';
+    return res.status(500).json({
+      success: false,
+      error: message
+    });
+  }
+}

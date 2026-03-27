@@ -7,7 +7,8 @@ import {
   deleteRound,
   finalizeRound,
   getRoundFinalizeCheck,
-  resetRoundCalculations
+  resetRoundCalculations,
+  compressMarketPrices
 } from '../../controllers/admin/rounds.controller';
 
 const router = Router();
@@ -39,6 +40,9 @@ router.get('/:id/finalize-check', getRoundFinalizeCheck);
 
 // POST /api/admin/rounds/:id/reset-calculations - Resetar cálculos da rodada
 router.post('/:id/reset-calculations', resetRoundCalculations);
+
+// POST /api/admin/market/compress - Comprimir preços do mercado (anti-inflação)
+router.post('/market/compress', compressMarketPrices);
 
 // DELETE /api/admin/rounds/:id - Deletar rodada
 router.delete('/:id', deleteRound);

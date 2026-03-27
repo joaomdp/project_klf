@@ -23,8 +23,8 @@ async function debug() {
     }
   }
   console.log(`\nTotal: ${total}`);
-  console.log(`Target budget: 60`);
-  console.log(`Over budget by: ${total - 60}`);
+  console.log(`Target budget: 100`);
+  console.log(`Over budget by: ${total - 100}`);
   
   console.log('\n=== Price distribution ===');
   const prices = players?.map(p => p.price) || [];

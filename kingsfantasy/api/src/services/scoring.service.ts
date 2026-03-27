@@ -358,7 +358,15 @@ class ScoringService {
           // Budget ajustado: se elenco valorizou, budget sobe; se desvalorizou, budget cai
           const currentBudget = Number(team.budget || 0);
           const delta = newLineupValue - oldLineupValue;
-          const nextBudget = parseFloat((currentBudget + delta).toFixed(2));
+          let nextBudget = parseFloat((currentBudget + delta).toFixed(2));
+
+          // ── Anti-snowball: limitar crescimento/queda do budget por rodada (±12%) ──
+          const maxGrowth = parseFloat((currentBudget * 1.12).toFixed(2));
+          const minGrowth = parseFloat((currentBudget * 0.88).toFixed(2));
+          nextBudget = Math.max(minGrowth, Math.min(maxGrowth, nextBudget));
+
+          // ── Limites globais absolutos do budget ──
+          nextBudget = Math.max(80, Math.min(180, nextBudget));
 
           console.log(`   📋 Team ${team.id}: players=${lineupPlayers.length}, budget=${currentBudget} → ${nextBudget}, lineup old=${oldLineupValue.toFixed(2)} new=${newLineupValue.toFixed(2)} delta=${delta.toFixed(2)}`);
 
@@ -566,14 +574,15 @@ class ScoringService {
   }
 
   /**
-   * Calcula buff de diversidade de times
-   * Formula: 25% - (repetições × 5%)
-   * 
-   * 5 times diferentes = 25%
-   * 4 times diferentes = 20%
-   * 3 times diferentes = 15%
-   * 2 times diferentes = 10%
-   * 1 time (todos iguais) = 5%
+   * Calcula buff de diversidade de times (v2 Balanced Economy)
+   *
+   * 5 times diferentes = 20%
+   * 4 times diferentes = 15%
+   * 3 times diferentes = 10%
+   * 2 times diferentes = 5%
+   * 1 time (todos iguais) = 0%
+   *
+   * Valores lidos do system_config; fallbacks hardcoded caso ausentes.
    */
   async calculateDiversityBonus(lineup: Array<{ team_id: string }>): Promise<{
     uniqueTeams: number;
@@ -585,14 +594,14 @@ class ScoringService {
     const uniqueTeamIds = new Set(lineup.map(p => p.team_id));
     const uniqueTeams = uniqueTeamIds.size;
 
-    // Obter percentual de bônus
+    // Obter percentual de bônus (com fallbacks para os novos valores v2)
     let bonusPercent = 0;
     switch (uniqueTeams) {
-      case 5: bonusPercent = config.diversity_5_teams; break;
-      case 4: bonusPercent = config.diversity_4_teams; break;
-      case 3: bonusPercent = config.diversity_3_teams; break;
-      case 2: bonusPercent = config.diversity_2_teams; break;
-      case 1: bonusPercent = config.diversity_1_team; break;
+      case 5: bonusPercent = config.diversity_5_teams ?? 20; break;
+      case 4: bonusPercent = config.diversity_4_teams ?? 15; break;
+      case 3: bonusPercent = config.diversity_3_teams ?? 10; break;
+      case 2: bonusPercent = config.diversity_2_teams ?? 5; break;
+      case 1: bonusPercent = config.diversity_1_team ?? 0; break;
       default: bonusPercent = 0;
     }
 
@@ -1226,22 +1235,103 @@ class ScoringService {
   }
 
   /**
+   * Busca a média de pontos de um jogador nas últimas N rodadas finalizadas.
+   * Usado como "performance esperada" na fórmula de flutuação de preços.
+   *
+   * Fallback:
+   *   - Se < PRICE_HISTORY_ROUNDS rodadas, usa as disponíveis
+   *   - Se nenhum histórico, usa a média global de todos os jogadores na rodada atual
+   *   - Se nenhum dado, retorna null (baseline padrão será usado)
+   */
+  private async getPlayerHistoricalAvg(
+    playerId: string,
+    currentRoundId: number,
+    historyRounds: number = 3
+  ): Promise<number | null> {
+    // Buscar rodadas finalizadas anteriores a esta
+    const { data: completedRounds } = await adminSupabase
+      .from('rounds')
+      .select('id')
+      .eq('status', 'completed')
+      .neq('id', currentRoundId)
+      .order('id', { ascending: false })
+      .limit(historyRounds);
+
+    if (!completedRounds || completedRounds.length === 0) return null;
+
+    const roundIds = completedRounds.map((r: any) => r.id);
+
+    // Buscar matches dessas rodadas
+    const { data: matches } = await adminSupabase
+      .from('matches')
+      .select('id, round_id, games_count')
+      .in('round_id', roundIds);
+
+    if (!matches || matches.length === 0) return null;
+
+    const matchIds = matches.map((m: any) => m.id);
+    const matchGamesCount = new Map<number, number>(
+      matches.map((m: any) => [Number(m.id), Math.max(Number(m.games_count || 1), 1)])
+    );
+
+    // Buscar performances do jogador nessas matches
+    const { data: performances } = await adminSupabase
+      .from('player_performances')
+      .select('fantasy_points, match_id')
+      .eq('player_id', playerId)
+      .in('match_id', matchIds);
+
+    if (!performances || performances.length === 0) return null;
+
+    // Agrupar por match, normalizar por games_count, tirar média por rodada
+    const matchPointsMap = new Map<number, number>();
+    for (const perf of performances) {
+      const matchId = Number(perf.match_id);
+      const points = Number(perf.fantasy_points || 0);
+      matchPointsMap.set(matchId, (matchPointsMap.get(matchId) || 0) + points);
+    }
+
+    let totalNormalized = 0;
+    let matchCount = 0;
+    for (const [matchId, totalPoints] of matchPointsMap) {
+      const gamesCount = matchGamesCount.get(matchId) || 1;
+      totalNormalized += totalPoints / gamesCount;
+      matchCount++;
+    }
+
+    return matchCount > 0 ? totalNormalized / matchCount : null;
+  }
+
+  /**
    * Atualiza preços dos jogadores com base na performance da rodada
    *
-   * Fórmula de flutuação:
-   *   Meta = Preco_Atual × 0.45
-   *   Variacao = (Pontuacao_Real - Meta) / 2.5
-   *   Novo_Preco = max(1.00, round(Preco_Atual + Variacao, 2))
+   * Fórmula de flutuação v2 (Balanced Economy):
+   *   performance_expected = média das últimas 3 rodadas (ou fallback global)
+   *   delta = performance_current - performance_expected
+   *   base_variation = delta * 0.2
    *
-   * Retorna map de player_id → { oldPrice, newPrice } para cálculo de patrimônio
+   * Anti-snowball:
+   *   Se preço > 15: base_variation *= 0.7
+   *   Se preço > 18: base_variation *= 0.5
+   *
+   * Limites:
+   *   variation = clamp(-1.2, +1.2)
+   *   new_price = clamp(MIN_PRICE=5, MAX_PRICE=20)
+   *
+   * Soft correction: jogadores no tier mais baixo são empurrados suavemente para 5-7
    */
   async updatePlayerPricesForRound(roundId: number): Promise<{
     updated: number;
     priceChanges: Map<string, { oldPrice: number; newPrice: number }>;
   }> {
-    console.log(`💰 Updating player prices for round ${roundId}...`);
+    console.log(`💰 Updating player prices for round ${roundId} (v2 balanced economy)...`);
 
-    const MIN_PRICE = 1.00;
+    const MIN_PRICE = 5.00;
+    const MAX_PRICE = 20.00;
+    const VARIATION_FACTOR = 0.2;
+    const VARIATION_CLAMP = 1.2;
+    const DAMPEN_THRESHOLD_1 = 15;
+    const DAMPEN_THRESHOLD_2 = 18;
 
     const { data: matches } = await adminSupabase
       .from('matches')
@@ -1288,7 +1378,7 @@ class ScoringService {
       matchMap.set(matchId, (matchMap.get(matchId) || 0) + points);
     }
 
-    // Calcular média real de cada jogador na rodada
+    // Calcular média real de cada jogador na rodada atual
     const playerAvgPoints = new Map<string, number>();
     for (const [playerId, matchMap] of playerMatchPoints) {
       let totalNormalized = 0;
@@ -1302,6 +1392,14 @@ class ScoringService {
 
       playerAvgPoints.set(playerId, matchCount > 0 ? totalNormalized / matchCount : 0);
     }
+
+    // Calcular média global da rodada (fallback para jogadores sem histórico)
+    const allAvgPoints = Array.from(playerAvgPoints.values()).filter(v => Number.isFinite(v));
+    const globalAvg = allAvgPoints.length > 0
+      ? allAvgPoints.reduce((sum, v) => sum + v, 0) / allAvgPoints.length
+      : 0;
+
+    console.log(`   📊 Média global da rodada: ${globalAvg.toFixed(2)} (${allAvgPoints.length} jogadores)`);
 
     const playerIds = Array.from(playerAvgPoints.keys());
     const { data: players, error: playersError } = await adminSupabase
@@ -1318,13 +1416,39 @@ class ScoringService {
     const priceChanges = new Map<string, { oldPrice: number; newPrice: number }>();
 
     for (const player of players) {
-      const avgPoints = playerAvgPoints.get(player.id) || 0;
-      const currentPrice = Number(player.price || 0);
+      const currentPerformance = playerAvgPoints.get(player.id) || 0;
+      const currentPrice = Number(player.price || MIN_PRICE);
 
-      // Fórmula: Variacao = (Pontuacao_Real - (Preco_Atual * 0.45)) / 2.5
-      const meta = currentPrice * 0.45;
-      const variacao = (avgPoints - meta) / 2.5;
-      const newPrice = Math.max(MIN_PRICE, parseFloat((currentPrice + variacao).toFixed(2)));
+      // ── Performance esperada: média das últimas 3 rodadas ──
+      const historicalAvg = await this.getPlayerHistoricalAvg(player.id, roundId, 3);
+      // Fallback: se sem histórico, usa média global da rodada atual
+      const performanceExpected = historicalAvg ?? globalAvg;
+
+      // ── Delta e variação base ──
+      const delta = currentPerformance - performanceExpected;
+      let baseVariation = delta * VARIATION_FACTOR;
+
+      // ── Anti-snowball: dampening para preços altos ──
+      if (currentPrice > DAMPEN_THRESHOLD_2) {
+        baseVariation *= 0.5;
+      } else if (currentPrice > DAMPEN_THRESHOLD_1) {
+        baseVariation *= 0.7;
+      }
+
+      // ── Clamp variação por rodada ──
+      const variation = Math.max(-VARIATION_CLAMP, Math.min(VARIATION_CLAMP, baseVariation));
+
+      // ── Soft correction: empurrar jogadores muito baratos de volta ao piso 5-7 ──
+      // Se o jogador está abaixo de 6 e a variação é negativa, reduz a queda
+      let finalVariation = variation;
+      if (currentPrice < 6 && finalVariation < 0) {
+        finalVariation *= 0.3; // reduz 70% da queda para jogadores já muito baratos
+      }
+
+      // ── Preço final com limites absolutos ──
+      const newPrice = Math.max(MIN_PRICE, Math.min(MAX_PRICE,
+        parseFloat((currentPrice + finalVariation).toFixed(2))
+      ));
 
       priceChanges.set(player.id, { oldPrice: currentPrice, newPrice });
 
@@ -1340,13 +1464,67 @@ class ScoringService {
         continue;
       }
 
-      const direction = variacao > 0 ? '📈' : '📉';
-      console.log(`   ${direction} ${player.id}: ${currentPrice} → ${newPrice} (pts=${avgPoints.toFixed(1)}, meta=${meta.toFixed(1)}, var=${variacao.toFixed(2)})`);
+      const direction = finalVariation > 0 ? '📈' : '📉';
+      const expectedLabel = historicalAvg !== null ? `hist=${performanceExpected.toFixed(1)}` : `global=${performanceExpected.toFixed(1)}`;
+      console.log(`   ${direction} ${player.id}: ${currentPrice} → ${newPrice} (pts=${currentPerformance.toFixed(1)}, ${expectedLabel}, delta=${delta.toFixed(2)}, var=${finalVariation.toFixed(2)})`);
       updated++;
     }
 
     console.log(`✅ Player prices updated: ${updated}/${players.length}`);
     return { updated, priceChanges };
+  }
+
+  /**
+   * MARKET COMPRESSION — Comprime preços em direção ao preço-base original
+   *
+   * Fórmula: new_price = (current_price * 0.8) + (base_price * 0.2)
+   *
+   * Uso: chamado manualmente pelo admin ou via flag.
+   * NÃO altera snapshots existentes.
+   * O base_price padrão é o ponto médio da faixa (12.5).
+   */
+  async compressMarketPrices(basePrice: number = 12.5): Promise<{
+    compressed: number;
+    changes: Array<{ id: string; oldPrice: number; newPrice: number }>;
+  }> {
+    const MIN_PRICE = 5.00;
+    const MAX_PRICE = 20.00;
+
+    console.log(`🔧 Comprimindo preços do mercado (base=${basePrice})...`);
+
+    const { data: players, error } = await adminSupabase
+      .from('players')
+      .select('id, price');
+
+    if (error) throw error;
+    if (!players || players.length === 0) {
+      return { compressed: 0, changes: [] };
+    }
+
+    let compressed = 0;
+    const changes: Array<{ id: string; oldPrice: number; newPrice: number }> = [];
+
+    for (const player of players) {
+      const oldPrice = Number(player.price || basePrice);
+      const newPrice = Math.max(MIN_PRICE, Math.min(MAX_PRICE,
+        parseFloat(((oldPrice * 0.8) + (basePrice * 0.2)).toFixed(2))
+      ));
+
+      if (newPrice === oldPrice) continue;
+
+      const { error: updateError } = await adminSupabase
+        .from('players')
+        .update({ price: newPrice })
+        .eq('id', player.id);
+
+      if (!updateError) {
+        compressed++;
+        changes.push({ id: player.id, oldPrice, newPrice });
+      }
+    }
+
+    console.log(`✅ Market compression: ${compressed}/${players.length} preços ajustados`);
+    return { compressed, changes };
   }
 }
 

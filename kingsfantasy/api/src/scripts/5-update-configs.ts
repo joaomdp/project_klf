@@ -59,6 +59,33 @@ async function updateConfigs() {
         description: 'Current season name',
       },
       
+      // ===== DIVERSITY BONUS (v2 Balanced Economy) =====
+      {
+        key: 'diversity_5_teams',
+        value: '20',
+        description: 'Diversity bonus % for 5 unique teams (v2)',
+      },
+      {
+        key: 'diversity_4_teams',
+        value: '15',
+        description: 'Diversity bonus % for 4 unique teams (v2)',
+      },
+      {
+        key: 'diversity_3_teams',
+        value: '10',
+        description: 'Diversity bonus % for 3 unique teams (v2)',
+      },
+      {
+        key: 'diversity_2_teams',
+        value: '5',
+        description: 'Diversity bonus % for 2 unique teams (v2)',
+      },
+      {
+        key: 'diversity_1_team',
+        value: '0',
+        description: 'Diversity bonus % for 1 team (v2)',
+      },
+
       // ===== SISTEMA DE RATING (INSERT) =====
       {
         key: 'enable_analyst_rating',

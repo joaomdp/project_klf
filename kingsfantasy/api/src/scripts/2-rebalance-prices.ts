@@ -121,7 +121,7 @@ async function rebalancePrices() {
     } else {
       logger.info(`${userTeams.length} times de usuários encontrados`);
       
-      const teamsWithOldBudget = userTeams.filter(ut => ut.available_budget > 100);
+      const teamsWithOldBudget = userTeams.filter(ut => ut.available_budget > 180);
       
       if (teamsWithOldBudget.length > 0) {
         logger.info(`Ajustando budget de ${teamsWithOldBudget.length} times...`);

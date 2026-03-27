@@ -149,14 +149,14 @@ async function diagnoseDatabase() {
     if (userTeamsError) throw userTeamsError;
     
     const userTeamsCount = userTeams?.length || 0;
-    const userTeamsWithOldBudget = userTeams?.filter(ut => ut.available_budget > 100).length || 0;
-    
+    const userTeamsWithOldBudget = userTeams?.filter(ut => ut.available_budget > 180).length || 0;
+
     results.push({
       table: 'user_teams',
       count: userTeamsCount,
       status: userTeamsWithOldBudget > 0 ? 'warning' : 'ok',
-      message: userTeamsWithOldBudget > 0 
-        ? `${userTeamsCount} times | ${userTeamsWithOldBudget} com budget antigo (>100)` 
+      message: userTeamsWithOldBudget > 0
+        ? `${userTeamsCount} times | ${userTeamsWithOldBudget} com budget acima do limite (>180)`
         : `${userTeamsCount} times de usuários`,
     });
 

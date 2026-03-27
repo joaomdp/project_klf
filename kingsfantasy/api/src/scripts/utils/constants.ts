@@ -8,10 +8,28 @@ export const SUPABASE_STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public`;
 export const TEAMS_BUCKET = 'teams';
 export const PLAYERS_BUCKET = 'players';
 
-// Budget System (Riot Fantasy Standard)
-export const INITIAL_BUDGET = 60;
-export const MIN_PLAYER_PRICE = 8;
-export const MAX_PLAYER_PRICE = 15;
+// Budget System — Balanced Economy (v2)
+export const INITIAL_BUDGET = 100;
+export const MIN_PLAYER_PRICE = 5;
+export const MAX_PLAYER_PRICE = 20;
+
+// Budget growth limits per round (anti-snowball)
+export const BUDGET_MAX_GROWTH_RATE = 1.12;  // +12% max per round
+export const BUDGET_MIN_GROWTH_RATE = 0.88;  // -12% max per round
+export const BUDGET_GLOBAL_MIN = 80;
+export const BUDGET_GLOBAL_MAX = 180;
+
+// Price variation limits per round
+export const PRICE_VARIATION_MAX = 1.2;
+export const PRICE_VARIATION_MIN = -1.2;
+export const PRICE_VARIATION_FACTOR = 0.2;   // base_variation = delta * 0.2
+
+// Anti-snowball dampening thresholds
+export const PRICE_DAMPEN_THRESHOLD_1 = 15;  // above this: variation *= 0.7
+export const PRICE_DAMPEN_THRESHOLD_2 = 18;  // above this: variation *= 0.5
+
+// Historical average lookback
+export const PRICE_HISTORY_ROUNDS = 3;       // use last N rounds for expected performance
 
 // Player Configuration
 export const TOTAL_PLAYERS = 50;
@@ -59,17 +77,17 @@ export const RATING_SCALE = {
   EXCELLENT: { min: 81, max: 100, label: 'Excelente / Destaque' },
 };
 
-// Price Distribution Tiers (após rebalanceamento 8-15)
+// Price Distribution Tiers (balanced economy 5-20)
 export const PRICE_TIERS = {
-  S: { min: 14.5, max: 15.0, label: 'Stars', percentile: 10 },
-  A_PLUS: { min: 13.0, max: 14.4, label: 'Very Good', percentile: 20 },
-  A: { min: 11.5, max: 12.9, label: 'Good', percentile: 40 },
-  B: { min: 10.0, max: 11.4, label: 'Average', percentile: 70 },
-  C: { min: 8.0, max: 9.9, label: 'Rookies', percentile: 100 },
+  S: { min: 17.0, max: 20.0, label: 'Stars', percentile: 10 },
+  A_PLUS: { min: 14.0, max: 16.9, label: 'Very Good', percentile: 20 },
+  A: { min: 11.0, max: 13.9, label: 'Good', percentile: 40 },
+  B: { min: 8.0, max: 10.9, label: 'Average', percentile: 70 },
+  C: { min: 5.0, max: 7.9, label: 'Rookies', percentile: 100 },
 };
 
 // Timezone
 export const TIMEZONE = 'America/Sao_Paulo';
 
 // Validation Thresholds
-export const MIN_VALID_LINEUPS = 1; // Pelo menos 1 lineup válida deve existir com budget 60
+export const MIN_VALID_LINEUPS = 1; // Pelo menos 1 lineup válida deve existir com budget 100

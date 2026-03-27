@@ -99,7 +99,7 @@ export async function getDashboardStats(req: AuthenticatedRequest, res: Response
       },
       system: {
         analyst_rating_enabled: configMap.get('enable_analyst_rating') === 'true',
-        budget: parseFloat(configMap.get('budget') || '60'),
+        budget: parseFloat(configMap.get('budget') || '100'),
         max_score: parseFloat(configMap.get('max_possible_score') || '100')
       }
     };

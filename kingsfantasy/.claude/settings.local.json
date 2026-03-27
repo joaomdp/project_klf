@@ -17,7 +17,9 @@
       "Bash(node -e \"const d=require\\(''fs''\\).readFileSync\\(''/tmp/lp_test.json'',''utf8''\\); const j=JSON.parse\\(d\\); if\\(j.error\\){console.log\\(''ERROR:'',j.error.code\\);} else {const m=j.cargoquery||[]; const tabs=[...new Set\\(m.map\\(x=>x.title.Tab\\)\\)]; console.log\\(''Total:'',m.length,''matches''\\); console.log\\(''Tabs:'',tabs\\);}\")",
       "Bash(node -e \"const d=require\\(''fs''\\).readFileSync\\(process.env.TEMP+''/lp_test.json'',''utf8''\\); const j=JSON.parse\\(d\\); if\\(j.error\\){console.log\\(''ERROR:'',j.error.code\\);} else {const m=j.cargoquery||[]; const tabs=[...new Set\\(m.map\\(x=>x.title.Tab\\)\\)]; console.log\\(''Total:'',m.length,''matches''\\); console.log\\(''Tabs:'',tabs\\);}\")",
       "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -type f \\\\\\(-name *meu-time* -o -name *mercado* \\\\\\))",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -name supabase.json -o -name *schema*.json)",
+      "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -name README* -o -name *.md)"
     ]
   }
 }

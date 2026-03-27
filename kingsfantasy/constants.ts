@@ -1,7 +1,7 @@
 
 import { Player, Role, RankingEntry } from './types';
 
-export const INITIAL_BUDGET = 100.0;
+export const INITIAL_BUDGET = 60.0;
 
 export const MOCK_RANKING: RankingEntry[] = [
   { rank: 1, userName: 'BAIANO', teamName: 'ILHA DAS LENDAS', points: 1342.5, trend: 'stable' },
@@ -182,7 +182,7 @@ export const CHAMPION_ROLES_MAP: Record<string, Role[]> = {
 };
 
 export const CHAMPIONS_LIST = Object.keys(CHAMPION_ROLES_MAP).sort();
-export const INITIAL_BUDGET_DISPLAY = 100.0;
+export const INITIAL_BUDGET_DISPLAY = 60.0;
 
 // O MOCK_PLAYERS será substituído pelo fetch real do Supabase no App.tsx
 export const MOCK_PLAYERS: Player[] = [];

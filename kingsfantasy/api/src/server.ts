@@ -495,7 +495,7 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
 
   // 7. Calcular budget
   const totalBudget = Number(currentTeam.budget) + currentLineupCost;
-  const newBudget = Number((totalBudget - newLineupCost).toFixed(2));
+  const newBudget = Math.round(totalBudget - newLineupCost);
 
   console.log(`📋 Lineup save: budget=${currentTeam.budget}, oldCost=${currentLineupCost}, newCost=${newLineupCost}, newBudget=${newBudget}`);
 
@@ -567,7 +567,7 @@ app.post('/api/lineup/clear', authMiddleware, async (req: AuthenticatedRequest, 
     refund = (dbPlayers || []).reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
   }
 
-  const newBudget = parseFloat((Number(currentTeam.budget) + refund).toFixed(2));
+  const newBudget = Math.round(Number(currentTeam.budget) + refund);
 
   // Salvar lineup vazio
   const { error: updateError } = await adminSupabase

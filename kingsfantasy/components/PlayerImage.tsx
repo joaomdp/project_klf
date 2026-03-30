@@ -22,7 +22,7 @@ const PlayerImage: React.FC<PlayerImageProps> = ({
 }) => {
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(!priority); // Se priority, não mostra loading
-  const [focusPosition, setFocusPosition] = useState('50% 50%');
+  const [focusPosition, setFocusPosition] = useState('50% 20%');
 
   // Se a URL já for HTTP (como as da Wikia/Riot), usa ela diretamente
   const imageUrl = player.image && player.image.startsWith('http') 
@@ -55,7 +55,7 @@ const PlayerImage: React.FC<PlayerImageProps> = ({
 
   useEffect(() => {
     if (!smartFocus || !imageUrl) {
-      setFocusPosition('50% 50%');
+      setFocusPosition('50% 20%');
       return;
     }
 
@@ -115,10 +115,11 @@ const PlayerImage: React.FC<PlayerImageProps> = ({
         if (!found) throw new Error('Sem area opaca detectada');
 
         const centerX = ((minX + maxX) / 2 / width) * 100;
-        const centerY = ((minY + maxY) / 2 / height) * 100;
+        // Focus on upper third of content (face area) rather than geometric center
+        const faceY = ((minY + (maxY - minY) * 0.3) / height) * 100;
 
         const x = Math.max(30, Math.min(70, centerX));
-        const y = Math.max(28, Math.min(62, centerY));
+        const y = Math.max(15, Math.min(45, faceY));
         const detected = `${x.toFixed(1)}% ${y.toFixed(1)}%`;
 
         if (!cancelled) {
@@ -127,7 +128,7 @@ const PlayerImage: React.FC<PlayerImageProps> = ({
         }
       } catch {
         if (!cancelled) {
-          setFocusPosition('50% 50%');
+          setFocusPosition('50% 20%');
         }
       }
     };
@@ -153,7 +154,7 @@ const PlayerImage: React.FC<PlayerImageProps> = ({
           ${isLoading && imageUrl && !priority ? 'opacity-0 scale-105' : 'opacity-100 scale-100'} 
           ${priority ? '' : 'transition-all duration-700'}
           ${hasError || !imageUrl ? 'p-4 opacity-50 grayscale' : ''}`}
-        style={smartFocus && !hasError && imageUrl ? { objectPosition: focusPosition } : undefined}
+        style={!hasError && imageUrl ? { objectPosition: smartFocus ? focusPosition : '50% 20%' } : undefined}
         alt={player.name}
         onLoad={() => setIsLoading(false)}
         onError={() => {

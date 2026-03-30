@@ -631,6 +631,29 @@ app.post('/api/scores/calculate/:roundId', authMiddleware, adminMiddleware, asyn
 
 
 // ============================================================================
+// REFRESH PLAYER STATS ENDPOINT
+// ============================================================================
+app.post('/api/admin/refresh-player-stats', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
+  try {
+    // Buscar todos os jogadores que têm performances
+    const { data: performances } = await adminSupabase
+      .from('player_performances')
+      .select('player_id');
+
+    if (!performances || performances.length === 0) {
+      return res.json({ success: true, message: 'Nenhuma performance encontrada', updated: 0 });
+    }
+
+    const playerIds = Array.from(new Set(performances.map((p: any) => String(p.player_id))));
+    const updated = await scoringService.refreshPlayerAggregates(playerIds);
+
+    res.json({ success: true, message: `Stats atualizados para ${updated} jogadores`, updated, totalPerformances: performances.length });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error?.message || 'Erro ao atualizar stats' });
+  }
+});
+
+// ============================================================================
 // CRON JOBS ENDPOINTS
 // ============================================================================
 app.get('/api/cron/status', authMiddleware, adminMiddleware, (req: Request, res: Response) => {

@@ -35,7 +35,7 @@ class ScoringService {
   private static CONFIG_TTL_MS = 5 * 60 * 1000; // 5 minutos
   private finalizingRounds: Set<number> = new Set();
 
-  private async refreshPlayerAggregates(playerIds: string[], latestRoundId?: number): Promise<number> {
+  async refreshPlayerAggregates(playerIds: string[], latestRoundId?: number): Promise<number> {
     if (playerIds.length === 0) return 0;
 
     const uniquePlayerIds = Array.from(new Set(playerIds.map((id) => String(id)).filter(Boolean)));

@@ -365,11 +365,11 @@ const Market: React.FC<MarketProps> = ({
                 </div>
 
                  <div className="flex flex-col md:flex-row items-stretch relative z-10">
-                   <div className="relative w-full md:w-52 h-60 md:h-auto shrink-0 overflow-hidden bg-black/70 border-r border-white/5">
+                   <div className="relative w-full md:w-52 h-60 md:h-auto min-h-[200px] shrink-0 overflow-hidden bg-black/70 border-r border-white/5">
                      <PlayerImage
                        player={player}
                        className="absolute inset-0 w-full h-full"
-                       imgClassName="w-full h-full object-contain object-center"
+                       imgClassName="w-full h-full object-cover"
                        smartFocus
                      />
                     <div className="absolute top-3 left-3 z-20"><TeamLogo logoUrl={player.teamLogo} teamName={player.team} className="w-8 h-8" /></div>

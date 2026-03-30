@@ -1821,11 +1821,14 @@ export const DataService = {
       const data = await response.json();
       if (!response.ok) {
         console.error('❌ saveLineupSecure failed:', JSON.stringify(data, null, 2));
-        if (data.debug_user_id) {
-          console.error(`[DEBUG] Server looked for user_id=${data.debug_user_id}`);
+        if (data.debug_step) {
+          console.error(`[DEBUG] Failed at step: ${data.debug_step}`);
         }
-        if (data.db_error) {
-          console.error(`[DEBUG] DB error: ${data.db_error}`);
+        if (data.debug_error) {
+          console.error(`[DEBUG] Error detail: ${data.debug_error}`);
+        }
+        if (data.debug_code) {
+          console.error(`[DEBUG] Error code: ${data.debug_code}`);
         }
         // Auto-diagnose on failure
         if (response.status === 404 || response.status === 500) {
@@ -1865,6 +1868,9 @@ export const DataService = {
 
       const data = await response.json();
       if (!response.ok) {
+        console.error('❌ clearLineup failed:', JSON.stringify(data, null, 2));
+        if (data.debug_step) console.error(`[DEBUG] Failed at step: ${data.debug_step}`);
+        if (data.debug_error) console.error(`[DEBUG] Error detail: ${data.debug_error}`);
         return { success: false, error: data.error || 'Erro ao limpar escalação' };
       }
 

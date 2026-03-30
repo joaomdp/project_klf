@@ -384,229 +384,207 @@ app.get('/api/debug/team-lookup', authMiddleware, async (req: AuthenticatedReque
 // LINEUP SAVE ENDPOINT (with server-side budget validation)
 // ============================================================================
 app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+  }
+
+  const { lineup } = req.body;
+  if (lineup === undefined || lineup === null || typeof lineup !== 'object') {
+    return res.status(400).json({ success: false, error: 'Lineup inválido' });
+  }
+
+  // 1. Verificar se mercado está aberto
+  let marketStatus;
   try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
+    marketStatus = await marketService.getMarketStatus();
+  } catch (e: any) {
+    console.error('[lineup/save] Market status error:', e);
+    return res.status(500).json({ success: false, error: 'Erro ao verificar mercado', debug_step: 'market_status', debug_error: e?.message });
+  }
+  if (!marketStatus.isOpen) {
+    return res.status(403).json({ success: false, error: 'Mercado fechado. Não é possível alterar a escalação.' });
+  }
+
+  // 2. Buscar time atual do usuário
+  const { data: currentTeam, error: teamError } = await adminSupabase
+    .from('user_teams')
+    .select('id, budget, lineup')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (teamError) {
+    return res.status(500).json({ success: false, error: 'Erro ao buscar time', debug_step: 'team_lookup', debug_error: teamError.message });
+  }
+  if (!currentTeam) {
+    return res.status(404).json({ success: false, error: 'Time não encontrado. Faça o cadastro primeiro.' });
+  }
+
+  // 3. Normalizar roles
+  const roleNormalize: Record<string, string> = {
+    'top': 'TOP', 'TOP': 'TOP',
+    'jungler': 'JUNGLE', 'jungle': 'JUNGLE', 'jng': 'JUNGLE', 'JUNGLE': 'JUNGLE', 'JNG': 'JUNGLE',
+    'mid': 'MID', 'middle': 'MID', 'MID': 'MID',
+    'adc': 'ADC', 'ADC': 'ADC',
+    'support': 'SUPPORT', 'sup': 'SUPPORT', 'SUPPORT': 'SUPPORT', 'SUP': 'SUPPORT',
+  };
+  const normalizedLineup: Record<string, any> = {};
+  for (const role of Object.keys(lineup)) {
+    const normalized = roleNormalize[role];
+    if (!normalized) {
+      return res.status(400).json({ success: false, error: `Role inválida: ${role}` });
     }
+    normalizedLineup[normalized] = lineup[role];
+  }
 
-    const { lineup } = req.body;
-    if (lineup === undefined || lineup === null || typeof lineup !== 'object') {
-      return res.status(400).json({ success: false, error: 'Lineup inválido' });
-    }
-    // Lineup vazio {} é válido (limpar time)
-
-    // 1. Verificar se mercado está aberto
-    const marketStatus = await marketService.getMarketStatus();
-    if (!marketStatus.isOpen) {
-      return res.status(403).json({ success: false, error: 'Mercado fechado. Não é possível alterar a escalação.' });
-    }
-
-    // 2. Buscar time atual do usuário
-    console.log(`[lineup/save] Looking up user_teams for user_id=${userId}`);
-    const { data: currentTeam, error: teamError } = await adminSupabase
-      .from('user_teams')
-      .select('id, budget, lineup')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (teamError) {
-      console.error(`[lineup/save] DB error for user_id=${userId}:`, teamError.message, teamError.code);
-      return res.status(500).json({ success: false, error: 'Erro ao buscar time', debug_user_id: userId, db_error: teamError.message });
-    }
-
-    if (!currentTeam) {
-      console.error(`[lineup/save] No team row for user_id=${userId}`);
-      return res.status(404).json({ success: false, error: 'Time não encontrado. Faça o cadastro primeiro.', debug_user_id: userId });
-    }
-
-    // 3. Validar e normalizar roles (aceita tanto formato frontend quanto backend)
-    const roleNormalize: Record<string, string> = {
-      'top': 'TOP', 'TOP': 'TOP',
-      'jungler': 'JUNGLE', 'jungle': 'JUNGLE', 'jng': 'JUNGLE', 'JUNGLE': 'JUNGLE', 'JNG': 'JUNGLE',
-      'mid': 'MID', 'middle': 'MID', 'MID': 'MID',
-      'adc': 'ADC', 'ADC': 'ADC',
-      'support': 'SUPPORT', 'sup': 'SUPPORT', 'SUPPORT': 'SUPPORT', 'SUP': 'SUPPORT',
-    };
-    const lineupRoles = Object.keys(lineup);
-    const normalizedLineup: Record<string, any> = {};
-    for (const role of lineupRoles) {
-      const normalized = roleNormalize[role];
-      if (!normalized) {
-        return res.status(400).json({ success: false, error: `Role inválida: ${role}` });
+  // 4. Coletar IDs dos jogadores
+  const newPlayerIds: string[] = [];
+  for (const role of Object.keys(normalizedLineup)) {
+    const player = normalizedLineup[role];
+    if (player && player.id) {
+      if (newPlayerIds.includes(String(player.id))) {
+        return res.status(400).json({ success: false, error: 'Jogador duplicado na escalação' });
       }
-      normalizedLineup[normalized] = lineup[role];
+      newPlayerIds.push(String(player.id));
+    }
+  }
+
+  // 5. Buscar preços reais dos jogadores
+  let newLineupCost = 0;
+  if (newPlayerIds.length > 0) {
+    const { data: dbPlayers, error: playersError } = await adminSupabase
+      .from('players')
+      .select('id, price, role')
+      .in('id', newPlayerIds);
+
+    if (playersError) {
+      return res.status(500).json({ success: false, error: 'Erro ao buscar jogadores', debug_step: 'players_lookup', debug_error: playersError.message });
     }
 
-    // 4. Coletar IDs dos jogadores do novo lineup (usando normalizado)
-    const newPlayerIds: string[] = [];
+    const dbPlayerMap = new Map((dbPlayers || []).map((p: any) => [String(p.id), p]));
+
     for (const role of Object.keys(normalizedLineup)) {
       const player = normalizedLineup[role];
-      if (player && player.id) {
-        if (newPlayerIds.includes(String(player.id))) {
-          return res.status(400).json({ success: false, error: 'Jogador duplicado na escalação' });
-        }
-        newPlayerIds.push(String(player.id));
+      if (!player || !player.id) continue;
+      const dbPlayer = dbPlayerMap.get(String(player.id));
+      if (!dbPlayer) {
+        return res.status(400).json({ success: false, error: `Jogador ${player.id} não encontrado no banco` });
       }
+      newLineupCost += Number(dbPlayer.price) || 0;
     }
+  }
 
-    // 5. Buscar preços reais dos jogadores no banco
-    let newLineupCost = 0;
-    if (newPlayerIds.length > 0) {
-      const { data: dbPlayers, error: playersError } = await adminSupabase
-        .from('players')
-        .select('id, price, role')
-        .in('id', newPlayerIds);
+  // 6. Calcular custo do lineup anterior
+  const currentLineup = currentTeam.lineup || {};
+  let currentLineupCost = 0;
+  const currentPlayerIds = Object.values(currentLineup)
+    .filter((p: any) => p && p.id)
+    .map((p: any) => String(p.id));
 
-      if (playersError) throw playersError;
+  if (currentPlayerIds.length > 0) {
+    const { data: currentDbPlayers, error: oldPlayersError } = await adminSupabase
+      .from('players')
+      .select('id, price')
+      .in('id', currentPlayerIds);
 
-      const dbPlayerMap = new Map((dbPlayers || []).map((p: any) => [String(p.id), p]));
-
-      // Validar que todos os jogadores existem e calcular custo real
-      for (const role of Object.keys(normalizedLineup)) {
-        const player = normalizedLineup[role];
-        if (!player || !player.id) continue;
-
-        const dbPlayer = dbPlayerMap.get(String(player.id));
-        if (!dbPlayer) {
-          return res.status(400).json({ success: false, error: `Jogador ${player.id} não encontrado` });
-        }
-        newLineupCost += Number(dbPlayer.price) || 0;
-      }
+    if (oldPlayersError) {
+      return res.status(500).json({ success: false, error: 'Erro ao buscar jogadores antigos', debug_step: 'old_players_lookup', debug_error: oldPlayersError.message });
     }
+    currentLineupCost = (currentDbPlayers || []).reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
+  }
 
-    // 6. Calcular custo do lineup anterior (para devolver ao budget)
-    const currentLineup = currentTeam.lineup || {};
-    let currentLineupCost = 0;
-    const currentPlayerIds = Object.values(currentLineup)
-      .filter((p: any) => p && p.id)
-      .map((p: any) => String(p.id));
+  // 7. Calcular budget
+  const totalBudget = Number(currentTeam.budget) + currentLineupCost;
+  const newBudget = Number((totalBudget - newLineupCost).toFixed(2));
 
-    if (currentPlayerIds.length > 0) {
-      const { data: currentDbPlayers } = await adminSupabase
-        .from('players')
-        .select('id, price')
-        .in('id', currentPlayerIds);
+  console.log(`📋 Lineup save: budget=${currentTeam.budget}, oldCost=${currentLineupCost}, newCost=${newLineupCost}, newBudget=${newBudget}`);
 
-      currentLineupCost = (currentDbPlayers || []).reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
-    }
-
-    // 7. Calcular budget resultante
-    const totalBudget = Number(currentTeam.budget) + currentLineupCost;
-    const newBudget = Number((totalBudget - newLineupCost).toFixed(2));
-
-    console.log(`📋 Lineup save for user ${userId}: dbBudget=${currentTeam.budget}, oldLineupCost=${currentLineupCost.toFixed(2)}, newLineupCost=${newLineupCost.toFixed(2)}, totalAvailable=${totalBudget.toFixed(2)}, newBudget=${newBudget.toFixed(2)}`);
-
-    if (newBudget < 0) {
-      return res.status(400).json({
-        success: false,
-        error: `Orçamento insuficiente. Custo: C$${newLineupCost.toFixed(2)}, Disponível: C$${totalBudget.toFixed(2)}`
-      });
-    }
-
-    // 8. Salvar lineup normalizado e budget validados
-    const { error: updateError } = await adminSupabase
-      .from('user_teams')
-      .update({
-        lineup: normalizedLineup,
-        budget: newBudget,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId);
-
-    if (updateError) {
-      console.error(`❌ DB update error for user ${userId}:`, updateError);
-      throw updateError;
-    }
-
-    console.log(`✅ Lineup saved for user ${userId}: newBudget=${newBudget}`);
-
-    return res.json({
-      success: true,
-      budget: newBudget,
-      message: 'Escalação salva com sucesso'
-    });
-  } catch (error) {
-    console.error('❌ Error saving lineup:', error);
-    return res.status(500).json({
+  if (newBudget < 0) {
+    return res.status(400).json({
       success: false,
-      error: 'Erro interno ao salvar escalação'
+      error: `Orçamento insuficiente. Custo: C$${newLineupCost.toFixed(2)}, Disponível: C$${totalBudget.toFixed(2)}`
     });
   }
+
+  // 8. Salvar
+  const { error: updateError } = await adminSupabase
+    .from('user_teams')
+    .update({
+      lineup: normalizedLineup,
+      budget: newBudget,
+      updated_at: new Date().toISOString()
+    })
+    .eq('user_id', userId);
+
+  if (updateError) {
+    console.error(`❌ DB update error:`, updateError);
+    return res.status(500).json({ success: false, error: 'Erro ao atualizar time', debug_step: 'db_update', debug_error: updateError.message, debug_code: updateError.code });
+  }
+
+  console.log(`✅ Lineup saved for user ${userId}: newBudget=${newBudget}`);
+  return res.json({ success: true, budget: newBudget, message: 'Escalação salva com sucesso' });
 });
 
 // ============================================================================
 // CLEAR LINEUP ENDPOINT (independente do mercado)
 // ============================================================================
 app.post('/api/lineup/clear', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
-    }
-
-    // Buscar time atual
-    console.log(`[lineup/clear] Looking up user_teams for user_id=${userId}`);
-    const { data: currentTeam, error: teamError } = await adminSupabase
-      .from('user_teams')
-      .select('id, budget, lineup')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (teamError) {
-      console.error(`[lineup/clear] DB error for user_id=${userId}:`, teamError.message);
-      return res.status(500).json({ success: false, error: 'Erro ao buscar time', debug_user_id: userId });
-    }
-
-    if (!currentTeam) {
-      console.error(`[lineup/clear] No team row for user_id=${userId}`);
-      return res.status(404).json({ success: false, error: 'Time não encontrado', debug_user_id: userId });
-    }
-
-    // Calcular reembolso total dos jogadores no lineup atual
-    const currentLineup = currentTeam.lineup || {};
-    const currentPlayerIds = Object.values(currentLineup)
-      .filter((p: any) => p && p.id)
-      .map((p: any) => String(p.id));
-
-    let refund = 0;
-    if (currentPlayerIds.length > 0) {
-      const { data: dbPlayers } = await adminSupabase
-        .from('players')
-        .select('id, price')
-        .in('id', currentPlayerIds);
-
-      refund = (dbPlayers || []).reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
-    }
-
-    const newBudget = parseFloat((Number(currentTeam.budget) + refund).toFixed(2));
-
-    // Salvar lineup vazio e budget atualizado
-    const { error: updateError } = await adminSupabase
-      .from('user_teams')
-      .update({
-        lineup: {},
-        budget: newBudget,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId);
-
-    if (updateError) throw updateError;
-
-    console.log(`✅ Lineup cleared for user ${userId}: refund=${refund.toFixed(2)}, newBudget=${newBudget}`);
-
-    return res.json({
-      success: true,
-      budget: newBudget,
-      message: 'Escalação limpa com sucesso'
-    });
-  } catch (error) {
-    console.error('❌ Error clearing lineup:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Erro interno ao limpar escalação'
-    });
+  const userId = req.user?.id;
+  if (!userId) {
+    return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
   }
+
+  // Buscar time atual
+  const { data: currentTeam, error: teamError } = await adminSupabase
+    .from('user_teams')
+    .select('id, budget, lineup')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (teamError) {
+    return res.status(500).json({ success: false, error: 'Erro ao buscar time', debug_step: 'team_lookup', debug_error: teamError.message });
+  }
+  if (!currentTeam) {
+    return res.status(404).json({ success: false, error: 'Time não encontrado' });
+  }
+
+  // Calcular reembolso
+  const currentLineup = currentTeam.lineup || {};
+  const currentPlayerIds = Object.values(currentLineup)
+    .filter((p: any) => p && p.id)
+    .map((p: any) => String(p.id));
+
+  let refund = 0;
+  if (currentPlayerIds.length > 0) {
+    const { data: dbPlayers, error: playersError } = await adminSupabase
+      .from('players')
+      .select('id, price')
+      .in('id', currentPlayerIds);
+
+    if (playersError) {
+      return res.status(500).json({ success: false, error: 'Erro ao buscar jogadores', debug_step: 'players_lookup', debug_error: playersError.message });
+    }
+    refund = (dbPlayers || []).reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
+  }
+
+  const newBudget = parseFloat((Number(currentTeam.budget) + refund).toFixed(2));
+
+  // Salvar lineup vazio
+  const { error: updateError } = await adminSupabase
+    .from('user_teams')
+    .update({
+      lineup: {},
+      budget: newBudget,
+      updated_at: new Date().toISOString()
+    })
+    .eq('user_id', userId);
+
+  if (updateError) {
+    return res.status(500).json({ success: false, error: 'Erro ao atualizar time', debug_step: 'db_update', debug_error: updateError.message, debug_code: updateError.code });
+  }
+
+  console.log(`✅ Lineup cleared for user ${userId}: refund=${refund.toFixed(2)}, newBudget=${newBudget}`);
+  return res.json({ success: true, budget: newBudget, message: 'Escalação limpa com sucesso' });
 });
 
 // ============================================================================

@@ -126,18 +126,7 @@ class MarketService {
 
       if (roundError) throw roundError;
 
-      // 2. Travar todos os user_teams que ainda não estão travados
-      const { error: lockError } = await adminSupabase
-        .from('user_teams')
-        .update({
-          is_locked: true,
-          last_locked_at: new Date().toISOString()
-        })
-        .eq('is_locked', false);
-
-      if (lockError) throw lockError;
-
-      console.log(`✅ Market closed for round ${roundId} and all teams locked`);
+      console.log(`✅ Market closed for round ${roundId}`);
 
     } catch (error) {
       console.error('❌ Error closing market:', error);
@@ -189,17 +178,7 @@ class MarketService {
 
       if (updateError) throw updateError;
 
-      // 3. Destravar todos os user_teams que estão travados
-      const { error: unlockError } = await adminSupabase
-        .from('user_teams')
-        .update({
-          is_locked: false
-        })
-        .eq('is_locked', true);
-
-      if (unlockError) throw unlockError;
-
-      console.log(`✅ Market opened for round ${nextRound.id} and all teams unlocked`);
+      console.log(`✅ Market opened for round ${nextRound.id}`);
       return { opened: true, roundId: nextRound.id };
 
     } catch (error) {
@@ -263,22 +242,6 @@ class MarketService {
         return {
           valid: false,
           message: 'Mercado fechado. Não é possível fazer trocas no momento.'
-        };
-      }
-
-      // 2. Verificar se o user_team está travado
-      const { data: userTeam, error } = await supabase
-        .from('user_teams')
-        .select('is_locked')
-        .eq('id', userTeamId)
-        .single();
-
-      if (error) throw error;
-
-      if (userTeam.is_locked) {
-        return {
-          valid: false,
-          message: 'Seu time está travado. Aguarde a próxima rodada.'
         };
       }
 
@@ -361,13 +324,6 @@ class MarketService {
       .eq('id', roundId);
 
     if (error) throw error;
-
-    const { error: unlockError } = await adminSupabase
-      .from('user_teams')
-      .update({ is_locked: false })
-      .eq('is_locked', true);
-
-    if (unlockError) throw unlockError;
 
     console.log(`✅ Market force-opened`);
   }

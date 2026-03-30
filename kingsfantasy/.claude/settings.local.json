@@ -19,7 +19,15 @@
       "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -type f \\\\\\(-name *meu-time* -o -name *mercado* \\\\\\))",
       "Bash(npx vite:*)",
       "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -name supabase.json -o -name *schema*.json)",
-      "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -name README* -o -name *.md)"
+      "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -name README* -o -name *.md)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy/api/src -type f -name *.ts)",
+      "Bash(npx ts-node -e \":*)",
+      "Bash(npx ts-node:*)",
+      "Bash(node -e \"const pkg = require\\(''./node_modules/@supabase/supabase-js/package.json''\\); console.log\\(pkg.version\\)\")",
+      "Bash(node -e \":*)"
     ]
   }
 }

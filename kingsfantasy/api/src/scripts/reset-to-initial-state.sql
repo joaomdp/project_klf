@@ -95,8 +95,7 @@ END $$;
 UPDATE user_teams
 SET budget = 60,
     total_points = 0,
-    current_round_points = 0,
-    is_locked = false;
+    current_round_points = 0;
 
 -- ============================================
 -- 7. RESETAR TODAS AS RODADAS

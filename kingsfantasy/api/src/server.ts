@@ -361,7 +361,7 @@ app.get('/api/debug/team-lookup', authMiddleware, async (req: AuthenticatedReque
   // Test 2: exact same query as lineup/save
   const { data: t2, error: e2 } = await adminSupabase
     .from('user_teams')
-    .select('id, budget, lineup, is_locked')
+    .select('id, budget, lineup')
     .eq('user_id', userId || '')
     .maybeSingle();
 
@@ -375,7 +375,7 @@ app.get('/api/debug/team-lookup', authMiddleware, async (req: AuthenticatedReque
   return res.json({
     auth_user_id: userId,
     test1_minimal: { found: !!t1, error: e1?.message, code: e1?.code },
-    test2_save_query: { found: !!t2, error: e2?.message, code: e2?.code, data: t2 ? { id: t2.id, budget: t2.budget, has_lineup: !!t2.lineup, is_locked: t2.is_locked } : null },
+    test2_save_query: { found: !!t2, error: e2?.message, code: e2?.code, data: t2 ? { id: t2.id, budget: t2.budget, has_lineup: !!t2.lineup } : null },
     test3_select_all: { found: !!t3, error: e3?.message, code: e3?.code, columns: t3 ? Object.keys(t3) : null }
   });
 });
@@ -406,32 +406,18 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
     console.log(`[lineup/save] Looking up user_teams for user_id=${userId}`);
     const { data: currentTeam, error: teamError } = await adminSupabase
       .from('user_teams')
-      .select('id, budget, lineup, is_locked')
+      .select('id, budget, lineup')
       .eq('user_id', userId)
       .maybeSingle();
 
     if (teamError) {
       console.error(`[lineup/save] DB error for user_id=${userId}:`, teamError.message, teamError.code);
-      const { data: allTeams } = await adminSupabase
-        .from('user_teams')
-        .select('id, user_id')
-        .limit(10);
-      console.log('[lineup/save] Sample user_teams:', JSON.stringify(allTeams));
       return res.status(500).json({ success: false, error: 'Erro ao buscar time', debug_user_id: userId, db_error: teamError.message });
     }
 
     if (!currentTeam) {
       console.error(`[lineup/save] No team row for user_id=${userId}`);
-      const { data: allTeams } = await adminSupabase
-        .from('user_teams')
-        .select('id, user_id')
-        .limit(10);
-      console.log('[lineup/save] All user_teams user_ids:', JSON.stringify(allTeams?.map(t => t.user_id)));
       return res.status(404).json({ success: false, error: 'Time não encontrado. Faça o cadastro primeiro.', debug_user_id: userId });
-    }
-
-    if (currentTeam.is_locked) {
-      return res.status(403).json({ success: false, error: 'Time está travado' });
     }
 
     // 3. Validar e normalizar roles (aceita tanto formato frontend quanto backend)

@@ -111,6 +111,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   const [matchScoreInput, setMatchScoreInput] = useState({ teamA: '', teamB: '' });
   const [saveMatchScoreLoading, setSaveMatchScoreLoading] = useState(false);
   const [performanceGamesCount, setPerformanceGamesCount] = useState(1);
+  const [activeGameNumber, setActiveGameNumber] = useState(1);
+  const [lockedGames, setLockedGames] = useState<Set<number>>(new Set());
   const [performanceRowsByGame, setPerformanceRowsByGame] = useState<Array<{
     gameNumber: number;
     teamA: any[];
@@ -615,6 +617,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     setImagePreviewRows(null);
     setImagePreviewScore(null);
     setImagePreviewFileName(null);
+    setActiveGameNumber(1);
+    setLockedGames(new Set());
     const match = matches.find((item) => String(item.id) === String(matchId));
     if (!match) {
       setMatchScoreInput({ teamA: '', teamB: '' });
@@ -747,14 +751,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       return;
     }
 
+    if (lockedGames.has(activeGameNumber)) {
+      setPerformancesError(`Jogo ${activeGameNumber} está travado. Destrave antes de aplicar dados.`);
+      return;
+    }
+
     const updatedRows = performanceRowsByGame.map((game) => ({
       ...game,
       teamA: game.teamA.map((row: any) => ({ ...row })),
       teamB: game.teamB.map((row: any) => ({ ...row }))
     }));
 
-    const findRow = (gameNumber: number, playerId: string) => {
-      const gameIndex = updatedRows.findIndex((game) => game.gameNumber === gameNumber);
+    // Sempre aplicar ao jogo ativo (ignora game_number do OCR)
+    const findRow = (playerId: string) => {
+      const gameIndex = updatedRows.findIndex((game) => game.gameNumber === activeGameNumber);
       if (gameIndex === -1) return null;
       const game = updatedRows[gameIndex];
       const teamARow = game.teamA.find((row: any) => String(row.player_id) === playerId);
@@ -768,7 +778,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       const mappedPlayerId = row.mapped_player_id;
       const mappedChampionId = row.mapped_champion_id;
       if (!mappedPlayerId || !mappedChampionId) continue;
-      const target = findRow(Number(row.game_number || 1), String(mappedPlayerId));
+      const target = findRow(String(mappedPlayerId));
       if (!target) continue;
       target.champion_id = String(mappedChampionId);
       target.kills = String(row.kills);
@@ -790,7 +800,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     setImagePreviewScore(null);
     setImagePreviewFileName(null);
     setPerformancesError(null);
-    setPerformancesSuccess('Dados do print aplicados. Confira placar/tabela e salve as performances.');
+    setPerformancesSuccess(`Dados do print aplicados ao Jogo ${activeGameNumber}. Confira e trave para avançar ao próximo.`);
   };
 
   const handleRecalculatePlayers = async () => {
@@ -897,6 +907,36 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
           teamB: team === 'B' ? updateRows(game.teamB) : game.teamB
         };
       })
+    );
+  };
+
+  const toggleGameLock = (gameNumber: number) => {
+    setLockedGames((prev) => {
+      const next = new Set(prev);
+      if (next.has(gameNumber)) {
+        next.delete(gameNumber);
+      } else {
+        next.add(gameNumber);
+        // Avançar automaticamente para o próximo jogo destravado
+        if (gameNumber === activeGameNumber && performanceGamesCount > 1) {
+          for (let g = 1; g <= performanceGamesCount; g++) {
+            if (!next.has(g)) {
+              setActiveGameNumber(g);
+              break;
+            }
+          }
+        }
+      }
+      return next;
+    });
+  };
+
+  const isGameComplete = (gameIndex: number) => {
+    const game = performanceRowsByGame[gameIndex];
+    if (!game) return false;
+    const allRows = [...game.teamA, ...game.teamB];
+    return allRows.every((row: any) =>
+      row.champion_id && String(row.kills) !== '' && String(row.deaths) !== '' && String(row.assists) !== '' && String(row.cs) !== ''
     );
   };
 
@@ -2339,99 +2379,154 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
             </button>
           </div>
 
-          <div className="p-5 space-y-8">
+          <div className="p-5 space-y-6">
           {performanceRowsByGame.length === 0 ? (
             <div className="border border-white/5 bg-black/30 p-4 text-xs text-gray-500">
               Selecione a partida para carregar os jogadores.
             </div>
           ) : (
-            performanceRowsByGame.map((game, gameIndex) => (
-              <div key={`game-${game.gameNumber}`} className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">
-                    Partida {game.gameNumber} de {performanceGamesCount}
-                  </p>
-                  <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent"></div>
+            <>
+              {/* Abas de jogo (visível apenas para MD2+) */}
+              {performanceGamesCount > 1 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {performanceRowsByGame.map((game, gameIndex) => {
+                    const isActive = game.gameNumber === activeGameNumber;
+                    const isLocked = lockedGames.has(game.gameNumber);
+                    const isComplete = isGameComplete(gameIndex);
+                    return (
+                      <button
+                        key={`tab-${game.gameNumber}`}
+                        type="button"
+                        onClick={() => setActiveGameNumber(game.gameNumber)}
+                        className={`flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] border transition-all ${
+                          isActive
+                            ? 'border-[#6366F1]/60 bg-[#6366F1]/10 text-white shadow-[0_0_12px_rgba(99,102,241,0.15)]'
+                            : isLocked
+                              ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400'
+                              : 'border-white/10 bg-black/30 text-gray-500 hover:text-gray-300 hover:border-white/20'
+                        }`}
+                      >
+                        <span>Jogo {game.gameNumber}</span>
+                        {isLocked && <span className="text-emerald-400">&#10003;</span>}
+                        {!isLocked && isComplete && <span className="text-amber-400/60">&#9679;</span>}
+                      </button>
+                    );
+                  })}
+                  <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent ml-2"></div>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {[
-                    { label: 'Time A', rows: game.teamA, teamKey: 'A' as const },
-                    { label: 'Time B', rows: game.teamB, teamKey: 'B' as const }
-                  ].map((block) => (
-                    <div key={`${block.label}-${game.gameNumber}`} className="border border-white/5 bg-black/30">
-                      <div className="px-4 py-3 border-b border-white/10 text-xs font-black uppercase tracking-[0.3em] text-gray-500">
-                        {block.label}
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm text-left">
-                          <thead className="bg-black/60 text-gray-500 text-[10px] uppercase tracking-[0.3em] sticky top-0 z-10 backdrop-blur">
-                            <tr>
-                              <th className="px-3 py-2">Jogador</th>
-                              <th className="px-3 py-2">Campeao</th>
-                              <th className="px-3 py-2">K</th>
-                              <th className="px-3 py-2">D</th>
-                              <th className="px-3 py-2">A</th>
-                              <th className="px-3 py-2">CS</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/5">
-                            {block.rows.map((row, rowIndex) => (
-                              <tr key={`${block.label}-${row.player_id}-${game.gameNumber}`} className="odd:bg-white/[0.02]">
-                                <td className="px-3 py-2 text-xs text-gray-300 uppercase tracking-wider">
-                                  {players.find((player) => String(player.id) === String(row.player_id))?.name || row.player_id}
-                                </td>
-                                <td className="px-3 py-2">
-                                  <select
-                                    value={row.champion_id}
-                                    onChange={(event) => handlePerformanceRowChange(block.teamKey, gameIndex, rowIndex, 'champion_id', event.target.value)}
-                                    className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-40"
-                                  >
-                                    <option value="">Campeao</option>
-                                    {champions.map((champion) => (
-                                      <option key={champion.id} value={champion.id}>
-                                        {champion.name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </td>
-                                <td className="px-3 py-2">
-                                  <input
-                                    value={row.kills}
-                                    onChange={(event) => handlePerformanceRowChange(block.teamKey, gameIndex, rowIndex, 'kills', event.target.value)}
-                                    className="bg-black/40 border border-white/10 text-xs text-gray-200 px-2 py-2 rounded-lg w-12"
-                                  />
-                                </td>
-                                <td className="px-3 py-2">
-                                  <input
-                                    value={row.deaths}
-                                    onChange={(event) => handlePerformanceRowChange(block.teamKey, gameIndex, rowIndex, 'deaths', event.target.value)}
-                                    className="bg-black/40 border border-white/10 text-xs text-gray-200 px-2 py-2 rounded-lg w-12"
-                                  />
-                                </td>
-                                <td className="px-3 py-2">
-                                  <input
-                                    value={row.assists}
-                                    onChange={(event) => handlePerformanceRowChange(block.teamKey, gameIndex, rowIndex, 'assists', event.target.value)}
-                                    className="bg-black/40 border border-white/10 text-xs text-gray-200 px-2 py-2 rounded-lg w-12"
-                                  />
-                                </td>
-                                <td className="px-3 py-2">
-                                  <input
-                                    value={row.cs}
-                                    onChange={(event) => handlePerformanceRowChange(block.teamKey, gameIndex, rowIndex, 'cs', event.target.value)}
-                                    className="bg-black/40 border border-white/10 text-xs text-gray-200 px-2 py-2 rounded-lg w-12"
-                                  />
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+              )}
+
+              {/* Jogo ativo */}
+              {performanceRowsByGame.map((game, gameIndex) => {
+                if (game.gameNumber !== activeGameNumber) return null;
+                const isLocked = lockedGames.has(game.gameNumber);
+                return (
+                  <div key={`game-${game.gameNumber}`} className="space-y-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500">
+                        Jogo {game.gameNumber} de {performanceGamesCount}
+                        {isLocked && <span className="ml-2 text-emerald-400 normal-case tracking-normal">Travado</span>}
+                      </p>
+                      {performanceGamesCount > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleGameLock(game.gameNumber)}
+                          className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 border rounded-lg transition-all ${
+                            isLocked
+                              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400'
+                              : 'border-white/10 bg-black/30 text-gray-400 hover:text-white hover:border-white/20'
+                          }`}
+                        >
+                          {isLocked ? 'Destravar' : 'Travar jogo'}
+                        </button>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
-            ))
+                    <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
+                      {[
+                        { label: 'Time A', rows: game.teamA, teamKey: 'A' as const },
+                        { label: 'Time B', rows: game.teamB, teamKey: 'B' as const }
+                      ].map((block) => (
+                        <div key={`${block.label}-${game.gameNumber}`} className="border border-white/5 bg-black/30">
+                          <div className="px-4 py-3 border-b border-white/10 text-xs font-black uppercase tracking-[0.3em] text-gray-500">
+                            {block.label}
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm text-left">
+                              <thead className="bg-black/60 text-gray-500 text-[10px] uppercase tracking-[0.3em] sticky top-0 z-10 backdrop-blur">
+                                <tr>
+                                  <th className="px-3 py-2">Jogador</th>
+                                  <th className="px-3 py-2">Campeao</th>
+                                  <th className="px-3 py-2">K</th>
+                                  <th className="px-3 py-2">D</th>
+                                  <th className="px-3 py-2">A</th>
+                                  <th className="px-3 py-2">CS</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/5">
+                                {block.rows.map((row, rowIndex) => (
+                                  <tr key={`${block.label}-${row.player_id}-${game.gameNumber}`} className="odd:bg-white/[0.02]">
+                                    <td className="px-3 py-2 text-xs text-gray-300 uppercase tracking-wider">
+                                      {players.find((player) => String(player.id) === String(row.player_id))?.name || row.player_id}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <select
+                                        value={row.champion_id}
+                                        onChange={(event) => handlePerformanceRowChange(block.teamKey, gameIndex, rowIndex, 'champion_id', event.target.value)}
+                                        disabled={isLocked}
+                                        className="bg-black/40 border border-white/10 text-xs text-gray-200 px-3 py-2 rounded-lg w-40"
+                                      >
+                                        <option value="">Campeao</option>
+                                        {champions.map((champion) => (
+                                          <option key={champion.id} value={champion.id}>
+                                            {champion.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <input
+                                        value={row.kills}
+                                        onChange={(event) => handlePerformanceRowChange(block.teamKey, gameIndex, rowIndex, 'kills', event.target.value)}
+                                        disabled={isLocked}
+                                        className="bg-black/40 border border-white/10 text-xs text-gray-200 px-2 py-2 rounded-lg w-12"
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <input
+                                        value={row.deaths}
+                                        onChange={(event) => handlePerformanceRowChange(block.teamKey, gameIndex, rowIndex, 'deaths', event.target.value)}
+                                        disabled={isLocked}
+                                        className="bg-black/40 border border-white/10 text-xs text-gray-200 px-2 py-2 rounded-lg w-12"
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <input
+                                        value={row.assists}
+                                        onChange={(event) => handlePerformanceRowChange(block.teamKey, gameIndex, rowIndex, 'assists', event.target.value)}
+                                        disabled={isLocked}
+                                        className="bg-black/40 border border-white/10 text-xs text-gray-200 px-2 py-2 rounded-lg w-12"
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <input
+                                        value={row.cs}
+                                        onChange={(event) => handlePerformanceRowChange(block.teamKey, gameIndex, rowIndex, 'cs', event.target.value)}
+                                        disabled={isLocked}
+                                        className="bg-black/40 border border-white/10 text-xs text-gray-200 px-2 py-2 rounded-lg w-12"
+                                      />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </>
           )}
           </div>
         </div>
@@ -2467,7 +2562,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                 className="text-[10px] uppercase tracking-[0.2em] text-gray-400"
               />
               <span className="text-[10px] uppercase tracking-[0.2em] text-gray-600">
-                Envie o print da tabela de stats da partida
+                {performanceGamesCount > 1
+                  ? `Print sera aplicado ao Jogo ${activeGameNumber}${lockedGames.has(activeGameNumber) ? ' (TRAVADO - destrave primeiro)' : ''}`
+                  : 'Envie o print da tabela de stats da partida'}
               </span>
             </div>
 

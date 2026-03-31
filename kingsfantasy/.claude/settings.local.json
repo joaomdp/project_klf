@@ -29,7 +29,10 @@
       "Bash(node -e \"const pkg = require\\(''./node_modules/@supabase/supabase-js/package.json''\\); console.log\\(pkg.version\\)\")",
       "Bash(node -e \":*)",
       "Bash(git -C /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy log --oneline --all --grep=\"refresh.*player\\\\|player.*stat\")",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy/api -type f \\\\\\(-name *.tsx -o -name *.jsx \\\\\\))",
+      "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -type f -name *AdminPanel* -o -name *admin*panel*)",
+      "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -type f \\\\\\(-name *.tsx -o -name *.jsx \\\\\\))"
     ]
   }
 }

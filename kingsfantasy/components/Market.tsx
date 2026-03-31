@@ -17,7 +17,7 @@ interface MarketProps {
   onFire: (role: Role) => void;
   onClear: () => void;
   onConfirm: () => Promise<void> | void;
-  onRefresh: () => Promise<boolean>;
+  onRefresh: (options?: { silent?: boolean }) => Promise<boolean>;
 }
 
 const Market: React.FC<MarketProps> = ({
@@ -40,6 +40,11 @@ const Market: React.FC<MarketProps> = ({
   const [lastConfirmedTeam, setLastConfirmedTeam] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Buscar dados frescos ao montar o componente (silencioso, sem toast)
+  useEffect(() => {
+    onRefresh({ silent: true });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Preload das imagens dos jogadores escalados
   useEffect(() => {
     const hiredPlayers = Object.values(userTeam.players).filter((p): p is Player => !!p);
@@ -47,7 +52,7 @@ const Market: React.FC<MarketProps> = ({
       if (player.image) {
         const img = new Image();
         img.src = player.image.startsWith('http') ? player.image : player.image;
-        
+
         // Preload do campeão também
         const champ = player.selectedChampion || player.lastChampion;
         if (champ?.image) {

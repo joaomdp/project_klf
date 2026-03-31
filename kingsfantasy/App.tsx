@@ -274,14 +274,13 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
-  const fetchPlayers = useCallback(async () => {
+  const fetchPlayers = useCallback(async (options?: { silent?: boolean }) => {
     try {
-      const conn = await DataService.checkConnection();
-      setDbConnected(conn.ok);
-      if (conn.ok) {
-        const data = await DataService.getPlayers();
-        if (data && data.length > 0) {
-          setPlayers(data);
+      const data = await DataService.getPlayers();
+      if (data && data.length > 0) {
+        setPlayers(data);
+        setDbConnected(true);
+        if (!options?.silent) {
           showToast({
             type: 'success',
             title: 'Jogadores atualizados',
@@ -289,17 +288,18 @@ const AppContent: React.FC = () => {
             duration: 3000
           });
         }
-        return true;
       }
-      return false;
+      return true;
     } catch (error) {
       console.error("Falha ao buscar jogadores:", error);
-      showToast({
-        type: 'error',
-        title: 'Erro ao carregar jogadores',
-        message: 'Não foi possível conectar ao servidor',
-        duration: 5000
-      });
+      if (!options?.silent) {
+        showToast({
+          type: 'error',
+          title: 'Erro ao carregar jogadores',
+          message: 'Não foi possível conectar ao servidor',
+          duration: 5000
+        });
+      }
       return false;
     }
   }, [showToast]);
@@ -339,7 +339,7 @@ const AppContent: React.FC = () => {
 
         // Recarrega saldo/pontuacao/jogadores ao detectar virada de estado do mercado
         if (previousState !== null && previousState !== nextState) {
-          await Promise.all([syncUserTeamFromServer(), fetchPlayers()]);
+          await Promise.all([syncUserTeamFromServer(), fetchPlayers({ silent: true })]);
         }
       }
     } catch (error) {
@@ -412,7 +412,7 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     const handlePlayersRefresh = () => {
-      fetchPlayers();
+      fetchPlayers({ silent: true });
       syncUserTeamFromServer();
     };
 
@@ -453,7 +453,7 @@ const AppContent: React.FC = () => {
     const handleMarketRefresh = () => {
       refreshMarketStatus();
       loadCurrentRoundMatchups();
-      fetchPlayers();
+      fetchPlayers({ silent: true });
       // Sincronizar dados do time (budget, pontos) após finalização de rodada
       syncUserTeamFromServer();
     };

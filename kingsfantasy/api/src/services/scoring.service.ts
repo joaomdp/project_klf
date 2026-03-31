@@ -130,8 +130,7 @@ class ScoringService {
         .from('players')
         .update({
           points: parseFloat(latestRoundPoints.toFixed(2)),
-          avg_points: parseFloat(avgPointsPerGame.toFixed(2)),
-          games_played: gameStats.count
+          avg_points: parseFloat(avgPointsPerGame.toFixed(2))
         })
         .eq('id', playerId);
 

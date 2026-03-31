@@ -155,7 +155,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, players, onNavigate }) 
                     </div>
                   </div>
                   <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#6366F1] shadow-[0_0_10px_rgba(94,108,255,0.5)]" style={{ width: `${Math.min((userTeam.budget / 60) * 100, 100)}%` }}></div>
+                    <div className="h-full bg-[#6366F1] shadow-[0_0_10px_rgba(94,108,255,0.5)]" style={{ width: `${Math.min((userTeam.budget / 100) * 100, 100)}%` }}></div>
                   </div>
                 </div>
                 <div className="flex justify-between items-center py-3 sm:py-4 border-y border-white/5">

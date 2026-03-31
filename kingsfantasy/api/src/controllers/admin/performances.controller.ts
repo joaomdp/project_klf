@@ -206,10 +206,26 @@ export async function bulkInsertPerformances(req: AuthenticatedRequest, res: Res
 
     console.log(`📝 Inserting ${performances.length} performances for match ${match_id}...`);
 
+    // Verificar se já existem performances para esta partida (re-upload)
+    const existingKeys = new Set<string>();
+    const { data: existingPerfs } = await adminSupabase
+      .from('player_performances')
+      .select('match_id, player_id, game_number, fantasy_points')
+      .eq('match_id', match_id);
+
+    for (const ep of existingPerfs || []) {
+      if (ep.fantasy_points && Number(ep.fantasy_points) !== 0) {
+        existingKeys.add(`${ep.match_id}_${ep.player_id}_${ep.game_number}`);
+      }
+    }
+
     // Preparar dados para inserção (com is_winner calculado)
     const performancesToInsert = performances.map(perf => {
       const playerTeam = playerTeamMap.get(perf.player_id);
       const isWinner = playerTeam === match.winner_id;
+      const key = `${match_id}_${perf.player_id}_${perf.game_number}`;
+      // Preservar fantasy_points já calculados em re-uploads
+      const hasExistingPoints = existingKeys.has(key);
 
       return {
         match_id,
@@ -229,10 +245,13 @@ export async function bulkInsertPerformances(req: AuthenticatedRequest, res: Res
         penta_kill: perf.penta_kill || false,
         is_winner: isWinner,
         analyst_rating: perf.analyst_rating || null,
-        fantasy_points: 0 // Será calculado logo após a inserção
+        ...(hasExistingPoints ? {} : { fantasy_points: 0 })
       };
     });
 
+    if (existingKeys.size > 0) {
+      console.log(`   ℹ️  Re-upload detectado: ${existingKeys.size} performances com pontos preservados`);
+    }
 
     // Inserir performances
     const { data: insertedPerformances, error: insertError } = await adminSupabase

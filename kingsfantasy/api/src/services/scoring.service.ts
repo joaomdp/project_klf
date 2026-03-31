@@ -670,11 +670,12 @@ class ScoringService {
 
       if (teamError) throw teamError;
 
-      const lineup = userTeam.lineup as any;
-      const playerIds = Object.values(lineup).map((p: any) => p?.id).filter(Boolean);
+      const lineup = (userTeam.lineup || {}) as Record<string, any>;
+      const playerIds = Object.values(lineup).filter(Boolean).map((p: any) => p?.id).filter(Boolean);
 
       if (playerIds.length === 0) {
-        throw new Error('Lineup is empty');
+        console.log(`⚠️  Team ${userTeamId}: lineup vazio, retornando pontuação zero`);
+        return { basePoints: 0, teamDiversityBonus: 0, championMultiplierBonus: 0, totalPoints: 0, numUniqueTeams: 0, diversityPercent: 0 };
       }
 
       // 2. Buscar performances desses jogadores nesta rodada

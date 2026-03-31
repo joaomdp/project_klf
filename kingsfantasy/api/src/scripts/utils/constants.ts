@@ -13,11 +13,7 @@ export const INITIAL_BUDGET = 100;
 export const MIN_PLAYER_PRICE = 5;
 export const MAX_PLAYER_PRICE = 20;
 
-// Budget growth limits per round (anti-snowball)
-export const BUDGET_MAX_GROWTH_RATE = 1.12;  // +12% max per round
-export const BUDGET_MIN_GROWTH_RATE = 0.88;  // -12% max per round
-export const BUDGET_GLOBAL_MIN = 80;
-export const BUDGET_GLOBAL_MAX = 180;
+// Budget: no growth limits — budget stays fixed, only lineup prices fluctuate
 
 // Price variation limits per round
 export const PRICE_VARIATION_MAX = 1.2;

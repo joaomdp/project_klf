@@ -343,34 +343,20 @@ class ScoringService {
             continue;
           }
 
-          // Valor antigo = soma dos preços no snapshot do lineup
-          const oldLineupValue = lineupPlayers.reduce((sum, p) => sum + Number(p.price || 0), 0);
+          const currentBudget = Number(team.budget || 0);
 
-          // Valor novo = soma dos preços ATUAIS do banco (pós-flutuação)
+          // Valor antigo e novo do lineup (apenas para log)
+          const oldLineupValue = lineupPlayers.reduce((sum, p) => sum + Number(p.price || 0), 0);
           const newLineupValue = lineupPlayers.reduce((sum, p) => {
             const currentPrice = currentPriceMap.get(String(p.id));
-            if (currentPrice === undefined) {
-              console.warn(`   ⚠️  Team ${team.id}: jogador ${p.id} não encontrado no banco, usando preço do snapshot`);
-            }
             return sum + (currentPrice ?? Number(p.price || 0));
           }, 0);
-
-          // Budget ajustado: se elenco valorizou, budget sobe; se desvalorizou, budget cai
-          const currentBudget = Number(team.budget || 0);
           const delta = newLineupValue - oldLineupValue;
-          let nextBudget = parseFloat((currentBudget + delta).toFixed(2));
 
-          // ── Anti-snowball: limitar crescimento/queda do budget por rodada (±12%) ──
-          const maxGrowth = parseFloat((currentBudget * 1.12).toFixed(2));
-          const minGrowth = parseFloat((currentBudget * 0.88).toFixed(2));
-          nextBudget = Math.max(minGrowth, Math.min(maxGrowth, nextBudget));
-
-          // ── Limites globais absolutos do budget ──
-          nextBudget = Math.max(80, Math.min(180, nextBudget));
-
-          console.log(`   📋 Team ${team.id}: players=${lineupPlayers.length}, budget=${currentBudget} → ${nextBudget}, lineup old=${oldLineupValue.toFixed(2)} new=${newLineupValue.toFixed(2)} delta=${delta.toFixed(2)}`);
+          console.log(`   📋 Team ${team.id}: players=${lineupPlayers.length}, budget=${currentBudget} (inalterado), lineup old=${oldLineupValue.toFixed(2)} new=${newLineupValue.toFixed(2)} delta=${delta.toFixed(2)}`);
 
           // Atualizar lineup com preços novos (snapshot atualizado)
+          // Budget NÃO muda: a valorização/desvalorização já está refletida nos preços do lineup
           const updatedLineup = Object.entries(lineup).reduce<Record<string, any>>((acc, [role, player]) => {
             if (!player) return acc;
             acc[role] = {
@@ -382,14 +368,14 @@ class ScoringService {
 
           const { error } = await adminSupabase
             .from('user_teams')
-            .update({ budget: nextBudget, lineup: updatedLineup })
+            .update({ lineup: updatedLineup })
             .eq('id', team.id);
 
           if (!error) {
             updatedBudgets++;
           } else {
-            console.error(`   ❌ Failed to update budget for team ${team.id}:`, error);
-            console.error(`   ❌ Dados tentados: budget=${nextBudget}, lineup keys=${Object.keys(updatedLineup).join(',')}`);
+            console.error(`   ❌ Failed to update lineup for team ${team.id}:`, error);
+            console.error(`   ❌ Dados tentados: lineup keys=${Object.keys(updatedLineup).join(',')}`);
           }
         }
         console.log(`   ✅ ${updatedBudgets}/${userTeams.length} patrimônios atualizados`);

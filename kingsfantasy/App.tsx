@@ -337,15 +337,15 @@ const AppContent: React.FC = () => {
         setMarketIsOpen(nextState);
         lastKnownMarketState.current = nextState;
 
-        // Recarrega saldo/pontuacao ao detectar virada de estado do mercado
+        // Recarrega saldo/pontuacao/jogadores ao detectar virada de estado do mercado
         if (previousState !== null && previousState !== nextState) {
-          await syncUserTeamFromServer();
+          await Promise.all([syncUserTeamFromServer(), fetchPlayers()]);
         }
       }
     } catch (error) {
       console.error('Falha ao atualizar status do mercado:', error);
     }
-  }, [syncUserTeamFromServer]);
+  }, [syncUserTeamFromServer, fetchPlayers]);
 
   useEffect(() => {
     const initApp = async () => {

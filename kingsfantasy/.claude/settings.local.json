@@ -27,7 +27,9 @@
       "Bash(npx ts-node -e \":*)",
       "Bash(npx ts-node:*)",
       "Bash(node -e \"const pkg = require\\(''./node_modules/@supabase/supabase-js/package.json''\\); console.log\\(pkg.version\\)\")",
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "Bash(git -C /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy log --oneline --all --grep=\"refresh.*player\\\\|player.*stat\")",
+      "Bash(git:*)"
     ]
   }
 }

@@ -453,13 +453,14 @@ const AppContent: React.FC = () => {
     const handleMarketRefresh = () => {
       refreshMarketStatus();
       loadCurrentRoundMatchups();
+      fetchPlayers();
       // Sincronizar dados do time (budget, pontos) após finalização de rodada
       syncUserTeamFromServer();
     };
 
     window.addEventListener('market:refresh', handleMarketRefresh as EventListener);
     return () => window.removeEventListener('market:refresh', handleMarketRefresh as EventListener);
-  }, [refreshMarketStatus, loadCurrentRoundMatchups, syncUserTeamFromServer]);
+  }, [refreshMarketStatus, loadCurrentRoundMatchups, fetchPlayers, syncUserTeamFromServer]);
 
   const handleLoginSuccess = async (userData: any) => {
     setIsLoading(true);

@@ -503,6 +503,18 @@ export const DataService = {
     }
   },
 
+  async getPlayerHistory(playerId: number | string): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/players/${playerId}/history`);
+      if (!response.ok) return [];
+      const data = await response.json();
+      return data.performances || [];
+    } catch (e) {
+      console.error('Erro ao buscar historico do jogador:', e);
+      return [];
+    }
+  },
+
   async getUpcomingSchedule(): Promise<{
     id: number;
     scheduled_time: string;

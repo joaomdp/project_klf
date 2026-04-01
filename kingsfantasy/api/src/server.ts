@@ -328,6 +328,54 @@ app.get('/api/market/matchups/current', async (req: Request, res: Response) => {
   }
 });
 
+app.get('/api/players/:playerId/history', async (req: Request, res: Response) => {
+  try {
+    const playerId = parseIntParam(req.params.playerId);
+    if (playerId === null) return res.status(400).json({ success: false, error: 'playerId inválido' });
+
+    const { data: performances, error } = await supabase
+      .from('player_performances')
+      .select(`
+        id,
+        match_id,
+        game_number,
+        champion_id,
+        kills,
+        deaths,
+        assists,
+        cs,
+        fantasy_points,
+        is_winner,
+        champion:champions!player_performances_champion_id_fkey(id, name, image_url),
+        match:matches!player_performances_match_id_fkey(
+          id,
+          scheduled_time,
+          team_a_id,
+          team_b_id,
+          winner_id,
+          team_a:teams!matches_team_a_id_fkey(id, name, logo_url),
+          team_b:teams!matches_team_b_id_fkey(id, name, logo_url),
+          round:rounds!matches_round_id_fkey(id, round_number, season)
+        )
+      `)
+      .eq('player_id', playerId)
+      .not('fantasy_points', 'is', null)
+      .order('match_id', { ascending: false });
+
+    if (error) throw error;
+
+    return res.json({
+      success: true,
+      performances: performances || []
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 app.get('/api/schedule/upcoming', async (req: Request, res: Response) => {
   try {
     const { data: matches, error } = await supabase

@@ -46,6 +46,12 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // BLOQUEIO: Impede criação de novas contas durante acesso antecipado
+    if (isSignUp) {
+      setErrorMsg("CADASTROS TEMPORARIAMENTE BLOQUEADOS - ACESSO ANTECIPADO");
+      return;
+    }
+    
     if (isSignUp && password !== confirmPassword) {
       setErrorMsg("AS SENHAS NÃO COINCIDEM");
       return;
@@ -212,18 +218,14 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             
             <div className="flex flex-col p-6 sm:p-8 md:p-10 lg:p-12 overflow-y-auto no-scrollbar relative bg-[#0F0F14]/50 backdrop-blur-2xl">
               
-              {/* Toggle Button */}
+              {/* Toggle Button - BLOQUEADO TEMPORARIAMENTE */}
               <div className="absolute top-6 right-6">
                 <button 
-                  onClick={() => {
-                    setIsSignUp(!isSignUp);
-                    setErrorMsg(null);
-                    setPassword('');
-                    setConfirmPassword('');
-                  }}
-                  className="px-4 py-2.5 text-xs font-black text-gray-400 uppercase tracking-widest hover:text-white transition-colors border border-white/10 rounded-lg hover:border-[#6366F1]/30 hover:bg-white/5"
+                  disabled
+                  className="px-4 py-2.5 text-xs font-black text-gray-600 uppercase tracking-widest border border-white/5 rounded-lg cursor-not-allowed opacity-50"
+                  title="Cadastros temporariamente bloqueados - Acesso antecipado"
                 >
-                  {isSignUp ? 'JÁ TENHO CONTA' : 'CRIAR CONTA'}
+                  ACESSO ANTECIPADO
                 </button>
               </div>
 
@@ -243,27 +245,33 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   <p className="text-xs sm:text-sm text-gray-500 font-medium">
                     {isSignUp ? 'Junte-se ao maior campeonato do Brasil' : 'Entre para continuar sua jornada'}
                   </p>
+                  {/* Aviso de Acesso Antecipado */}
+                  <div className="mt-4 px-4 py-3 bg-[#6366F1]/10 border border-[#6366F1]/30 rounded-xl">
+                    <p className="text-[10px] font-bold text-[#6366F1] uppercase tracking-widest text-center">
+                      🔒 Acesso Antecipado - Cadastros Temporariamente Bloqueados
+                    </p>
+                  </div>
                 </div>
 
-                {/* Social Buttons */}
+                {/* Social Buttons - BLOQUEADOS TEMPORARIAMENTE */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 md:mb-7 animate-in fade-in slide-in-from-right duration-700 delay-100">
                   <button 
                     type="button"
-                    onClick={() => handleSocialLogin('discord')}
-                    disabled={loading}
-                    className="group flex items-center justify-center gap-2 md:gap-2.5 py-3.5 md:py-4 bg-white/5 border border-white/10 rounded-xl md:rounded-2xl hover:bg-[#5865F2]/10 hover:border-[#5865F2]/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled
+                    className="group flex items-center justify-center gap-2 md:gap-2.5 py-3.5 md:py-4 bg-white/5 border border-white/5 rounded-xl md:rounded-2xl transition-all opacity-50 cursor-not-allowed"
+                    title="Login social bloqueado - Acesso antecipado"
                   >
-                    <i className="fa-brands fa-discord text-[#5865F2] text-lg md:text-xl group-hover:scale-110 transition-transform"></i>
-                    <span className="text-xs font-black text-white uppercase tracking-wider">Discord</span>
+                    <i className="fa-brands fa-discord text-gray-600 text-lg md:text-xl"></i>
+                    <span className="text-xs font-black text-gray-600 uppercase tracking-wider">Discord</span>
                   </button>
                   <button 
                     type="button"
-                    onClick={() => handleSocialLogin('google')}
-                    disabled={loading}
-                    className="group flex items-center justify-center gap-2 md:gap-2.5 py-3.5 md:py-4 bg-white/5 border border-white/10 rounded-xl md:rounded-2xl hover:bg-red-500/10 hover:border-red-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled
+                    className="group flex items-center justify-center gap-2 md:gap-2.5 py-3.5 md:py-4 bg-white/5 border border-white/5 rounded-xl md:rounded-2xl transition-all opacity-50 cursor-not-allowed"
+                    title="Login social bloqueado - Acesso antecipado"
                   >
-                    <i className="fa-brands fa-google text-red-500 text-lg md:text-xl group-hover:scale-110 transition-transform"></i>
-                    <span className="text-xs font-black text-white uppercase tracking-wider">Google</span>
+                    <i className="fa-brands fa-google text-gray-600 text-lg md:text-xl"></i>
+                    <span className="text-xs font-black text-gray-600 uppercase tracking-wider">Google</span>
                   </button>
                 </div>
 

@@ -35,6 +35,15 @@ export const AuthService = {
    * @returns Promise with session data or error
    */
   async signUp(email: string, pass: string, userName?: string) {
+    // BLOQUEIO: Impede criação de novas contas durante acesso antecipado
+    console.warn('⚠️ Cadastros bloqueados - Acesso antecipado');
+    return { 
+      data: null, 
+      error: 'Cadastros temporariamente bloqueados - Acesso antecipado' 
+    };
+    
+    // CÓDIGO ORIGINAL COMENTADO PARA BLOQUEIO DE CADASTROS
+    /*
     const anonKey = DataService.getAnonKey();
     try {
       const trimmedUserName = userName?.trim();
@@ -107,6 +116,7 @@ export const AuthService = {
       console.error('❌ Exception em signUp:', e);
       return { data: null, error: e.message };
     }
+    */
   },
 
   /**

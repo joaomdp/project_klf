@@ -3,7 +3,6 @@ import React, { useState, useMemo } from 'react';
 import { UserTeam, Role, Player } from '../types';
 import PlayerImage from './PlayerImage';
 import TeamLogo from './TeamLogo';
-import MatchHistoryModal from './MatchHistoryModal';
 import PaiCoin from './PaiCoin';
 
 interface SquadBuilderProps {
@@ -13,8 +12,6 @@ interface SquadBuilderProps {
 }
 
 const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigateToMarket }) => {
-  const [historyPlayer, setHistoryPlayer] = useState<Player | null>(null);
-  
   const roles = [
     { id: Role.TOP, label: 'TOP', top: '22%', left: '18%' },
     { id: Role.JNG, label: 'JUN', top: '38%', left: '35%' },
@@ -75,8 +72,6 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
 
   return (
     <div className="max-w-[1280px] mx-auto space-y-16 animate-in fade-in duration-1000 pb-32">
-      {historyPlayer && <MatchHistoryModal player={historyPlayer} onClose={() => setHistoryPlayer(null)} />}
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start pt-10">
         <div className="lg:col-span-8 flex flex-col gap-10">
           <div className="relative">
@@ -122,7 +117,7 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
               const p = userTeam.players[role.id];
               return (
                 <div key={role.id} className="absolute -translate-x-1/2 -translate-y-1/2 z-20" style={{ top: role.top, left: role.left }}>
-                  <div className="relative group/marker cursor-pointer flex flex-col items-center gap-0.5" onClick={() => p ? setHistoryPlayer(p) : onNavigateToMarket()}>
+                  <div className="relative group/marker flex flex-col items-center gap-0.5" onClick={() => !p && onNavigateToMarket()} style={!p ? { cursor: 'pointer' } : undefined}>
                     <div className={`w-14 h-14 rounded-full border-2 transition-all duration-500 relative flex items-center justify-center overflow-hidden ${
                       p ? 'border-[#6366F1] bg-black shadow-[0_0_25px_rgba(94,108,255,0.6)] scale-110' : 'border-white/10 bg-black/80 hover:border-white/40'
                     }`}>
@@ -194,7 +189,7 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
                     </div>
                   </div>
 
-                  <div className="relative aspect-[4/5] overflow-hidden cursor-pointer group/image" onClick={() => p ? setHistoryPlayer(p) : onNavigateToMarket()}>
+                  <div className="relative aspect-[4/5] overflow-hidden group/image" onClick={() => !p && onNavigateToMarket()} style={!p ? { cursor: 'pointer' } : undefined}>
                     {p ? (
                       <>
                         <PlayerImage player={p} priority className="w-full h-full" imgClassName="w-full h-full object-cover object-center contrast-110 brightness-110 saturate-110 transition-transform duration-700 group-hover/image:scale-105" />
@@ -223,7 +218,7 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
                     )}
                   </div>
 
-                  <div className="p-5 space-y-3 relative z-10 bg-gradient-to-t from-black/20 to-transparent" onClick={() => p && setHistoryPlayer(p)}>
+                  <div className="p-5 space-y-3 relative z-10 bg-gradient-to-t from-black/20 to-transparent">
                     <div className="flex items-center gap-2">
                        <h3 className={`font-orbitron font-black text-base truncate uppercase tracking-tighter ${p ? 'text-white' : 'text-gray-800'}`}>
                          {p ? p.name : 'SEM CONVOCAÇÃO'}

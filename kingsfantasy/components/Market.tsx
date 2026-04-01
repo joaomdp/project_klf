@@ -3,7 +3,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Player, Role, UserTeam } from '../types';
 import PlayerImage from './PlayerImage';
 import TeamLogo from './TeamLogo';
-import MatchHistoryModal from './MatchHistoryModal';
 import DiversityIndicator from './DiversityIndicator';
 import PaiCoin from './PaiCoin';
 
@@ -34,7 +33,6 @@ const Market: React.FC<MarketProps> = ({
 }) => {
   const [filterRole, setFilterRole] = useState<Role | 'ALL'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [historyPlayer, setHistoryPlayer] = useState<Player | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showConfirmCheck, setShowConfirmCheck] = useState(false);
   const [lastConfirmedTeam, setLastConfirmedTeam] = useState<string | null>(null);
@@ -128,8 +126,6 @@ const Market: React.FC<MarketProps> = ({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in fade-in duration-500 pb-20">
-      {historyPlayer && <MatchHistoryModal player={historyPlayer} onClose={() => setHistoryPlayer(null)} />}
-      
       {/* Check animado de confirmação */}
       {showConfirmCheck && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">

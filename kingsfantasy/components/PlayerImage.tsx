@@ -141,7 +141,7 @@ const PlayerImage: React.FC<PlayerImageProps> = ({
   }, [imageUrl, smartFocus]);
 
   return (
-    <div className={`${className} relative overflow-hidden bg-[#050505] flex items-center justify-center`}>
+    <div className={`${className} relative overflow-hidden flex items-center justify-center`}>
       {isLoading && imageUrl && !priority && (
         <div className="absolute inset-0 z-10 bg-[#0a0a0a]">
           <div className="w-full h-full bg-gradient-to-r from-transparent via-white/[0.03] to-transparent bg-[length:200%_100%] animate-[shimmer_1.5s_infinite]"></div>

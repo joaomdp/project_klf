@@ -405,7 +405,7 @@ export const DataService = {
         fetch(`${SUPABASE_URL}/rest/v1/teams?select=id,name,logo_url`, {
           headers: buildAuthHeaders(anonKey, userToken)
         }),
-        fetch(`${SUPABASE_URL}/rest/v1/matches?select=team_a_id,team_b_id,winner_id,status`, {
+        fetch(`${SUPABASE_URL}/rest/v1/matches?select=round_id,team_a_id,team_b_id,winner_id,status`, {
           headers: buildAuthHeaders(anonKey, userToken)
         })
       ]);
@@ -429,6 +429,10 @@ export const DataService = {
 
       if (matchesResponse.ok) {
         const matches = await matchesResponse.json();
+
+        // Group matches by series (round_id + team pair) to count series wins, not individual games
+        const seriesMap = new Map<string, { teamA: string; teamB: string; winsA: number; winsB: number }>();
+
         matches.forEach((match: any) => {
           if (!match?.winner_id) return;
           const status = (match.status || '').toString().toLowerCase();
@@ -439,16 +443,39 @@ export const DataService = {
           const teamA = match.team_a_id?.toString();
           const teamB = match.team_b_id?.toString();
           const winner = match.winner_id?.toString();
+          const roundId = match.round_id?.toString();
 
-          if (!teamA || !teamB || !winner) return;
+          if (!teamA || !teamB || !winner || !roundId) return;
 
-          const winnerEntry = teamMap.get(winner);
+          // Normalize team pair key so (A vs B) and (B vs A) map to the same series
+          const [first, second] = [teamA, teamB].sort();
+          const seriesKey = `${roundId}:${first}:${second}`;
+
+          if (!seriesMap.has(seriesKey)) {
+            seriesMap.set(seriesKey, { teamA: first, teamB: second, winsA: 0, winsB: 0 });
+          }
+
+          const series = seriesMap.get(seriesKey)!;
+          if (winner === first) {
+            series.winsA += 1;
+          } else {
+            series.winsB += 1;
+          }
+        });
+
+        // Count 1 win/loss per series based on which team won more games
+        seriesMap.forEach((series) => {
+          if (series.winsA === 0 && series.winsB === 0) return;
+
+          const seriesWinner = series.winsA > series.winsB ? series.teamA : series.teamB;
+          const seriesLoser = seriesWinner === series.teamA ? series.teamB : series.teamA;
+
+          const winnerEntry = teamMap.get(seriesWinner);
           if (winnerEntry) {
             winnerEntry.wins += 1;
           }
 
-          const loserId = winner === teamA ? teamB : teamA;
-          const loserEntry = teamMap.get(loserId);
+          const loserEntry = teamMap.get(seriesLoser);
           if (loserEntry) {
             loserEntry.losses += 1;
           }

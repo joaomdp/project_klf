@@ -71,11 +71,11 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
   );
 
   return (
-    <div className="max-w-[1280px] mx-auto space-y-16 animate-in fade-in duration-1000 pb-32">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start pt-10">
-        <div className="lg:col-span-8 flex flex-col gap-10">
+    <div className="max-w-[1280px] mx-auto space-y-16 animate-in fade-in duration-1000 pb-32 px-4 sm:px-6 lg:px-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start pt-10">
+        <div className="lg:col-span-7 flex flex-col gap-10">
           <div className="relative">
-            <div className="absolute -left-10 top-1/2 -translate-y-1/2 w-1 h-24 bg-gradient-to-b from-transparent via-[#6366F1] to-transparent opacity-50"></div>
+            <div className="absolute -left-10 top-1/2 -translate-y-1/2 w-1 h-24 bg-gradient-to-b from-transparent via-[#6366F1] to-transparent opacity-50 hidden lg:block"></div>
             
             <div className="space-y-6">
               <div className="flex items-center gap-4">
@@ -86,7 +86,7 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
                 <div className="h-px w-20 bg-white/10"></div>
               </div>
 
-              <h1 className="text-4xl sm:text-6xl md:text-8xl lg:text-[11rem] font-orbitron font-black text-white uppercase tracking-tighter leading-[0.85] mix-blend-difference">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-orbitron font-black text-white uppercase tracking-tighter leading-[0.85] break-words overflow-hidden max-w-full">
                 {userTeam.name}
               </h1>
 
@@ -103,7 +103,7 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
           </div>
         </div>
 
-          <div className="lg:col-span-4 flex flex-col gap-6">
+          <div className="lg:col-span-5 flex flex-col gap-6">
           <div className="relative w-full aspect-[5/4.8] rounded-[2.5rem] overflow-hidden border border-white/10 bg-black shadow-[0_0_80px_rgba(0,0,0,1)] group">
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
             <img

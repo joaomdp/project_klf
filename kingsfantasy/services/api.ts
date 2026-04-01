@@ -503,6 +503,36 @@ export const DataService = {
     }
   },
 
+  async getUpcomingSchedule(): Promise<{
+    id: number;
+    scheduled_time: string;
+    status: string;
+    games_count: number;
+    team_a: { id: string; name: string; logo_url?: string | null };
+    team_b: { id: string; name: string; logo_url?: string | null };
+    round?: { id: number; season: number; round_number: number };
+  }[]> {
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/schedule/upcoming`);
+      if (!response.ok) return [];
+      const data = await response.json();
+      return (data.matches || []).map((m: any) => ({
+        ...m,
+        team_a: {
+          ...m.team_a,
+          logo_url: m.team_a?.logo_url ? this.getStorageUrl('teams', m.team_a.logo_url) : null
+        },
+        team_b: {
+          ...m.team_b,
+          logo_url: m.team_b?.logo_url ? this.getStorageUrl('teams', m.team_b.logo_url) : null
+        }
+      }));
+    } catch (e) {
+      console.error('Erro ao buscar calendario:', e);
+      return [];
+    }
+  },
+
   async getPlayers(): Promise<Player[]> {
     const anonKey = this.getAnonKey();
     const userToken = this.getUserToken();

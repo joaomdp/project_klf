@@ -3,10 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { UserTeam, Role, League, Player } from '../types';
 import PlayerImage from './PlayerImage';
 import { DataService } from '../services/api';
-import jogosSabado from '../assets/images/logo/jogos-sabado.optimized.jpg';
-import jogosDomingo from '../assets/images/logo/jogos-domingo.optimized.jpg';
 import StandingsTable from './StandingsTable';
 import PaiCoin from './PaiCoin';
+import TeamLogo from './TeamLogo';
 
 interface DashboardProps {
   userTeam: UserTeam;
@@ -25,26 +24,37 @@ const MEDIA_HUB_CONFIG = {
   channelIcon: "https://i.imgur.com/4ilaY1c.png"
 };
 
+type ScheduleMatch = {
+  id: number;
+  scheduled_time: string;
+  status: string;
+  games_count: number;
+  team_a: { id: string; name: string; logo_url?: string | null };
+  team_b: { id: string; name: string; logo_url?: string | null };
+  round?: { id: number; season: number; round_number: number };
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ userTeam, players, onNavigate }) => {
   const [pickedFilter, setPickedFilter] = useState<Role | 'TODOS'>('TODOS');
   const [userLeagues, setUserLeagues] = useState<League[]>([]);
   const [loadingLeagues, setLoadingLeagues] = useState(true);
-  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
-  
-  const banners = [
-    { image: jogosSabado, label: 'Jogos de Sábado' },
-    { image: jogosDomingo, label: 'Jogos de Domingo' }
-  ];
-  
-  // Carrossel automático
+  const [scheduleMatches, setScheduleMatches] = useState<ScheduleMatch[]>([]);
+  const [loadingSchedule, setLoadingSchedule] = useState(true);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentBannerIndex((prev) => (prev + 1) % banners.length);
-    }, 5000); // Muda a cada 5 segundos
-    
-    return () => clearInterval(interval);
-  }, [banners.length]);
-  
+    let mounted = true;
+    const load = async () => {
+      setLoadingSchedule(true);
+      const data = await DataService.getUpcomingSchedule();
+      if (mounted) {
+        setScheduleMatches(data);
+        setLoadingSchedule(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, []);
+
   useEffect(() => {
     const fetchUserLeagues = async () => {
       if (userTeam.userId) {
@@ -295,54 +305,69 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, players, onNavigate }) 
             <div className="h-px flex-1 bg-white/10"></div>
           </div>
 
-          <div className="relative w-full overflow-hidden border border-white/10 bg-black shadow-2xl">
-            {/* Carrossel de Banners */}
-            <div className="relative">
-              {banners.map((banner, index) => (
-                <img 
-                  key={index}
-                  src={banner.image} 
-                  alt={banner.label}
-                  className={`w-full h-auto object-contain transition-opacity duration-1000 ${
-                    index === currentBannerIndex ? 'opacity-100' : 'opacity-0 absolute inset-0'
-                  }`}
-                />
-              ))}
-            </div>
-            
-            {/* Indicadores */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
-              {banners.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentBannerIndex(index)}
-                  className={`transition-all duration-300 ${
-                    index === currentBannerIndex 
-                      ? 'w-8 h-2 bg-[#6366F1]' 
-                      : 'w-2 h-2 bg-white/30 hover:bg-white/50'
-                  } rounded-full`}
-                  aria-label={`Ver ${banners[index].label}`}
-                />
-              ))}
-            </div>
-            
-            {/* Botões de Navegação */}
-            <button
-              onClick={() => setCurrentBannerIndex((prev) => (prev - 1 + banners.length) % banners.length)}
-              className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-sm border border-white/10 rounded-full flex items-center justify-center text-white hover:bg-black/70 hover:border-[#6366F1]/50 transition-all z-10"
-              aria-label="Banner anterior"
-            >
-              <i className="fa-solid fa-chevron-left text-sm"></i>
-            </button>
-            <button
-              onClick={() => setCurrentBannerIndex((prev) => (prev + 1) % banners.length)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-sm border border-white/10 rounded-full flex items-center justify-center text-white hover:bg-black/70 hover:border-[#6366F1]/50 transition-all z-10"
-              aria-label="Próximo banner"
-            >
-              <i className="fa-solid fa-chevron-right text-sm"></i>
-            </button>
-            
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"></div>
+          <div className="border border-white/10 bg-black/40 backdrop-blur-xl shadow-2xl">
+            {loadingSchedule ? (
+              <div className="px-6 py-8 text-center text-xs font-black uppercase tracking-[0.3em] text-gray-500">
+                Carregando calendario...
+              </div>
+            ) : scheduleMatches.length === 0 ? (
+              <div className="px-6 py-8 text-center text-xs font-black uppercase tracking-[0.3em] text-gray-500">
+                Nenhum jogo agendado
+              </div>
+            ) : (
+              (() => {
+                // Group matches by date
+                const grouped = scheduleMatches.reduce<Record<string, ScheduleMatch[]>>((acc, match) => {
+                  const date = new Date(match.scheduled_time);
+                  const dayKey = date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' });
+                  if (!acc[dayKey]) acc[dayKey] = [];
+                  acc[dayKey].push(match);
+                  return acc;
+                }, {});
+
+                return (Object.entries(grouped) as [string, ScheduleMatch[]][]).map(([day, dayMatches]) => (
+                  <div key={day}>
+                    <div className="px-5 py-3 border-b border-white/10 bg-white/[0.02]">
+                      <span className="text-[10px] font-black uppercase tracking-[0.35em] text-[#6366F1]">{day}</span>
+                    </div>
+                    <div className="divide-y divide-white/5">
+                      {dayMatches.map((match) => {
+                        const time = new Date(match.scheduled_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                        const format = match.games_count > 1 ? `MD${match.games_count}` : 'MD1';
+                        return (
+                          <div key={match.id} className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors">
+                            <div className="flex items-center gap-3 flex-1 justify-end">
+                              <span className="text-xs font-black text-white uppercase tracking-tight text-right">{match.team_a?.name || '??'}</span>
+                              <div className="w-8 h-8 flex-shrink-0">
+                                {match.team_a?.logo_url ? (
+                                  <TeamLogo logoUrl={match.team_a.logo_url} teamName={match.team_a.name} className="w-8 h-8" />
+                                ) : (
+                                  <div className="w-8 h-8 bg-white/5 border border-white/10 flex items-center justify-center text-[8px] font-black text-gray-500">?</div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-center mx-4 min-w-[70px]">
+                              <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider">{time}</span>
+                              <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">{format}</span>
+                            </div>
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className="w-8 h-8 flex-shrink-0">
+                                {match.team_b?.logo_url ? (
+                                  <TeamLogo logoUrl={match.team_b.logo_url} teamName={match.team_b.name} className="w-8 h-8" />
+                                ) : (
+                                  <div className="w-8 h-8 bg-white/5 border border-white/10 flex items-center justify-center text-[8px] font-black text-gray-500">?</div>
+                                )}
+                              </div>
+                              <span className="text-xs font-black text-white uppercase tracking-tight">{match.team_b?.name || '??'}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ));
+              })()
+            )}
           </div>
         </section>
 

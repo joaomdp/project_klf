@@ -104,8 +104,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     round_id: '',
     team_a_id: '',
     team_b_id: '',
-    games_count: '1'
+    games_count: '1',
+    scheduled_time: ''
   });
+  const [editingMatchTime, setEditingMatchTime] = useState<number | null>(null);
+  const [editMatchTimeValue, setEditMatchTimeValue] = useState('');
   const [performanceRoundId, setPerformanceRoundId] = useState('');
   const [performanceMatchId, setPerformanceMatchId] = useState('');
   const [matchScoreInput, setMatchScoreInput] = useState({ teamA: '', teamB: '' });
@@ -520,7 +523,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
       team_a_id: teamAId,
       team_b_id: teamBId,
       status: 'scheduled',
-      scheduled_time: new Date().toISOString(),
+      scheduled_time: matchForm.scheduled_time ? new Date(matchForm.scheduled_time).toISOString() : new Date().toISOString(),
       games_count: gamesCount || 1
     });
 
@@ -533,7 +536,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
         round_id: '',
         team_a_id: '',
         team_b_id: '',
-        games_count: '1'
+        games_count: '1',
+        scheduled_time: ''
       });
     await loadMatches(roundId);
     window.dispatchEvent(new Event('matches:refresh'));
@@ -573,6 +577,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
     window.dispatchEvent(new Event('matches:refresh'));
     window.dispatchEvent(new Event('market:refresh'));
     setMarketActionLoading(false);
+  };
+
+  const handleSaveMatchTime = async (matchId: number) => {
+    if (!editMatchTimeValue) return;
+    setMatchesError(null);
+    const result = await DataService.updateAdminMatch(matchId, {
+      scheduled_time: new Date(editMatchTimeValue).toISOString()
+    });
+    if (!result.ok) {
+      setMatchesError(result.error || 'Erro ao atualizar horario');
+      return;
+    }
+    setEditingMatchTime(null);
+    setEditMatchTimeValue('');
+    await loadMatches();
   };
 
   const handleMatchDelete = async (matchId: number) => {
@@ -2125,6 +2144,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                   className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
                 />
               </div>
+              <div className="space-y-2">
+                <label className="text-xs text-gray-500">Data e horario</label>
+                <input
+                  type="datetime-local"
+                  value={matchForm.scheduled_time}
+                  onChange={(event) => handleMatchFormChange('scheduled_time', event.target.value)}
+                  className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-200 px-3 py-2 rounded-lg w-full"
+                />
+              </div>
               <div className="md:col-span-3 flex items-end justify-end">
                 <button
                   onClick={handleCreateMatch}
@@ -2171,8 +2199,40 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                     <td className="px-4 py-3 text-xs text-gray-400 uppercase tracking-wider">
                       {match.winner?.name || match.winner_id || '-'}
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-400 uppercase tracking-wider">
-                      {match.scheduled_time || '-'}
+                    <td className="px-4 py-3 text-xs text-gray-400">
+                      {editingMatchTime === match.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="datetime-local"
+                            value={editMatchTimeValue}
+                            onChange={(e) => setEditMatchTimeValue(e.target.value)}
+                            className="bg-black/40 border border-white/10 text-xs text-gray-200 px-2 py-1 rounded w-44"
+                          />
+                          <button
+                            onClick={() => handleSaveMatchTime(match.id)}
+                            className="text-[10px] uppercase tracking-wider text-green-300 border border-green-500/40 px-2 py-1"
+                          >
+                            Salvar
+                          </button>
+                          <button
+                            onClick={() => { setEditingMatchTime(null); setEditMatchTimeValue(''); }}
+                            className="text-[10px] uppercase tracking-wider text-gray-400 border border-white/10 px-2 py-1"
+                          >
+                            X
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingMatchTime(match.id);
+                            setEditMatchTimeValue(match.scheduled_time ? match.scheduled_time.slice(0, 16) : '');
+                          }}
+                          className="hover:text-white transition-colors cursor-pointer uppercase tracking-wider"
+                          title="Clique para editar"
+                        >
+                          {match.scheduled_time ? new Date(match.scheduled_time).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Definir data'}
+                        </button>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <button

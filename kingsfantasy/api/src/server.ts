@@ -328,6 +328,40 @@ app.get('/api/market/matchups/current', async (req: Request, res: Response) => {
   }
 });
 
+app.get('/api/schedule/upcoming', async (req: Request, res: Response) => {
+  try {
+    const { data: matches, error } = await supabase
+      .from('matches')
+      .select(`
+        id,
+        round_id,
+        scheduled_time,
+        status,
+        games_count,
+        team_a_id,
+        team_b_id,
+        team_a:teams!matches_team_a_id_fkey(id, name, logo_url),
+        team_b:teams!matches_team_b_id_fkey(id, name, logo_url),
+        round:rounds!matches_round_id_fkey(id, season, round_number)
+      `)
+      .in('status', ['scheduled', 'upcoming'])
+      .not('scheduled_time', 'is', null)
+      .order('scheduled_time', { ascending: true });
+
+    if (error) throw error;
+
+    return res.json({
+      success: true,
+      matches: matches || []
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 app.post('/api/market/validate-trade/:userTeamId', async (req: Request, res: Response) => {
   try {
     const userTeamId = parseIntParam(req.params.userTeamId);

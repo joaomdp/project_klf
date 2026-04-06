@@ -17,22 +17,22 @@ interface HeaderProps {
 
 const Logo: React.FC = () => {
   return (
-    <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-2.5 md:gap-3 group max-w-[180px] xs:max-w-[200px] sm:max-w-[220px]">
-      <div className="relative h-4 xs:h-5 sm:h-5 md:h-6 xl:h-7 flex items-center transition-all duration-500 group-hover:scale-105">
+    <div className="flex items-center gap-2 sm:gap-3 group">
+      <div className="relative h-5 md:h-6 xl:h-7 flex items-center transition-all duration-500 group-hover:scale-105 shrink-0">
         <div className="relative h-full flex items-center">
-          <div className="absolute inset-0 bg-[#6366F1]/10 blur-[30px] xs:blur-[35px] sm:blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+          <div className="absolute inset-0 bg-[#6366F1]/10 blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
           <img 
             src={logoImage}
             alt="Kings Lendas Fantasy Logo" 
-            className="relative z-10 h-full w-auto object-contain transition-all duration-500 drop-shadow-[0_0_12px_rgba(94,108,255,0.2)] xs:drop-shadow-[0_0_15px_rgba(94,108,255,0.25)] group-hover:drop-shadow-[0_0_20px_rgba(94,108,255,0.35)] sm:group-hover:drop-shadow-[0_0_25px_rgba(94,108,255,0.45)]"
+            className="relative z-10 h-full w-auto object-contain transition-all duration-500 drop-shadow-[0_0_15px_rgba(94,108,255,0.25)] group-hover:drop-shadow-[0_0_25px_rgba(94,108,255,0.45)]"
           />
         </div>
       </div>
-      <div className="flex flex-col min-w-0">
-        <h1 className="font-orbitron font-black text-[10px] xs:text-[11px] sm:text-[12px] md:text-[13px] lg:text-[14px] text-white uppercase tracking-tight leading-none truncate">
+      <div className="flex flex-col">
+        <h1 className="font-orbitron font-black text-[12px] sm:text-[13px] md:text-[14px] text-white uppercase tracking-tight leading-none whitespace-nowrap">
           KINGS LENDAS
         </h1>
-        <span className="text-[6px] xs:text-[7px] sm:text-[8px] font-bold text-[#6366F1] uppercase tracking-wider truncate">
+        <span className="text-[7px] sm:text-[8px] font-bold text-[#6366F1] uppercase tracking-wider whitespace-nowrap">
           FANTASY
         </span>
       </div>

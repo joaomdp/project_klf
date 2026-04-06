@@ -194,7 +194,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[5000] overflow-y-auto min-h-[100dvh]">
+    <div className="fixed inset-0 z-[5000] overflow-y-auto overflow-x-hidden min-h-[100dvh]">
       
       {/* Loading Overlay */}
       {loading && <LoadingScreen />}
@@ -207,93 +207,94 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         }}
       >
         {/* Gradient Overlay para escurecer e destacar o formulário */}
-        <div className="absolute inset-0 bg-gradient-to-l from-black/80 via-black/50 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-l from-black/90 via-black/70 to-black/40 md:from-black/80 md:via-black/50 md:to-transparent"></div>
       </div>
 
-      <div className="relative w-full max-w-[1600px] min-h-full flex items-start sm:items-center justify-center mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div className="relative w-full max-w-[1600px] min-h-full flex items-start sm:items-center justify-center mx-auto px-3 xs:px-4 sm:px-6 py-6 sm:py-8 md:py-12">
 
         {/* Form Container - Centralizado */}
         <div className="relative w-full max-w-[550px] z-20">
-          <div className="glass-card rounded-3xl md:rounded-[40px] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] border border-white/10 animate-in fade-in zoom-in-95 duration-700">
+          <div className="glass-card rounded-2xl sm:rounded-3xl md:rounded-[40px] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] border border-white/10 animate-in fade-in zoom-in-95 duration-700">
             
-            <div className="flex flex-col p-6 sm:p-8 md:p-10 lg:p-12 overflow-y-auto no-scrollbar relative bg-[#0F0F14]/50 backdrop-blur-2xl">
+            <div className="flex flex-col p-4 xs:p-5 sm:p-6 md:p-8 lg:p-10 xl:p-12 overflow-y-auto no-scrollbar relative bg-[#0F0F14]/50 backdrop-blur-2xl">
               
               {/* Toggle Button - BLOQUEADO TEMPORARIAMENTE */}
-              <div className="absolute top-6 right-6">
+              <div className="absolute top-4 xs:top-5 sm:top-6 right-4 xs:right-5 sm:right-6">
                 <button 
                   disabled
-                  className="px-4 py-2.5 text-xs font-black text-gray-600 uppercase tracking-widest border border-white/5 rounded-lg cursor-not-allowed opacity-50"
+                  className="px-2 xs:px-3 sm:px-4 py-1.5 xs:py-2 sm:py-2.5 text-[9px] xs:text-[10px] sm:text-xs font-black text-gray-600 uppercase tracking-widest border border-white/5 rounded-lg cursor-not-allowed opacity-50"
                   title="Cadastros temporariamente bloqueados - Acesso antecipado"
                 >
-                  ACESSO ANTECIPADO
+                  <span className="hidden xs:inline">ACESSO ANTECIPADO</span>
+                  <span className="xs:hidden">BLOQUEADO</span>
                 </button>
               </div>
 
-              <div className="flex-1 flex flex-col justify-center max-w-[420px] mx-auto w-full pt-12">
+              <div className="flex-1 flex flex-col justify-center max-w-[420px] mx-auto w-full pt-10 xs:pt-11 sm:pt-12">
                 
                 {/* Logo */}
-                <div className="mb-6 md:mb-8 animate-in fade-in slide-in-from-right duration-700 text-center">
-                  <div className="inline-flex items-center gap-2.5 mb-4 md:mb-5">
-                    <img src={logo} alt="Logo" className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl object-cover" />
-                    <div className="font-orbitron font-black text-lg md:text-xl text-white uppercase tracking-tight">
-                      KINGS <span className="text-[#6366F1]">LENDAS</span> FANTASY
+                <div className="mb-5 sm:mb-6 md:mb-8 animate-in fade-in slide-in-from-right duration-700 text-center">
+                  <div className="inline-flex items-center gap-2 sm:gap-2.5 mb-3 sm:mb-4 md:mb-5">
+                    <img src={logo} alt="Logo" className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 lg:w-12 lg:h-12 rounded-lg md:rounded-xl object-cover" />
+                    <div className="font-orbitron font-black text-base sm:text-lg md:text-xl text-white uppercase tracking-tight">
+                      KINGS <span className="text-[#6366F1]">LENDAS</span> <span className="hidden xs:inline">FANTASY</span>
                     </div>
                   </div>
-                  <h1 className="font-orbitron font-black text-3xl sm:text-4xl md:text-5xl text-white uppercase tracking-tighter mb-2 md:mb-3">
+                  <h1 className="font-orbitron font-black text-2xl xs:text-3xl sm:text-4xl md:text-5xl text-white uppercase tracking-tighter mb-1.5 sm:mb-2 md:mb-3">
                     {isSignUp ? 'CRIAR CONTA' : 'BEM-VINDO'}
                   </h1>
-                  <p className="text-xs sm:text-sm text-gray-500 font-medium">
+                  <p className="text-[11px] xs:text-xs sm:text-sm text-gray-500 font-medium px-2">
                     {isSignUp ? 'Junte-se ao maior campeonato do Brasil' : 'Entre para continuar sua jornada'}
                   </p>
                   {/* Aviso de Acesso Antecipado */}
-                  <div className="mt-4 px-4 py-3 bg-[#6366F1]/10 border border-[#6366F1]/30 rounded-xl">
-                    <p className="text-[10px] font-bold text-[#6366F1] uppercase tracking-widest text-center">
-                      🔒 Acesso Antecipado - Cadastros Temporariamente Bloqueados
+                  <div className="mt-3 sm:mt-4 px-3 sm:px-4 py-2 sm:py-3 bg-[#6366F1]/10 border border-[#6366F1]/30 rounded-lg sm:rounded-xl">
+                    <p className="text-[9px] xs:text-[10px] font-bold text-[#6366F1] uppercase tracking-widest text-center leading-relaxed">
+                      🔒 Acesso Antecipado - Cadastros <span className="hidden xs:inline">Temporariamente</span> Bloqueados
                     </p>
                   </div>
                 </div>
 
                 {/* Social Buttons - BLOQUEADOS TEMPORARIAMENTE */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 md:mb-7 animate-in fade-in slide-in-from-right duration-700 delay-100">
+                <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3 mb-5 sm:mb-6 md:mb-7 animate-in fade-in slide-in-from-right duration-700 delay-100">
                   <button 
                     type="button"
                     disabled
-                    className="group flex items-center justify-center gap-2 md:gap-2.5 py-3.5 md:py-4 bg-white/5 border border-white/5 rounded-xl md:rounded-2xl transition-all opacity-50 cursor-not-allowed"
+                    className="group flex items-center justify-center gap-1.5 sm:gap-2 md:gap-2.5 py-3 sm:py-3.5 md:py-4 bg-white/5 border border-white/5 rounded-lg sm:rounded-xl md:rounded-2xl transition-all opacity-50 cursor-not-allowed"
                     title="Login social bloqueado - Acesso antecipado"
                   >
-                    <i className="fa-brands fa-discord text-gray-600 text-lg md:text-xl"></i>
-                    <span className="text-xs font-black text-gray-600 uppercase tracking-wider">Discord</span>
+                    <i className="fa-brands fa-discord text-gray-600 text-base sm:text-lg md:text-xl"></i>
+                    <span className="text-[10px] xs:text-[11px] sm:text-xs font-black text-gray-600 uppercase tracking-wider">Discord</span>
                   </button>
                   <button 
                     type="button"
                     disabled
-                    className="group flex items-center justify-center gap-2 md:gap-2.5 py-3.5 md:py-4 bg-white/5 border border-white/5 rounded-xl md:rounded-2xl transition-all opacity-50 cursor-not-allowed"
+                    className="group flex items-center justify-center gap-1.5 sm:gap-2 md:gap-2.5 py-3 sm:py-3.5 md:py-4 bg-white/5 border border-white/5 rounded-lg sm:rounded-xl md:rounded-2xl transition-all opacity-50 cursor-not-allowed"
                     title="Login social bloqueado - Acesso antecipado"
                   >
-                    <i className="fa-brands fa-google text-gray-600 text-lg md:text-xl"></i>
-                    <span className="text-xs font-black text-gray-600 uppercase tracking-wider">Google</span>
+                    <i className="fa-brands fa-google text-gray-600 text-base sm:text-lg md:text-xl"></i>
+                    <span className="text-[10px] xs:text-[11px] sm:text-xs font-black text-gray-600 uppercase tracking-wider">Google</span>
                   </button>
                 </div>
 
                 {/* Divider */}
-                <div className="relative flex items-center gap-3 mb-6 md:mb-7 animate-in fade-in duration-700 delay-200">
+                <div className="relative flex items-center gap-2 sm:gap-3 mb-5 sm:mb-6 md:mb-7 animate-in fade-in duration-700 delay-200">
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-white/10"></div>
-                  <span className="text-xs font-bold text-gray-600 uppercase tracking-widest">ou e-mail</span>
+                  <span className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-600 uppercase tracking-widest">ou e-mail</span>
                   <div className="h-px flex-1 bg-gradient-to-l from-transparent via-white/10 to-white/10"></div>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5 animate-in fade-in slide-in-from-right duration-700 delay-300">
+                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-5 animate-in fade-in slide-in-from-right duration-700 delay-300">
                   
                   {/* Email */}
-                  <div className="space-y-1.5 md:space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">E-mail</label>
+                  <div className="space-y-1 sm:space-y-1.5 md:space-y-2">
+                    <label className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">E-mail</label>
                     <input 
                       type="email" 
                       placeholder="seu@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 md:py-4 px-4 md:px-5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 md:py-4 px-3 sm:px-4 md:px-5 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
                       required
                       disabled={loading}
                     />
@@ -302,40 +303,40 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   {/* Username (SignUp only) */}
                   
                   {/* Password */}
-                  <div className="space-y-1.5 md:space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Senha</label>
+                  <div className="space-y-1 sm:space-y-1.5 md:space-y-2">
+                    <label className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Senha</label>
                     <div className="relative">
                       <input 
                         type={showPassword ? "text" : "password"} 
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 md:py-4 pl-4 md:pl-5 pr-12 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 md:py-4 pl-3 sm:pl-4 md:pl-5 pr-10 sm:pr-12 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
                         required
                         disabled={loading}
                       />
                       <button 
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#6366F1] transition-colors"
+                        className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#6366F1] transition-colors"
                         disabled={loading}
                       >
-                        <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm`}></i>
+                        <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-xs sm:text-sm`}></i>
                       </button>
                     </div>
                   </div>
 
                   {/* Confirm Password (SignUp only) */}
                   {isSignUp && (
-                    <div className="space-y-1.5 md:space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Confirmar Senha</label>
+                    <div className="space-y-1 sm:space-y-1.5 md:space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <label className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Confirmar Senha</label>
                       <div className="relative">
                         <input 
                           type={showPassword ? "text" : "password"} 
                           placeholder="••••••••"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
-                          className={`w-full bg-white/5 border rounded-xl py-3.5 md:py-4 pl-4 md:pl-5 pr-12 text-sm text-white placeholder-gray-600 focus:outline-none transition-all ${
+                          className={`w-full bg-white/5 border rounded-lg sm:rounded-xl py-3 sm:py-3.5 md:py-4 pl-3 sm:pl-4 md:pl-5 pr-10 sm:pr-12 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none transition-all ${
                             confirmPassword && password !== confirmPassword 
                               ? 'border-red-500/50 focus:border-red-500' 
                               : 'border-white/10 focus:border-[#6366F1]/50 focus:bg-white/[0.07]'
@@ -346,22 +347,22 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         <button 
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#6366F1] transition-colors"
+                          className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#6366F1] transition-colors"
                           disabled={loading}
                         >
-                          <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm`}></i>
+                          <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-xs sm:text-sm`}></i>
                         </button>
                       </div>
                       {confirmPassword && password !== confirmPassword && (
-                        <p className="text-xs font-bold text-red-500 uppercase tracking-wider">Senhas não coincidem</p>
+                        <p className="text-[10px] xs:text-xs font-bold text-red-500 uppercase tracking-wider">Senhas não coincidem</p>
                       )}
                     </div>
                   )}
 
                   {/* Remember Me */}
                   {!isSignUp && (
-                    <div className="flex items-center justify-between gap-4">
-                      <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="flex items-center justify-between gap-3 sm:gap-4 flex-wrap xs:flex-nowrap">
+                      <label className="flex items-center gap-2 sm:gap-3 cursor-pointer group">
                         <input 
                           type="checkbox" 
                           checked={rememberMe} 
@@ -369,14 +370,14 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                           className="sr-only" 
                           disabled={loading}
                         />
-                        <div className={`w-5 h-5 rounded-md border transition-all flex items-center justify-center ${
+                        <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-md border transition-all flex items-center justify-center ${
                           rememberMe ? 'bg-[#6366F1] border-[#6366F1]' : 'bg-white/5 border-white/10 group-hover:border-white/20'
                         }`}>
                           {rememberMe && (
-                            <i className="fa-solid fa-check text-white text-xs"></i>
+                            <i className="fa-solid fa-check text-white text-[10px] sm:text-xs"></i>
                           )}
                         </div>
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider group-hover:text-gray-300 transition-colors">
+                        <span className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider group-hover:text-gray-300 transition-colors">
                           Lembrar de mim
                         </span>
                       </label>
@@ -388,7 +389,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                           setForgotPasswordMsg(null);
                           setIsForgotPasswordOpen(true);
                         }}
-                        className="text-[10px] font-black text-[#6366F1] uppercase tracking-widest hover:text-white transition-colors"
+                        className="text-[9px] xs:text-[10px] font-black text-[#6366F1] uppercase tracking-widest hover:text-white transition-colors whitespace-nowrap"
                         disabled={loading}
                       >
                         Esqueci minha senha
@@ -399,9 +400,9 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 {/* Error Message */}
                 {errorMsg && (
                   <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
-                      <i className="fa-solid fa-circle-exclamation text-red-500 text-lg mt-0.5"></i>
-                      <p className="text-xs font-bold text-red-400 uppercase tracking-wider leading-relaxed">
+                    <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 bg-red-500/10 border border-red-500/30 rounded-lg sm:rounded-xl">
+                      <i className="fa-solid fa-circle-exclamation text-red-500 text-base sm:text-lg mt-0.5"></i>
+                      <p className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-red-400 uppercase tracking-wider leading-relaxed">
                         {errorMsg}
                       </p>
                     </div>
@@ -412,14 +413,15 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   <button 
                     type="submit" 
                     disabled={loading || (isSignUp && confirmPassword !== '' && password !== confirmPassword)}
-                    className="w-full py-4 md:py-5 bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white rounded-xl font-orbitron font-black text-sm uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-[0_12px_35px_rgba(99,102,241,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 mt-5 md:mt-6 relative overflow-hidden group"
+                    className="w-full py-3.5 sm:py-4 md:py-5 bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white rounded-lg sm:rounded-xl font-orbitron font-black text-xs sm:text-sm uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-[0_10px_30px_rgba(99,102,241,0.25)] sm:shadow-[0_12px_35px_rgba(99,102,241,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 mt-4 sm:mt-5 md:mt-6 relative overflow-hidden group"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <span className="relative z-10">
                       {loading ? (
                         <div className="flex items-center justify-center gap-2">
                           <i className="fa-solid fa-spinner fa-spin"></i>
-                          CARREGANDO...
+                          <span className="hidden xs:inline">CARREGANDO...</span>
+                          <span className="xs:hidden">...</span>
                         </div>
                       ) : isSignUp ? 'CRIAR CONTA' : 'ENTRAR'}
                     </span>
@@ -432,27 +434,27 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       </div>
 
       {pendingEmail && (
-        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="glass-card border border-white/10 rounded-3xl p-8 max-w-md w-full mx-6 shadow-[0_40px_120px_rgba(0,0,0,0.6)]">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-orbitron font-black text-white uppercase tracking-tight">Confirme seu email</h3>
+        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300 px-3 xs:px-4 sm:px-6">
+          <div className="glass-card border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 max-w-md w-full shadow-[0_40px_120px_rgba(0,0,0,0.6)]">
+            <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
+              <h3 className="text-base sm:text-lg font-orbitron font-black text-white uppercase tracking-tight">Confirme seu email</h3>
               <button
                 type="button"
                 onClick={() => setPendingEmail(null)}
-                className="w-9 h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#6366F1]/40 transition-colors"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#6366F1]/40 transition-colors"
               >
-                <i className="fa-solid fa-xmark"></i>
+                <i className="fa-solid fa-xmark text-sm"></i>
               </button>
             </div>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              Enviamos um link de confirmacao para <span className="text-white font-bold">{pendingEmail}</span>.
+            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+              Enviamos um link de confirmacao para <span className="text-white font-bold break-all">{pendingEmail}</span>.
               Confirme o email para concluir seu cadastro.
             </p>
-            <div className="mt-6 flex items-center justify-between gap-3">
+            <div className="mt-5 sm:mt-6 flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-2 xs:gap-3">
               <button
                 type="button"
                 onClick={() => setPendingEmail(null)}
-                className="btn-secondary text-xs uppercase tracking-wider"
+                className="btn-secondary text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-wider"
               >
                 Entendi
               </button>
@@ -462,7 +464,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   setPendingEmail(null);
                   setIsSignUp(false);
                 }}
-                className="btn-primary text-xs uppercase tracking-wider"
+                className="btn-primary text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-wider"
               >
                 Voltar para login
               </button>
@@ -472,51 +474,51 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       )}
 
       {isForgotPasswordOpen && (
-        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="glass-card border border-white/10 rounded-3xl p-8 max-w-md w-full mx-6 shadow-[0_40px_120px_rgba(0,0,0,0.6)]">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-orbitron font-black text-white uppercase tracking-tight">Recuperar senha</h3>
+        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300 px-3 xs:px-4 sm:px-6">
+          <div className="glass-card border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 max-w-md w-full shadow-[0_40px_120px_rgba(0,0,0,0.6)]">
+            <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
+              <h3 className="text-base sm:text-lg font-orbitron font-black text-white uppercase tracking-tight">Recuperar senha</h3>
               <button
                 type="button"
                 onClick={() => setIsForgotPasswordOpen(false)}
-                className="w-9 h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#6366F1]/40 transition-colors"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#6366F1]/40 transition-colors"
               >
-                <i className="fa-solid fa-xmark"></i>
+                <i className="fa-solid fa-xmark text-sm"></i>
               </button>
             </div>
 
-            <form onSubmit={handleForgotPassword} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">E-mail da conta</label>
+            <form onSubmit={handleForgotPassword} className="space-y-3 sm:space-y-4">
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">E-mail da conta</label>
                 <input
                   type="email"
                   value={forgotPasswordEmail}
                   onChange={(e) => setForgotPasswordEmail(e.target.value)}
                   placeholder="seu@email.com"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
                   required
                   disabled={isSendingForgotPassword}
                 />
               </div>
 
               {forgotPasswordMsg && (
-                <div className={`p-3 rounded-xl border ${forgotPasswordMsg.includes('ENVIADO') ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
-                  <p className="text-[11px] font-bold uppercase tracking-wider">{forgotPasswordMsg}</p>
+                <div className={`p-2.5 sm:p-3 rounded-lg sm:rounded-xl border ${forgotPasswordMsg.includes('ENVIADO') ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                  <p className="text-[10px] xs:text-[11px] font-bold uppercase tracking-wider break-words">{forgotPasswordMsg}</p>
                 </div>
               )}
 
-              <div className="flex items-center justify-between gap-3 pt-2">
+              <div className="flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-2 xs:gap-3 pt-1 sm:pt-2">
                 <button
                   type="button"
                   onClick={() => setIsForgotPasswordOpen(false)}
-                  className="btn-secondary text-xs uppercase tracking-wider"
+                  className="btn-secondary text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-wider"
                   disabled={isSendingForgotPassword}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary text-xs uppercase tracking-wider"
+                  className="btn-primary text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-wider"
                   disabled={isSendingForgotPassword}
                 >
                   {isSendingForgotPassword ? 'Enviando...' : 'Enviar link'}
@@ -528,10 +530,10 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       )}
 
       {isResetPasswordOpen && (
-        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="glass-card border border-white/10 rounded-3xl p-8 max-w-md w-full mx-6 shadow-[0_40px_120px_rgba(0,0,0,0.6)]">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-orbitron font-black text-white uppercase tracking-tight">Definir nova senha</h3>
+        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300 px-3 xs:px-4 sm:px-6">
+          <div className="glass-card border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 max-w-md w-full shadow-[0_40px_120px_rgba(0,0,0,0.6)]">
+            <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
+              <h3 className="text-base sm:text-lg font-orbitron font-black text-white uppercase tracking-tight">Definir nova senha</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -539,48 +541,48 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   setResetPasswordMsg(null);
                   AuthService.clearRecoveryState();
                 }}
-                className="w-9 h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#6366F1]/40 transition-colors"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#6366F1]/40 transition-colors"
               >
-                <i className="fa-solid fa-xmark"></i>
+                <i className="fa-solid fa-xmark text-sm"></i>
               </button>
             </div>
 
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nova senha</label>
+            <form onSubmit={handleResetPassword} className="space-y-3 sm:space-y-4">
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Nova senha</label>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
                   required
                   disabled={isSubmittingResetPassword}
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Confirmar nova senha</label>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Confirmar nova senha</label>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={confirmNewPassword}
                   onChange={(e) => setConfirmNewPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
                   required
                   disabled={isSubmittingResetPassword}
                 />
               </div>
 
               {resetPasswordMsg && (
-                <div className={`p-3 rounded-xl border ${resetPasswordMsg.includes('SUCESSO') ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
-                  <p className="text-[11px] font-bold uppercase tracking-wider">{resetPasswordMsg}</p>
+                <div className={`p-2.5 sm:p-3 rounded-lg sm:rounded-xl border ${resetPasswordMsg.includes('SUCESSO') ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                  <p className="text-[10px] xs:text-[11px] font-bold uppercase tracking-wider break-words">{resetPasswordMsg}</p>
                 </div>
               )}
 
               <button
                 type="submit"
-                className="w-full py-3.5 bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white rounded-xl font-orbitron font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50"
+                className="w-full py-3 sm:py-3.5 bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white rounded-lg sm:rounded-xl font-orbitron font-black text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-widest transition-all disabled:opacity-50"
                 disabled={isSubmittingResetPassword}
               >
                 {isSubmittingResetPassword ? 'SALVANDO...' : 'ATUALIZAR SENHA'}

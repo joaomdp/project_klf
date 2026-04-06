@@ -125,21 +125,21 @@ const Market: React.FC<MarketProps> = ({
 
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 animate-in fade-in duration-500 pb-20">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 md:gap-10 animate-in fade-in duration-500 pb-16 sm:pb-20 px-3 xs:px-4 sm:px-6">
       {/* Check animado de confirmação */}
       {showConfirmCheck && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
           <div className="animate-in zoom-in duration-300">
-            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[#6366F1] to-[#8B5CF6] flex items-center justify-center shadow-[0_0_80px_rgba(99,102,241,0.8)]">
-              <i className="fa-solid fa-check text-6xl text-white"></i>
+            <div className="w-24 h-24 xs:w-28 xs:h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-[#6366F1] to-[#8B5CF6] flex items-center justify-center shadow-[0_0_60px_rgba(99,102,241,0.7)] sm:shadow-[0_0_80px_rgba(99,102,241,0.8)]">
+              <i className="fa-solid fa-check text-5xl xs:text-6xl text-white"></i>
             </div>
           </div>
         </div>
       )}
 
-        <div className="lg:col-span-4 space-y-8">
-        <div className="lg:sticky lg:top-32 space-y-8">
-           <div className="relative aspect-[5/4.8] w-full rounded-[2.5rem] overflow-hidden border border-white/10 bg-black shadow-[0_0_50px_rgba(0,0,0,0.8)] group">
+        <div className="lg:col-span-4 space-y-6 sm:space-y-7 md:space-y-8">
+        <div className="lg:sticky lg:top-28 xl:top-32 space-y-6 sm:space-y-7 md:space-y-8">
+           <div className="relative aspect-[5/4.8] w-full rounded-2xl xs:rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] overflow-hidden border border-white/10 bg-black shadow-[0_0_40px_rgba(0,0,0,0.7)] sm:shadow-[0_0_50px_rgba(0,0,0,0.8)] group">
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
               <img
                 src="https://i.imgur.com/myc9dfj.png"

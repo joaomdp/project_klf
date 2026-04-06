@@ -38,14 +38,14 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
   };
 
   const PowerModule = ({ label, value, icon, isCoin = false }: { label: string, value: string | number, icon?: React.ReactNode, isCoin?: boolean }) => (
-    <div className="flex-1 group relative flex flex-col items-center justify-center py-8 border-r border-white/5 last:border-r-0 overflow-hidden cursor-pointer transition-all duration-500 hover:bg-white/[0.02]">
+    <div className="flex-1 group relative flex flex-col items-center justify-center py-6 xs:py-7 sm:py-8 border-b sm:border-b-0 sm:border-r border-white/5 last:border-b-0 last:border-r-0 overflow-hidden cursor-pointer transition-all duration-500 hover:bg-white/[0.02]">
       <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
 
-      <div className="flex flex-col items-center gap-2 relative z-10">
+      <div className="flex flex-col items-center gap-1.5 sm:gap-2 relative z-10">
         {icon && (
           <div className={`transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
             isCoin 
-              ? 'grayscale opacity-20 scale-75 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-[1.8] group-hover:-translate-y-2' 
+              ? 'grayscale opacity-20 scale-75 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-[1.6] xs:group-hover:scale-[1.7] sm:group-hover:scale-[1.8] group-hover:-translate-y-2' 
               : 'opacity-10 group-hover:opacity-100 group-hover:scale-110'
           }`}>
             <div className={`${isCoin ? 'drop-shadow-[0_0_20px_rgba(94,108,255,0)] group-hover:drop-shadow-[0_0_25px_rgba(94,108,255,0.9)]' : ''}`}>
@@ -54,12 +54,12 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
           </div>
         )}
         <div className="text-center transform transition-transform duration-500 group-hover:translate-y-1">
-          <span className={`text-2xl md:text-4xl font-orbitron font-black tracking-tighter transition-all duration-500 ${isCoin ? 'text-gray-600 group-hover:text-white' : 'text-white'}`}>
+          <span className={`text-xl xs:text-2xl sm:text-3xl md:text-4xl font-orbitron font-black tracking-tighter transition-all duration-500 ${isCoin ? 'text-gray-600 group-hover:text-white' : 'text-white'}`}>
             {value}
           </span>
-          <div className="flex items-center justify-center gap-2 mt-1">
-            <div className="w-1 h-1 rounded-full bg-gray-800 group-hover:bg-[#6366F1] group-hover:animate-pulse transition-all"></div>
-            <span className="text-[7px] font-black text-gray-500 uppercase tracking-[0.3em] group-hover:text-[#6366F1] transition-colors">
+          <div className="flex items-center justify-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
+            <div className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-gray-800 group-hover:bg-[#6366F1] group-hover:animate-pulse transition-all"></div>
+            <span className="text-[6px] xs:text-[7px] font-black text-gray-500 uppercase tracking-[0.25em] xs:tracking-[0.3em] group-hover:text-[#6366F1] transition-colors">
               {label}
             </span>
           </div>
@@ -71,40 +71,40 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
   );
 
   return (
-    <div className="max-w-[1280px] mx-auto space-y-16 animate-in fade-in duration-1000 pb-32 px-4 sm:px-6 lg:px-8">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start pt-10">
-        <div className="lg:col-span-7 flex flex-col gap-10">
+    <div className="max-w-[1280px] mx-auto space-y-10 sm:space-y-12 md:space-y-14 lg:space-y-16 animate-in fade-in duration-1000 pb-20 sm:pb-24 md:pb-28 lg:pb-32 px-3 xs:px-4 sm:px-5 md:px-6 lg:px-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 md:gap-10 lg:gap-12 items-start pt-6 sm:pt-8 md:pt-10">
+        <div className="lg:col-span-7 flex flex-col gap-6 sm:gap-8 md:gap-10">
           <div className="relative">
-            <div className="absolute -left-10 top-1/2 -translate-y-1/2 w-1 h-24 bg-gradient-to-b from-transparent via-[#6366F1] to-transparent opacity-50 hidden lg:block"></div>
+            <div className="absolute -left-6 sm:-left-8 md:-left-10 top-1/2 -translate-y-1/2 w-0.5 sm:w-1 h-16 sm:h-20 md:h-24 bg-gradient-to-b from-transparent via-[#6366F1] to-transparent opacity-50 hidden lg:block"></div>
             
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="px-3 py-1 bg-white/5 border border-white/10 flex items-center gap-2">
-                  <span className="text-[8px] font-black text-gray-500 tracking-[0.2em] uppercase">SISTEMA ONLINE</span>
-                  <div className="w-1 h-1 bg-[#6366F1] rounded-full animate-ping"></div>
+            <div className="space-y-4 sm:space-y-5 md:space-y-6">
+              <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+                <div className="px-2 xs:px-2.5 sm:px-3 py-0.5 sm:py-1 bg-white/5 border border-white/10 flex items-center gap-1.5 sm:gap-2">
+                  <span className="text-[7px] xs:text-[8px] font-black text-gray-500 tracking-[0.15em] xs:tracking-[0.2em] uppercase">SISTEMA ONLINE</span>
+                  <div className="w-0.5 h-0.5 sm:w-1 sm:h-1 bg-[#6366F1] rounded-full animate-ping"></div>
                 </div>
-                <div className="h-px w-20 bg-white/10"></div>
+                <div className="h-px w-12 sm:w-16 md:w-20 bg-white/10"></div>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-orbitron font-black text-white uppercase tracking-tighter leading-[0.85] break-words overflow-hidden max-w-full">
+              <h1 className="text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-orbitron font-black text-white uppercase tracking-tighter leading-[0.85] break-words overflow-hidden max-w-full">
                 {userTeam.name}
               </h1>
 
-              <div className="flex flex-wrap items-center gap-4 sm:gap-8">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 md:gap-6 lg:gap-8">
                 <button 
                   onClick={onNavigateToMarket}
-                  className="group relative px-10 py-4 overflow-hidden bg-black/40 border border-[#6366F1]/30 hover:border-[#6366F1] transition-all shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(99,102,241,0.3)]"
+                  className="group relative px-6 xs:px-8 sm:px-9 md:px-10 py-3 xs:py-3.5 sm:py-3.5 md:py-4 overflow-hidden bg-black/40 border border-[#6366F1]/30 hover:border-[#6366F1] transition-all shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(99,102,241,0.3)] rounded-sm"
                 >
                   <div className="absolute inset-0 bg-[#6366F1] translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
-                  <span className="relative z-10 text-[10px] font-black text-[#6366F1] group-hover:text-black uppercase tracking-[0.3em] font-orbitron transition-colors">ABRIR MERCADO</span>
+                  <span className="relative z-10 text-[9px] xs:text-[10px] font-black text-[#6366F1] group-hover:text-black uppercase tracking-[0.25em] xs:tracking-[0.3em] font-orbitron transition-colors">ABRIR MERCADO</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-          <div className="lg:col-span-5 flex flex-col gap-6">
-          <div className="relative w-full aspect-[5/4.8] rounded-[2.5rem] overflow-hidden border border-white/10 bg-black shadow-[0_0_80px_rgba(0,0,0,1)] group">
+          <div className="lg:col-span-5 flex flex-col gap-4 sm:gap-5 md:gap-6">
+          <div className="relative w-full aspect-[5/4.8] rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] overflow-hidden border border-white/10 bg-black shadow-[0_0_60px_rgba(0,0,0,0.8)] sm:shadow-[0_0_80px_rgba(0,0,0,1)] group">
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
             <img
               src="https://i.imgur.com/myc9dfj.png"
@@ -118,7 +118,7 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
               return (
                 <div key={role.id} className="absolute -translate-x-1/2 -translate-y-1/2 z-20" style={{ top: role.top, left: role.left }}>
                   <div className="relative group/marker flex flex-col items-center gap-0.5" onClick={() => !p && onNavigateToMarket()} style={!p ? { cursor: 'pointer' } : undefined}>
-                    <div className={`w-14 h-14 rounded-full border-2 transition-all duration-500 relative flex items-center justify-center overflow-hidden ${
+                    <div className={`w-10 h-10 xs:w-12 xs:h-12 sm:w-13 sm:h-13 md:w-14 md:h-14 rounded-full border-2 transition-all duration-500 relative flex items-center justify-center overflow-hidden ${
                       p ? 'border-[#6366F1] bg-black shadow-[0_0_25px_rgba(94,108,255,0.6)] scale-110' : 'border-white/10 bg-black/80 hover:border-white/40'
                     }`}>
                       {p ? (
@@ -128,7 +128,7 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
                       )}
                     </div>
                     {p && (
-                      <span className="text-[8px] font-black uppercase text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/10 whitespace-nowrap">
+                      <span className="text-[7px] xs:text-[8px] font-black uppercase text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] bg-black/60 backdrop-blur-sm px-1.5 xs:px-2 py-0.5 rounded-full border border-white/10 whitespace-nowrap">
                         {p.name}
                       </span>
                     )}
@@ -140,13 +140,13 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
         </div>
       </div>
 
-      <div className="space-y-8">
-        <div className="flex items-center gap-6">
-          <h2 className="text-[10px] font-black text-gray-700 uppercase tracking-[0.6em]">DADOS DA CONTA</h2>
+      <div className="space-y-6 sm:space-y-7 md:space-y-8">
+        <div className="flex items-center gap-3 sm:gap-4 md:gap-6">
+          <h2 className="text-[9px] xs:text-[10px] font-black text-gray-700 uppercase tracking-[0.4em] xs:tracking-[0.5em] sm:tracking-[0.6em]">DADOS DA CONTA</h2>
           <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent"></div>
         </div>
         
-          <div className="flex flex-col md:flex-row items-stretch bg-black/40 border border-white/5 overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+          <div className="flex flex-col sm:flex-row items-stretch bg-black/40 border border-white/5 overflow-hidden shadow-[0_15px_50px_rgba(0,0,0,0.4)] sm:shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
           <PowerModule 
             label="PAITRIMÔNIO" 
             value={formatValue(userTeam.budget)} 
@@ -167,25 +167,25 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
         
       </div>
 
-      <div className="space-y-12">
-        <div className="flex items-center gap-6">
-          <h2 className="text-[10px] font-black text-gray-700 uppercase tracking-[0.6em]">LINEUP OFICIAL</h2>
+      <div className="space-y-8 sm:space-y-10 md:space-y-12">
+        <div className="flex items-center gap-3 sm:gap-4 md:gap-6">
+          <h2 className="text-[9px] xs:text-[10px] font-black text-gray-700 uppercase tracking-[0.4em] xs:tracking-[0.5em] sm:tracking-[0.6em]">LINEUP OFICIAL</h2>
           <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent"></div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-5 md:gap-6 lg:gap-7 xl:gap-8">
           {roles.map((role) => {
             const p = userTeam.players[role.id];
             const displayChampion = p?.selectedChampion || p?.lastChampion;
             return (
               <div key={role.id} className="group relative">
-                <div className={`relative flex flex-col transition-all duration-700 bg-black/60 border overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_60px_rgba(0,0,0,0.8)] ${
+                <div className={`relative flex flex-col transition-all duration-700 bg-black/60 border overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.4)] sm:shadow-[0_10px_40px_rgba(0,0,0,0.5)] hover:shadow-[0_15px_50px_rgba(0,0,0,0.7)] sm:hover:shadow-[0_20px_60px_rgba(0,0,0,0.8)] rounded-lg ${
                   p ? 'border-white/5 hover:border-[#6366F1]/30' : 'border-dashed border-white/5 opacity-30 grayscale hover:opacity-100 hover:grayscale-0'
                 }`}>
-                  <div className="px-4 py-3 bg-white/[0.02] border-b border-white/5 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <img src={roleIcons[role.id]} className="w-3 h-3 brightness-200 opacity-30 group-hover:opacity-100 transition-all" alt="" />
-                      <span className="text-[7px] font-orbitron font-black text-gray-500 group-hover:text-[#6366F1] transition-colors tracking-widest">{role.label}</span>
+                  <div className="px-3 xs:px-3.5 sm:px-4 py-2 xs:py-2.5 sm:py-3 bg-white/[0.02] border-b border-white/5 flex justify-between items-center">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <img src={roleIcons[role.id]} className="w-2.5 h-2.5 xs:w-3 xs:h-3 brightness-200 opacity-30 group-hover:opacity-100 transition-all" alt="" />
+                      <span className="text-[6px] xs:text-[7px] font-orbitron font-black text-gray-500 group-hover:text-[#6366F1] transition-colors tracking-widest">{role.label}</span>
                     </div>
                   </div>
 
@@ -195,44 +195,44 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, onFire, onNavigat
                         <PlayerImage player={p} priority className="w-full h-full" imgClassName="w-full h-full object-cover object-center contrast-110 brightness-110 saturate-110 transition-transform duration-700 group-hover/image:scale-105" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-70"></div>
                         <div className="absolute inset-0 border-[0.5px] border-white/5 pointer-events-none"></div>
-                        <div className="absolute top-3 left-3 z-30 transition-transform duration-300 group-hover:scale-110">
-                           <TeamLogo logoUrl={p.teamLogo} teamName={p.team} className="w-7 h-7" />
+                        <div className="absolute top-2 xs:top-2.5 sm:top-3 left-2 xs:left-2.5 sm:left-3 z-30 transition-transform duration-300 group-hover:scale-110">
+                           <TeamLogo logoUrl={p.teamLogo} teamName={p.team} className="w-5 h-5 xs:w-6 xs:h-6 sm:w-7 sm:h-7" />
                         </div>
                       </>
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-white/[0.01]">
-                        <div className="w-12 h-12 rounded-full border-2 border-dashed border-white/5 flex items-center justify-center group-hover:border-[#6366F1]/30 group-hover:scale-110 transition-all">
-                          <i className="fa-solid fa-plus text-white/5 text-xs group-hover:text-[#6366F1]/30 transition-all"></i>
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-2.5 xs:gap-3 sm:gap-4 bg-white/[0.01]">
+                        <div className="w-9 h-9 xs:w-10 xs:h-10 sm:w-12 sm:h-12 rounded-full border-2 border-dashed border-white/5 flex items-center justify-center group-hover:border-[#6366F1]/30 group-hover:scale-110 transition-all">
+                          <i className="fa-solid fa-plus text-white/5 text-[10px] xs:text-xs group-hover:text-[#6366F1]/30 transition-all"></i>
                         </div>
-                        <span className="text-[8px] font-black text-gray-800 uppercase tracking-widest group-hover:text-gray-600 transition-colors">VAGA DISPONÍVEL</span>
+                        <span className="text-[7px] xs:text-[8px] font-black text-gray-800 uppercase tracking-widest group-hover:text-gray-600 transition-colors px-2">VAGA DISPONÍVEL</span>
                       </div>
                     )}
 
                     {p && displayChampion && (
-                      <div className="absolute bottom-3 right-3 z-20 group-hover:scale-110 transition-transform duration-500">
-                         <div className="relative w-14 h-14">
-                            <img src={displayChampion.image} className="w-full h-full rounded-full border-[3px] border-black bg-black object-cover shadow-[0_0_20px_rgba(0,0,0,1)]" alt="" />
-                            <div className="absolute inset-0 rounded-full border-2 border-[#6366F1]/40 animate-pulse"></div>
+                      <div className="absolute bottom-2 xs:bottom-2.5 sm:bottom-3 right-2 xs:right-2.5 sm:right-3 z-20 group-hover:scale-110 transition-transform duration-500">
+                         <div className="relative w-10 h-10 xs:w-12 xs:h-12 sm:w-13 sm:h-13 md:w-14 md:h-14">
+                            <img src={displayChampion.image} className="w-full h-full rounded-full border-[2px] xs:border-[3px] border-black bg-black object-cover shadow-[0_0_15px_rgba(0,0,0,0.8)] sm:shadow-[0_0_20px_rgba(0,0,0,1)]" alt="" />
+                            <div className="absolute inset-0 rounded-full border border-[#6366F1]/40 xs:border-2 animate-pulse"></div>
                          </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="p-5 space-y-3 relative z-10 bg-gradient-to-t from-black/20 to-transparent">
-                    <div className="flex items-center gap-2">
-                       <h3 className={`font-orbitron font-black text-base truncate uppercase tracking-tighter ${p ? 'text-white' : 'text-gray-800'}`}>
+                  <div className="p-3 xs:p-4 sm:p-5 space-y-2 xs:space-y-2.5 sm:space-y-3 relative z-10 bg-gradient-to-t from-black/20 to-transparent">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                       <h3 className={`font-orbitron font-black text-sm xs:text-base truncate uppercase tracking-tighter ${p ? 'text-white' : 'text-gray-800'}`}>
                          {p ? p.name : 'SEM CONVOCAÇÃO'}
                        </h3>
                     </div>
                     {p && (
-                      <div className="flex items-center justify-between border-t border-white/5 pt-3">
+                      <div className="flex items-center justify-between border-t border-white/5 pt-2 xs:pt-2.5 sm:pt-3">
                          <div className="flex flex-col">
-                            <span className="text-[6px] font-black text-gray-600 uppercase tracking-widest leading-none mb-1">VALOR</span>
-                            <span className="text-[10px] font-orbitron font-black text-[#6366F1]">C$ {p.price}</span>
+                            <span className="text-[5px] xs:text-[6px] font-black text-gray-600 uppercase tracking-widest leading-none mb-0.5 sm:mb-1">VALOR</span>
+                            <span className="text-[9px] xs:text-[10px] font-orbitron font-black text-[#6366F1]">C$ {p.price}</span>
                          </div>
                           <div className="flex flex-col items-end">
-                             <span className="text-[6px] font-black text-gray-600 uppercase tracking-widest leading-none mb-1">PONTOS</span>
-                             <span className="text-[10px] font-orbitron font-black text-white">{formatValue(Number(p.points || p.avgPoints || 0))}</span>
+                             <span className="text-[5px] xs:text-[6px] font-black text-gray-600 uppercase tracking-widest leading-none mb-0.5 sm:mb-1">PONTOS</span>
+                             <span className="text-[9px] xs:text-[10px] font-orbitron font-black text-white">{formatValue(Number(p.points || p.avgPoints || 0))}</span>
                           </div>
                        </div>
                      )}

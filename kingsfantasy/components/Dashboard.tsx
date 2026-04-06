@@ -122,15 +122,15 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, players, onNavigate }) 
   const videoThumbnail = MEDIA_HUB_CONFIG.customThumbnail || `https://i.ytimg.com/vi/${MEDIA_HUB_CONFIG.videoId}/maxresdefault.jpg`;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 px-3 xs:px-4 sm:px-6">
       {/* COLUNA LATERAL */}
-      <div className="lg:col-span-4 space-y-8">
+      <div className="lg:col-span-4 space-y-6 sm:space-y-8">
         <section>
-          <h2 className="text-[11px] sm:text-[13px] font-black text-gray-500 uppercase tracking-tight mb-4 sm:mb-5 px-1">MEU TIME</h2>
-          <div className="glass-card p-4 sm:p-6 border border-white/5 relative overflow-hidden group">
+          <h2 className="text-[10px] xs:text-[11px] sm:text-[13px] font-black text-gray-500 uppercase tracking-tight mb-3 sm:mb-4 md:mb-5 px-1">MEU TIME</h2>
+          <div className="glass-card p-3 xs:p-4 sm:p-5 md:p-6 border border-white/5 relative overflow-hidden group">
             <div className="relative z-10">
-              <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-black border border-[#6366F1]/20 flex items-center justify-center shadow-2xl overflow-hidden rounded-full">
+              <div className="flex items-center gap-2.5 xs:gap-3 sm:gap-4 mb-5 sm:mb-6 md:mb-8">
+                <div className="w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-black border border-[#6366F1]/20 flex items-center justify-center shadow-2xl overflow-hidden rounded-full shrink-0">
                   {userTeam.avatar ? (
                     <img 
                       src={userTeam.avatar}
@@ -149,70 +149,70 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, players, onNavigate }) 
                     <i className="fa-solid fa-crown text-[#6366F1] text-2xl"></i>
                   )}
                 </div>
-                <div>
-                  <h3 className="font-orbitron font-black text-lg sm:text-xl text-white leading-tight uppercase tracking-tighter">{userTeam.name}</h3>
-                  <p className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">{userTeam.userName}</p>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-orbitron font-black text-base xs:text-lg sm:text-xl text-white leading-tight uppercase tracking-tighter truncate">{userTeam.name}</h3>
+                  <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider mt-0.5 sm:mt-1 truncate">{userTeam.userName}</p>
                 </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-5 md:space-y-6">
                 <div>
-                  <div className="flex justify-between items-center text-[9px] sm:text-[10px] font-black text-gray-400 tracking-wider uppercase mb-2 px-1">
+                  <div className="flex justify-between items-center text-[8px] xs:text-[9px] sm:text-[10px] font-black text-gray-400 tracking-wider uppercase mb-1.5 sm:mb-2 px-1">
                     <span>PAITRIMÔNIO ATUAL</span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                        <PaiCoin size="sm" />
-                        <span className="text-xl sm:text-xl font-orbitron font-black text-white">{formatValue(userTeam.budget)}</span>
+                        <span className="text-lg xs:text-xl sm:text-xl font-orbitron font-black text-white">{formatValue(userTeam.budget)}</span>
                     </div>
                   </div>
-                  <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-1.5 sm:h-2 w-full bg-white/5 rounded-full overflow-hidden">
                     <div className="h-full bg-[#6366F1] shadow-[0_0_10px_rgba(94,108,255,0.5)]" style={{ width: `${Math.min((userTeam.budget / 100) * 100, 100)}%` }}></div>
                   </div>
                 </div>
-                <div className="flex justify-between items-center py-3 sm:py-4 border-y border-white/5">
-                  <span className="text-[10px] sm:text-[12px] font-black text-gray-400 uppercase tracking-widest">PONTOS TOTAIS</span>
-                  <span className="text-xl sm:text-xl font-orbitron font-black text-white">{formatPoints(userTeam.currentRoundPoints ?? userTeam.totalPoints)}</span>
+                <div className="flex justify-between items-center py-2.5 xs:py-3 sm:py-4 border-y border-white/5">
+                  <span className="text-[9px] xs:text-[10px] sm:text-[12px] font-black text-gray-400 uppercase tracking-widest">PONTOS TOTAIS</span>
+                  <span className="text-lg xs:text-xl sm:text-xl font-orbitron font-black text-white">{formatPoints(userTeam.currentRoundPoints ?? userTeam.totalPoints)}</span>
                 </div>
               </div>
 
               <div 
                 onClick={() => onNavigate('squad')}
-                className="mt-8 space-y-4 cursor-pointer group/lineup"
+                className="mt-6 sm:mt-7 md:mt-8 space-y-3 sm:space-y-4 cursor-pointer group/lineup"
               >
                 <div className="flex justify-between items-center px-1">
-                  <span className="text-[9px] sm:text-[11px] font-black text-gray-400 uppercase tracking-[0.25em] sm:tracking-[0.3em]">MINHA ESCALAÇÃO</span>
-                  <div className="flex items-center gap-2 text-[#6366F1] opacity-0 group-hover/lineup:opacity-100 transition-all">
-                     <span className="text-[9px] font-black uppercase tracking-widest">VER TUDO</span>
-                     <i className="fa-solid fa-arrow-right text-[10px] group-hover/lineup:translate-x-1 transition-all"></i>
+                  <span className="text-[8px] xs:text-[9px] sm:text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] xs:tracking-[0.25em] sm:tracking-[0.3em]">MINHA ESCALAÇÃO</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-[#6366F1] opacity-0 group-hover/lineup:opacity-100 transition-all">
+                     <span className="text-[8px] xs:text-[9px] font-black uppercase tracking-widest hidden xs:inline">VER TUDO</span>
+                     <i className="fa-solid fa-arrow-right text-[9px] xs:text-[10px] group-hover/lineup:translate-x-1 transition-all"></i>
                   </div>
                 </div>
                 
                 {/* GRID DE JOGADORES */}
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1 sm:gap-3">
+                <div className="grid grid-cols-5 gap-1 xs:gap-1.5 sm:gap-2 md:gap-3">
                   {rolesList.map(role => {
                     const player = userTeam.players[role];
                     const champ = player?.selectedChampion || player?.lastChampion;
                     return (
-                      <div key={role} className="flex flex-col gap-2 items-center">
-                        <div className={`aspect-square w-full rounded-full border transition-all duration-500 relative scale-[0.78] sm:scale-100 ${player ? 'border-[#6366F1]/60 bg-black shadow-[0_0_25px_rgba(94,108,255,0.15)]' : 'border-white/5 bg-white/[0.02]'}`}>
+                      <div key={role} className="flex flex-col gap-1 xs:gap-1.5 sm:gap-2 items-center">
+                        <div className={`aspect-square w-full rounded-full border transition-all duration-500 relative ${player ? 'border-[#6366F1]/60 bg-black shadow-[0_0_25px_rgba(94,108,255,0.15)]' : 'border-white/5 bg-white/[0.02]'}`}>
                           {player ? (
                             <>
-                              <div className="w-full h-full p-1 rounded-full overflow-hidden">
+                              <div className="w-full h-full p-0.5 xs:p-1 rounded-full overflow-hidden">
                                 <PlayerImage player={player} priority className="w-full h-full rounded-full scale-105" />
                               </div>
                               {champ && (
-                                <div className="absolute -bottom-1.5 -right-1.5 w-8 h-8 rounded-full border-2 border-black bg-black overflow-hidden shadow-2xl z-20">
+                                <div className="absolute -bottom-0.5 xs:-bottom-1 sm:-bottom-1.5 -right-0.5 xs:-right-1 sm:-right-1.5 w-5 h-5 xs:w-6 xs:h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full border border-black xs:border-2 bg-black overflow-hidden shadow-2xl z-20">
                                   <img src={champ.image} className="w-full h-full object-cover" alt="" />
                                 </div>
                               )}
                             </>
                           ) : (
                             <div className="w-full h-full flex items-center justify-center opacity-10">
-                              <img src={roleMetadata[role].icon} className="w-4 h-4 brightness-0 invert" alt="" />
+                              <img src={roleMetadata[role].icon} className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 brightness-0 invert" alt="" />
                             </div>
                           )}
                         </div>
-                        <span className={`text-[7px] sm:text-[10px] font-black text-center uppercase tracking-tighter truncate w-full px-1 ${player ? 'text-[#6366F1]' : 'text-gray-700'}`}>
-                          {player ? player.name : roleMetadata[role].label.substring(0,3)}
+                        <span className={`text-[6px] xs:text-[7px] sm:text-[8px] md:text-[10px] font-black text-center uppercase tracking-tighter truncate w-full px-0.5 ${player ? 'text-[#6366F1]' : 'text-gray-700'}`}>
+                          {player ? player.name.substring(0, 8) : roleMetadata[role].label.substring(0,3)}
                         </span>
                       </div>
                     );
@@ -226,68 +226,68 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, players, onNavigate }) 
         <StandingsTable />
 
         <section>
-          <h2 className="text-[13px] font-black text-gray-500 uppercase tracking-tight mb-5 px-1">LIGAS</h2>
+          <h2 className="text-[10px] xs:text-[11px] sm:text-[13px] font-black text-gray-500 uppercase tracking-tight mb-3 sm:mb-4 md:mb-5 px-1">LIGAS</h2>
           {loadingLeagues ? (
-            <div className="glass-card p-6 flex items-center justify-center border border-white/5">
-              <div className="flex items-center gap-3 text-gray-500">
-                <i className="fa-solid fa-spinner fa-spin"></i>
-                <span className="text-sm font-bold uppercase tracking-wider">Carregando ligas...</span>
+            <div className="glass-card p-4 sm:p-5 md:p-6 flex items-center justify-center border border-white/5">
+              <div className="flex items-center gap-2 sm:gap-3 text-gray-500">
+                <i className="fa-solid fa-spinner fa-spin text-sm"></i>
+                <span className="text-xs sm:text-sm font-bold uppercase tracking-wider">Carregando ligas...</span>
               </div>
             </div>
           ) : userLeagues.length === 0 ? (
-            <div className="glass-card p-6 border border-white/5">
-              <div className="text-center py-4">
-                <i className="fa-solid fa-trophy text-gray-700 text-3xl mb-3"></i>
-                <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Você ainda não está em nenhuma liga</p>
+            <div className="glass-card p-4 sm:p-5 md:p-6 border border-white/5">
+              <div className="text-center py-3 sm:py-4">
+                <i className="fa-solid fa-trophy text-gray-700 text-2xl sm:text-3xl mb-2 sm:mb-3"></i>
+                <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider px-2">Você ainda não está em nenhuma liga</p>
                 <button 
                   onClick={() => onNavigate('ranking')}
-                  className="mt-4 px-4 py-2 bg-[#6366F1]/20 border border-[#6366F1]/30 text-xs font-black text-[#6366F1] uppercase tracking-wider hover:bg-[#6366F1]/30 transition-all"
+                  className="mt-3 sm:mt-4 px-3 sm:px-4 py-2 bg-[#6366F1]/20 border border-[#6366F1]/30 text-[10px] xs:text-[11px] sm:text-xs font-black text-[#6366F1] uppercase tracking-wider hover:bg-[#6366F1]/30 transition-all rounded-lg"
                 >
                   Explorar Ligas
                 </button>
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5 sm:space-y-2">
               {userLeagues.slice(0, 5).map(league => (
                 <div 
                   key={league.id} 
                   onClick={() => onNavigate('ranking', league.id)} 
-                  className="glass-card p-4 flex items-center justify-between cursor-pointer border border-white/5 hover:border-[#6366F1]/40 transition-all group"
+                  className="glass-card p-3 xs:p-3.5 sm:p-4 flex items-center justify-between cursor-pointer border border-white/5 hover:border-[#6366F1]/40 transition-all group"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 bg-white/5 flex items-center justify-center border border-white/5 group-hover:bg-[#6366F1]/10 ${league.isVerified ? 'text-[#6366F1]' : 'text-blue-400'}`}>
+                  <div className="flex items-center gap-2.5 xs:gap-3 sm:gap-4 min-w-0 flex-1">
+                    <div className={`w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 bg-white/5 flex items-center justify-center border border-white/5 group-hover:bg-[#6366F1]/10 shrink-0 rounded-lg ${league.isVerified ? 'text-[#6366F1]' : 'text-blue-400'}`}>
                       {league.logoUrl ? (
-                        <img src={league.logoUrl} alt={league.name} className="w-7 h-7 object-contain" />
+                        <img src={league.logoUrl} alt={league.name} className="w-5 h-5 xs:w-6 xs:h-6 sm:w-7 sm:h-7 object-contain" />
                       ) : (
-                        <i className={`fa-solid ${league.isVerified ? 'fa-trophy' : 'fa-users'} text-base`}></i>
+                        <i className={`fa-solid ${league.isVerified ? 'fa-trophy' : 'fa-users'} text-sm xs:text-base`}></i>
                       )}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-gray-300 group-hover:text-white uppercase tracking-tight">{league.name}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <span className="text-xs xs:text-sm font-bold text-gray-300 group-hover:text-white uppercase tracking-tight truncate">{league.name}</span>
                         {league.isVerified && (
-                          <i className="fa-solid fa-badge-check text-[#6366F1] text-xs"></i>
+                          <i className="fa-solid fa-badge-check text-[#6366F1] text-[10px] xs:text-xs shrink-0"></i>
                         )}
                       </div>
                       {league.memberCount && (
-                        <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">{league.memberCount} membros</span>
+                        <span className="text-[9px] xs:text-[10px] font-bold text-gray-600 uppercase tracking-wider">{league.memberCount} membros</span>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 xs:gap-3 sm:gap-4 shrink-0">
                     <div className="text-right">
-                      <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest">PONTOS</p>
-                      <p className="font-orbitron font-black text-sm text-white">{formatPoints(userTeam.currentRoundPoints ?? userTeam.totalPoints)}</p>
+                      <p className="text-[7px] xs:text-[8px] font-black text-gray-600 uppercase tracking-widest">PONTOS</p>
+                      <p className="font-orbitron font-black text-xs xs:text-sm text-white">{formatPoints(userTeam.currentRoundPoints ?? userTeam.totalPoints)}</p>
                     </div>
-                    <i className="fa-solid fa-chevron-right text-[10px] text-gray-700 group-hover:text-white group-hover:translate-x-1 transition-all"></i>
+                    <i className="fa-solid fa-chevron-right text-[9px] xs:text-[10px] text-gray-700 group-hover:text-white group-hover:translate-x-1 transition-all"></i>
                   </div>
                 </div>
               ))}
               {userLeagues.length > 5 && (
                 <button 
                   onClick={() => onNavigate('ranking')}
-                  className="w-full mt-2 py-3 text-xs font-black text-gray-500 uppercase tracking-wider hover:text-[#6366F1] transition-all"
+                  className="w-full mt-1.5 sm:mt-2 py-2.5 sm:py-3 text-[10px] xs:text-[11px] sm:text-xs font-black text-gray-500 uppercase tracking-wider hover:text-[#6366F1] transition-all"
                 >
                   Ver todas as {userLeagues.length} ligas
                 </button>

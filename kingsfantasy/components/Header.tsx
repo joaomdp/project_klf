@@ -18,15 +18,12 @@ interface HeaderProps {
 const Logo: React.FC = () => {
   return (
     <div className="flex items-center gap-2 xs:gap-2.5 sm:gap-3 group">
-      <div className="relative h-8 xs:h-9 sm:h-10 md:h-12 lg:h-14 flex items-center transition-all duration-500 group-hover:scale-105 shrink-0">
-        <div className="relative h-full flex items-center">
-          <div className="absolute inset-0 bg-[#6366F1]/10 blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-          <img 
-            src={logoImage}
-            alt="Kings Lendas Fantasy Logo" 
-            className="relative z-10 h-full w-auto object-contain transition-all duration-500 drop-shadow-[0_0_15px_rgba(94,108,255,0.25)] group-hover:drop-shadow-[0_0_25px_rgba(94,108,255,0.45)]"
-          />
-        </div>
+      <div className="relative h-7 xs:h-8 sm:h-9 md:h-10 lg:h-12 flex items-center transition-all duration-500 group-hover:scale-105 shrink-0 overflow-hidden">
+        <img 
+          src={logoImage}
+          alt="Kings Lendas Fantasy Logo" 
+          className="h-full w-auto object-contain transition-all duration-500 drop-shadow-[0_0_15px_rgba(94,108,255,0.25)] group-hover:drop-shadow-[0_0_25px_rgba(94,108,255,0.45)]"
+        />
       </div>
       <div className="flex flex-col min-w-0">
         <h1 className="font-orbitron font-black text-[11px] xs:text-[12px] sm:text-[13px] md:text-[14px] lg:text-[15px] text-white uppercase tracking-tight leading-none whitespace-nowrap">
@@ -55,7 +52,7 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
   }
 
   return (
-    <header className="bg-black/40 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl h-14 xs:h-16 sm:h-18 md:h-20 lg:h-24">
+    <header className="bg-black/40 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl h-14 xs:h-16 sm:h-18 md:h-20 lg:h-24 overflow-hidden">
       <div className="max-w-[1440px] mx-auto px-2 xs:px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 h-full flex items-center justify-between gap-1 xs:gap-2 sm:gap-3 md:gap-4">
         
         <div

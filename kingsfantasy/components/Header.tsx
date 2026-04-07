@@ -17,19 +17,17 @@ interface HeaderProps {
 
 const Logo: React.FC = () => {
   return (
-    <div className="flex items-center gap-2 xs:gap-2.5 sm:gap-3 group">
-      <div className="relative h-7 xs:h-8 sm:h-9 md:h-10 lg:h-12 flex items-center transition-all duration-500 group-hover:scale-105 shrink-0 overflow-hidden">
-        <img 
-          src={logoImage}
-          alt="Kings Lendas Fantasy Logo" 
-          className="h-full w-auto object-contain transition-all duration-500 drop-shadow-[0_0_15px_rgba(94,108,255,0.25)] group-hover:drop-shadow-[0_0_25px_rgba(94,108,255,0.45)]"
-        />
-      </div>
-      <div className="flex flex-col min-w-0">
-        <h1 className="font-orbitron font-black text-[11px] xs:text-[12px] sm:text-[13px] md:text-[14px] lg:text-[15px] text-white uppercase tracking-tight leading-none whitespace-nowrap">
+    <div className="flex items-center gap-3 group">
+      <img 
+        src={logoImage}
+        alt="Kings Lendas Fantasy Logo" 
+        className="h-10 sm:h-12 md:h-14 lg:h-16 w-auto object-contain drop-shadow-[0_0_15px_rgba(94,108,255,0.25)] group-hover:drop-shadow-[0_0_25px_rgba(94,108,255,0.45)] transition-all duration-300"
+      />
+      <div className="flex flex-col">
+        <h1 className="font-orbitron font-black text-xs sm:text-sm md:text-base text-white uppercase tracking-tight leading-none whitespace-nowrap">
           KINGS LENDAS
         </h1>
-        <span className="text-[7px] xs:text-[8px] sm:text-[8px] md:text-[9px] lg:text-[10px] font-bold text-[#6366F1] uppercase tracking-wider whitespace-nowrap">
+        <span className="text-[8px] sm:text-[9px] md:text-[10px] font-bold text-[#6366F1] uppercase tracking-wider whitespace-nowrap">
           FANTASY
         </span>
       </div>
@@ -52,8 +50,8 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
   }
 
   return (
-    <header className="bg-black/40 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl h-14 xs:h-16 sm:h-18 md:h-20 lg:h-24 overflow-hidden">
-      <div className="max-w-[1440px] mx-auto px-2 xs:px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 h-full flex items-center justify-between gap-1 xs:gap-2 sm:gap-3 md:gap-4">
+    <header className="bg-black/40 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl py-2 sm:py-3 md:py-4">
+      <div className="max-w-[1440px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 flex items-center justify-between gap-4">
         
         <div
           className="flex items-center cursor-pointer shrink-0"
@@ -62,29 +60,18 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
           <Logo />
         </div>
 
-        <nav className="hidden lg:flex items-center justify-center h-full flex-1 min-w-0 max-w-3xl">
+        <nav className="hidden lg:flex items-center gap-1">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`relative h-full px-2 lg:px-3 xl:px-4 2xl:px-5 flex items-center justify-center text-[9px] lg:text-[10px] xl:text-[11px] font-black uppercase tracking-[0.04em] lg:tracking-[0.06em] xl:tracking-[0.08em] transition-all duration-300 whitespace-nowrap ${
+              className={`relative px-3 xl:px-4 py-2 flex items-center justify-center text-[10px] xl:text-[11px] font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap rounded-lg ${
                 activePage === item.id 
-                  ? 'text-white drop-shadow-[0_0_8px_rgba(94,108,255,0.3)]' 
-                  : 'text-gray-500 hover:text-gray-200'
+                  ? 'text-white bg-[#6366F1]/20 border border-[#6366F1]/30' 
+                  : 'text-gray-500 hover:text-gray-200 hover:bg-white/5'
               }`}
             >
-              <span className="relative z-10">
-                {item.id === 'ai-coach' ? (
-                  <>
-                    <span className="hidden 2xl:inline">AI-SOLUT</span>
-                    <span className="2xl:hidden hidden xl:inline">AI-COACH</span>
-                    <span className="xl:hidden">AI</span>
-                  </>
-                ) : item.label}
-              </span>
-              {activePage === item.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 sm:h-1 bg-[#6366F1] shadow-[0_0_12px_#6366F1] sm:shadow-[0_0_15px_#6366F1]"></div>
-              )}
+              {item.id === 'ai-coach' ? 'AI-SOLUT' : item.label}
             </button>
           ))}
         </nav>

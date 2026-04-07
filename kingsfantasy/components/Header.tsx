@@ -17,13 +17,13 @@ interface HeaderProps {
 
 const Logo: React.FC = () => {
   return (
-    <div className="flex items-center gap-2 group">
+    <div className="flex items-center gap-1.5 group">
       <img 
         src={logoImage}
         alt="Kings Lendas Fantasy Logo" 
-        className="h-5 sm:h-6 w-auto object-contain"
+        className="h-4 w-auto object-contain"
       />
-      <div className="flex flex-col">
+      <div className="flex flex-col -space-y-0.5">
         <h1 className="font-orbitron font-black text-xs sm:text-sm text-white uppercase tracking-tight leading-none whitespace-nowrap">
           KINGS LENDAS
         </h1>

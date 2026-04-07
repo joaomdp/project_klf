@@ -17,11 +17,11 @@ interface HeaderProps {
 
 const Logo: React.FC = () => {
   return (
-    <div className="flex items-center gap-1.5 group">
+    <div className="flex items-center gap-1.5 h-full py-1">
       <img 
         src={logoImage}
         alt="Kings Lendas Fantasy Logo" 
-        className="h-10 w-auto object-contain"
+        className="h-full w-auto object-contain"
       />
       <div className="flex flex-col -space-y-0.5">
         <h1 className="font-orbitron font-black text-xs sm:text-sm text-white uppercase tracking-tight leading-none whitespace-nowrap">
@@ -50,11 +50,11 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
   }
 
   return (
-    <header className="bg-black/40 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl h-12 sm:h-14 md:h-16">
+    <header className="bg-black/40 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl h-14">
       <div className="max-w-[1440px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 h-full flex items-center justify-between gap-4">
         
         <div
-          className="flex items-center cursor-pointer shrink-0"
+          className="flex items-center cursor-pointer shrink-0 h-full"
           onClick={() => onNavigate('dashboard')}
         >
           <Logo />

@@ -17,8 +17,8 @@ interface HeaderProps {
 
 const Logo: React.FC = () => {
   return (
-    <div className="flex items-center gap-2 sm:gap-3 group">
-      <div className="relative h-5 md:h-6 xl:h-7 flex items-center transition-all duration-500 group-hover:scale-105 shrink-0">
+    <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-2.5 group">
+      <div className="relative h-4 xs:h-5 sm:h-5 md:h-6 flex items-center transition-all duration-500 group-hover:scale-105 shrink-0">
         <div className="relative h-full flex items-center">
           <div className="absolute inset-0 bg-[#6366F1]/10 blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
           <img 
@@ -28,11 +28,11 @@ const Logo: React.FC = () => {
           />
         </div>
       </div>
-      <div className="flex flex-col">
-        <h1 className="font-orbitron font-black text-[12px] sm:text-[13px] md:text-[14px] text-white uppercase tracking-tight leading-none whitespace-nowrap">
+      <div className="flex flex-col min-w-0">
+        <h1 className="font-orbitron font-black text-[10px] xs:text-[11px] sm:text-[12px] md:text-[13px] text-white uppercase tracking-tight leading-none whitespace-nowrap">
           KINGS LENDAS
         </h1>
-        <span className="text-[7px] sm:text-[8px] font-bold text-[#6366F1] uppercase tracking-wider whitespace-nowrap">
+        <span className="text-[6px] xs:text-[7px] sm:text-[7px] md:text-[8px] font-bold text-[#6366F1] uppercase tracking-wider whitespace-nowrap">
           FANTASY
         </span>
       </div>
@@ -55,28 +55,28 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
   }
 
   return (
-    <header className="bg-black/40 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl h-16 xs:h-18 sm:h-20 md:h-24 lg:h-28">
-      <div className="max-w-[1440px] mx-auto px-2 xs:px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 h-full flex items-center justify-between gap-2 xs:gap-3 sm:gap-4">
+    <header className="bg-black/40 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl h-14 xs:h-16 sm:h-18 md:h-20 lg:h-24">
+      <div className="max-w-[1440px] mx-auto px-2 xs:px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 h-full flex items-center justify-between gap-1 xs:gap-2 sm:gap-3 md:gap-4">
         
         <div
-          className="flex items-center cursor-pointer shrink-0 h-full"
+          className="flex items-center cursor-pointer shrink-0"
           onClick={() => onNavigate('dashboard')}
         >
           <Logo />
         </div>
 
-        <nav className="hidden lg:flex items-center justify-center h-full flex-1 min-w-0">
+        <nav className="hidden lg:flex items-center justify-center h-full flex-1 min-w-0 max-w-3xl">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`relative h-full px-2 lg:px-3 xl:px-5 2xl:px-6 flex items-center justify-center text-[9px] lg:text-[10px] xl:text-[11px] 2xl:text-[12px] font-black uppercase tracking-[0.04em] lg:tracking-[0.06em] xl:tracking-[0.08em] 2xl:tracking-[0.1em] transition-all duration-300 ${
+              className={`relative h-full px-2 lg:px-3 xl:px-4 2xl:px-5 flex items-center justify-center text-[9px] lg:text-[10px] xl:text-[11px] font-black uppercase tracking-[0.04em] lg:tracking-[0.06em] xl:tracking-[0.08em] transition-all duration-300 whitespace-nowrap ${
                 activePage === item.id 
                   ? 'text-white drop-shadow-[0_0_8px_rgba(94,108,255,0.3)]' 
                   : 'text-gray-500 hover:text-gray-200'
               }`}
             >
-              <span className="relative z-10 truncate">
+              <span className="relative z-10">
                 {item.id === 'ai-coach' ? (
                   <>
                     <span className="hidden 2xl:inline">AI-SOLUT</span>
@@ -92,33 +92,33 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
           ))}
         </nav>
 
-        <div className="flex items-center gap-2 xs:gap-3 sm:gap-4 md:gap-6 lg:gap-8 shrink-0">
+        <div className="flex items-center gap-2 xs:gap-3 sm:gap-4 md:gap-5 lg:gap-6 shrink-0">
           <button
             type="button"
-            className="lg:hidden w-9 h-9 xs:w-10 xs:h-10 rounded-lg xs:rounded-xl border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-all flex items-center justify-center"
+            className="lg:hidden w-8 h-8 xs:w-9 xs:h-9 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-all flex items-center justify-center"
             onClick={() => setIsMenuOpen((prev) => !prev)}
             aria-label="Abrir menu"
           >
-            <i className={`fa-solid ${isMenuOpen ? 'fa-xmark' : 'fa-bars'} text-base xs:text-lg`}></i>
+            <i className={`fa-solid ${isMenuOpen ? 'fa-xmark' : 'fa-bars'} text-sm xs:text-base`}></i>
           </button>
-          <div className="hidden xl:flex items-center border-r border-white/10 pr-4 lg:pr-5 xl:pr-6">
+          <div className="hidden 2xl:flex items-center border-r border-white/10 pr-3 lg:pr-4">
             <MarketTimer compact className="whitespace-nowrap" />
           </div>
           
           <div 
-            className={`flex items-center gap-2 xs:gap-3 sm:gap-4 md:gap-5 cursor-pointer group p-1.5 xs:p-2 sm:p-2.5 rounded-xl xs:rounded-2xl transition-all border ${activePage === 'profile' ? 'bg-white/5 border-white/10' : 'border-transparent hover:bg-white/5'}`}
+            className={`flex items-center gap-1.5 xs:gap-2 sm:gap-2.5 cursor-pointer group p-1 xs:p-1.5 sm:p-2 rounded-lg xs:rounded-xl transition-all border ${activePage === 'profile' ? 'bg-white/5 border-white/10' : 'border-transparent hover:bg-white/5'}`}
             onClick={() => onNavigate('profile')}
           >
              <div className="relative shrink-0">
                 <img
                   src={avatar}
-                  className={`w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-lg xs:rounded-xl object-cover border-2 transition-all ${activePage === 'profile' ? 'border-[#6366F1] shadow-[0_0_15px_rgba(94,108,255,0.3)] sm:shadow-[0_0_20px_rgba(94,108,255,0.4)]' : 'border-white/10 group-hover:border-[#6366F1]/50'}`}
+                  className={`w-7 h-7 xs:w-8 xs:h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg object-cover border-2 transition-all ${activePage === 'profile' ? 'border-[#6366F1] shadow-[0_0_15px_rgba(94,108,255,0.3)]' : 'border-white/10 group-hover:border-[#6366F1]/50'}`}
                   alt="Avatar"
                 />
-               <div className="absolute -bottom-0.5 -right-0.5 xs:-bottom-1 xs:-right-1 w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 bg-[#6366F1] border border-black xs:border-2 rounded-full shadow-lg"></div>
+               <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 xs:w-3 xs:h-3 bg-[#6366F1] border border-black rounded-full shadow-lg"></div>
              </div>
-              <div className="hidden sm:block text-left max-w-[100px] xs:max-w-[120px] sm:max-w-[140px] min-w-0">
-                 <p className="text-[10px] xs:text-[11px] sm:text-[12px] font-black text-white uppercase tracking-tight leading-none group-hover:text-[#6366F1] transition-colors truncate">{userName}</p>
+              <div className="hidden lg:block text-left max-w-[80px] xl:max-w-[100px] 2xl:max-w-[120px] min-w-0">
+                 <p className="text-[9px] xs:text-[10px] xl:text-[11px] font-black text-white uppercase tracking-tight leading-none group-hover:text-[#6366F1] transition-colors truncate">{userName}</p>
               </div>
             </div>
         </div>

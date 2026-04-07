@@ -17,8 +17,8 @@ interface HeaderProps {
 
 const Logo: React.FC = () => {
   return (
-    <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-2.5 group">
-      <div className="relative h-4 xs:h-5 sm:h-5 md:h-6 flex items-center transition-all duration-500 group-hover:scale-105 shrink-0">
+    <div className="flex items-center gap-2 xs:gap-2.5 sm:gap-3 group">
+      <div className="relative h-8 xs:h-9 sm:h-10 md:h-12 lg:h-14 flex items-center transition-all duration-500 group-hover:scale-105 shrink-0">
         <div className="relative h-full flex items-center">
           <div className="absolute inset-0 bg-[#6366F1]/10 blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
           <img 
@@ -29,10 +29,10 @@ const Logo: React.FC = () => {
         </div>
       </div>
       <div className="flex flex-col min-w-0">
-        <h1 className="font-orbitron font-black text-[10px] xs:text-[11px] sm:text-[12px] md:text-[13px] text-white uppercase tracking-tight leading-none whitespace-nowrap">
+        <h1 className="font-orbitron font-black text-[11px] xs:text-[12px] sm:text-[13px] md:text-[14px] lg:text-[15px] text-white uppercase tracking-tight leading-none whitespace-nowrap">
           KINGS LENDAS
         </h1>
-        <span className="text-[6px] xs:text-[7px] sm:text-[7px] md:text-[8px] font-bold text-[#6366F1] uppercase tracking-wider whitespace-nowrap">
+        <span className="text-[7px] xs:text-[8px] sm:text-[8px] md:text-[9px] lg:text-[10px] font-bold text-[#6366F1] uppercase tracking-wider whitespace-nowrap">
           FANTASY
         </span>
       </div>

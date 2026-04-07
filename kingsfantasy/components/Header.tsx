@@ -17,17 +17,17 @@ interface HeaderProps {
 
 const Logo: React.FC = () => {
   return (
-    <div className="flex items-center gap-3 group">
+    <div className="flex items-center gap-2 group">
       <img 
         src={logoImage}
         alt="Kings Lendas Fantasy Logo" 
-        className="h-10 sm:h-12 md:h-14 lg:h-16 w-auto object-contain drop-shadow-[0_0_15px_rgba(94,108,255,0.25)] group-hover:drop-shadow-[0_0_25px_rgba(94,108,255,0.45)] transition-all duration-300"
+        className="h-6 sm:h-7 md:h-8 w-auto object-contain"
       />
       <div className="flex flex-col">
-        <h1 className="font-orbitron font-black text-xs sm:text-sm md:text-base text-white uppercase tracking-tight leading-none whitespace-nowrap">
+        <h1 className="font-orbitron font-black text-[10px] sm:text-[11px] md:text-xs text-white uppercase tracking-tight leading-none whitespace-nowrap">
           KINGS LENDAS
         </h1>
-        <span className="text-[8px] sm:text-[9px] md:text-[10px] font-bold text-[#6366F1] uppercase tracking-wider whitespace-nowrap">
+        <span className="text-[6px] sm:text-[7px] md:text-[8px] font-bold text-[#6366F1] uppercase tracking-wider whitespace-nowrap">
           FANTASY
         </span>
       </div>
@@ -50,8 +50,8 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
   }
 
   return (
-    <header className="bg-black/40 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl py-2 sm:py-3 md:py-4">
-      <div className="max-w-[1440px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 flex items-center justify-between gap-4">
+    <header className="bg-black/40 border-b border-white/5 sticky top-0 z-50 backdrop-blur-xl h-12 sm:h-14 md:h-16">
+      <div className="max-w-[1440px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 h-full flex items-center justify-between gap-4">
         
         <div
           className="flex items-center cursor-pointer shrink-0"
@@ -65,10 +65,10 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`relative px-3 xl:px-4 py-2 flex items-center justify-center text-[10px] xl:text-[11px] font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap rounded-lg ${
+              className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap rounded ${
                 activePage === item.id 
-                  ? 'text-white bg-[#6366F1]/20 border border-[#6366F1]/30' 
-                  : 'text-gray-500 hover:text-gray-200 hover:bg-white/5'
+                  ? 'text-white bg-[#6366F1]/20' 
+                  : 'text-gray-500 hover:text-white'
               }`}
             >
               {item.id === 'ai-coach' ? 'AI-SOLUT' : item.label}
@@ -76,35 +76,30 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
           ))}
         </nav>
 
-        <div className="flex items-center gap-2 xs:gap-3 sm:gap-4 md:gap-5 lg:gap-6 shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           <button
             type="button"
-            className="lg:hidden w-8 h-8 xs:w-9 xs:h-9 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:border-white/30 transition-all flex items-center justify-center"
+            className="lg:hidden w-7 h-7 sm:w-8 sm:h-8 rounded border border-white/10 bg-white/5 text-gray-300 hover:text-white transition-all flex items-center justify-center"
             onClick={() => setIsMenuOpen((prev) => !prev)}
             aria-label="Abrir menu"
           >
-            <i className={`fa-solid ${isMenuOpen ? 'fa-xmark' : 'fa-bars'} text-sm xs:text-base`}></i>
+            <i className={`fa-solid ${isMenuOpen ? 'fa-xmark' : 'fa-bars'} text-xs`}></i>
           </button>
-          <div className="hidden 2xl:flex items-center border-r border-white/10 pr-3 lg:pr-4">
-            <MarketTimer compact className="whitespace-nowrap" />
+          <div className="hidden xl:flex items-center border-r border-white/10 pr-4">
+            <MarketTimer compact className="whitespace-nowrap text-[10px]" />
           </div>
           
           <div 
-            className={`flex items-center gap-1.5 xs:gap-2 sm:gap-2.5 cursor-pointer group p-1 xs:p-1.5 sm:p-2 rounded-lg xs:rounded-xl transition-all border ${activePage === 'profile' ? 'bg-white/5 border-white/10' : 'border-transparent hover:bg-white/5'}`}
+            className={`flex items-center gap-2 cursor-pointer group p-1 rounded-lg transition-all ${activePage === 'profile' ? 'bg-white/5' : 'hover:bg-white/5'}`}
             onClick={() => onNavigate('profile')}
           >
-             <div className="relative shrink-0">
-                <img
-                  src={avatar}
-                  className={`w-7 h-7 xs:w-8 xs:h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg object-cover border-2 transition-all ${activePage === 'profile' ? 'border-[#6366F1] shadow-[0_0_15px_rgba(94,108,255,0.3)]' : 'border-white/10 group-hover:border-[#6366F1]/50'}`}
-                  alt="Avatar"
-                />
-               <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 xs:w-3 xs:h-3 bg-[#6366F1] border border-black rounded-full shadow-lg"></div>
-             </div>
-              <div className="hidden lg:block text-left max-w-[80px] xl:max-w-[100px] 2xl:max-w-[120px] min-w-0">
-                 <p className="text-[9px] xs:text-[10px] xl:text-[11px] font-black text-white uppercase tracking-tight leading-none group-hover:text-[#6366F1] transition-colors truncate">{userName}</p>
-              </div>
-            </div>
+            <img
+              src={avatar}
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md object-cover border transition-all ${activePage === 'profile' ? 'border-[#6366F1]' : 'border-white/10 group-hover:border-[#6366F1]/50'}`}
+              alt="Avatar"
+            />
+            <p className="hidden lg:block text-[10px] font-bold text-white uppercase tracking-tight truncate max-w-[80px]">{userName}</p>
+          </div>
         </div>
       </div>
 

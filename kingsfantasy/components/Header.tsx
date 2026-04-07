@@ -21,7 +21,7 @@ const Logo: React.FC = () => {
       <img 
         src={logoImage}
         alt="Kings Lendas Fantasy Logo" 
-        className="h-4 w-auto object-contain"
+        className="h-8 max-h-8 w-auto object-contain"
       />
       <div className="flex flex-col -space-y-0.5">
         <h1 className="font-orbitron font-black text-xs sm:text-sm text-white uppercase tracking-tight leading-none whitespace-nowrap">

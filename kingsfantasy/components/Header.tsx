@@ -17,17 +17,17 @@ interface HeaderProps {
 
 const Logo: React.FC = () => {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-2">
       <img 
         src={logoImage}
         alt="Kings Lendas Fantasy Logo" 
-        className="h-6 w-6 object-contain"
+        className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
       />
       <div className="flex flex-col -space-y-0.5">
-        <h1 className="font-orbitron font-black text-xs sm:text-sm text-white uppercase tracking-tight leading-none whitespace-nowrap">
+        <h1 className="font-orbitron font-black text-sm sm:text-base text-white uppercase tracking-tight leading-none whitespace-nowrap">
           KINGS LENDAS
         </h1>
-        <span className="text-[7px] sm:text-[8px] font-bold text-[#6366F1] uppercase tracking-wider whitespace-nowrap">
+        <span className="text-[8px] sm:text-[10px] font-bold text-[#6366F1] uppercase tracking-wider whitespace-nowrap">
           FANTASY
         </span>
       </div>
@@ -65,7 +65,7 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-all duration-200 whitespace-nowrap rounded ${
+              className={`px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all duration-200 whitespace-nowrap rounded ${
                 activePage === item.id 
                   ? 'text-white bg-[#6366F1]/20' 
                   : 'text-gray-500 hover:text-white'

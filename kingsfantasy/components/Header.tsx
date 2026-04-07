@@ -21,13 +21,13 @@ const Logo: React.FC = () => {
       <img 
         src={logoImage}
         alt="Kings Lendas Fantasy Logo" 
-        className="h-6 sm:h-7 md:h-8 w-auto object-contain"
+        className="h-5 sm:h-6 w-auto object-contain"
       />
       <div className="flex flex-col">
-        <h1 className="font-orbitron font-black text-[10px] sm:text-[11px] md:text-xs text-white uppercase tracking-tight leading-none whitespace-nowrap">
+        <h1 className="font-orbitron font-black text-xs sm:text-sm text-white uppercase tracking-tight leading-none whitespace-nowrap">
           KINGS LENDAS
         </h1>
-        <span className="text-[6px] sm:text-[7px] md:text-[8px] font-bold text-[#6366F1] uppercase tracking-wider whitespace-nowrap">
+        <span className="text-[7px] sm:text-[8px] font-bold text-[#6366F1] uppercase tracking-wider whitespace-nowrap">
           FANTASY
         </span>
       </div>
@@ -65,7 +65,7 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap rounded ${
+              className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-all duration-200 whitespace-nowrap rounded ${
                 activePage === item.id 
                   ? 'text-white bg-[#6366F1]/20' 
                   : 'text-gray-500 hover:text-white'
@@ -86,7 +86,7 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
             <i className={`fa-solid ${isMenuOpen ? 'fa-xmark' : 'fa-bars'} text-xs`}></i>
           </button>
           <div className="hidden xl:flex items-center border-r border-white/10 pr-4">
-            <MarketTimer compact className="whitespace-nowrap text-[10px]" />
+            <MarketTimer compact className="whitespace-nowrap text-xs" />
           </div>
           
           <div 
@@ -98,7 +98,7 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
               className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md object-cover border transition-all ${activePage === 'profile' ? 'border-[#6366F1]' : 'border-white/10 group-hover:border-[#6366F1]/50'}`}
               alt="Avatar"
             />
-            <p className="hidden lg:block text-[10px] font-bold text-white uppercase tracking-tight truncate max-w-[80px]">{userName}</p>
+            <p className="hidden lg:block text-xs font-bold text-white uppercase tracking-tight truncate max-w-[100px]">{userName}</p>
           </div>
         </div>
       </div>

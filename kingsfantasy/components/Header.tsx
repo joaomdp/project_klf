@@ -17,26 +17,38 @@ interface HeaderProps {
 
 const Logo: React.FC = () => {
   return (
-    <div className="flex items-center gap-3">
-      <img 
+    <div className="flex items-center gap-0.5 group transition-transform duration-300 ease-out hover:scale-[1.04]">
+      <img
         src={logoImage}
-        alt="Kings Lendas Fantasy Logo" 
-        className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
+        alt="Kings Lendas Fantasy Logo"
+        className="h-20 w-20 sm:h-24 sm:w-24 object-contain drop-shadow-lg transition-[drop-shadow] duration-300 group-hover:drop-shadow-[0_0_12px_rgba(59,130,246,0.5)]"
       />
       <div className="flex flex-col">
-        <h1 className="font-orbitron font-black text-base sm:text-lg text-white uppercase tracking-[0.15em] leading-none whitespace-nowrap">
+        <span className="text-[11px] sm:text-[13px] font-semibold text-white uppercase tracking-[0.15em] whitespace-nowrap transition-colors duration-300 group-hover:text-white/80">
           KINGS LENDAS
-        </h1>
-        <span className="text-[9px] sm:text-[11px] font-bold text-[#E91E63] uppercase tracking-[0.35em] whitespace-nowrap mt-0.5">
-          F A N T A S Y
         </span>
+        <h1 className="font-bold text-[20px] sm:text-[24px] text-[#3b82f6] uppercase tracking-[0.05em] leading-none whitespace-nowrap -mt-0.5 transition-colors duration-300 group-hover:text-[#60a5fa]">
+          FANTASY
+        </h1>
       </div>
     </div>
   );
 };
 
-const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avatar, dbConnected = true, marketIsOpen = null, isAdmin = false, showMarketTimer = false }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+const PAGE_ICONS: Record<string, string> = {
+  dashboard: 'fa-house',
+  ranking:   'fa-trophy',
+  squad:     'fa-users',
+  market:    'fa-store',
+  'ai-coach':'fa-robot',
+  profile:   'fa-user',
+  admin:     'fa-shield-halved',
+};
+
+const Header: React.FC<HeaderProps> = ({
+  activePage, onNavigate, userName, avatar,
+  marketIsOpen = null, isAdmin = false,
+}) => {
   const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean } | null>(null);
 
   useEffect(() => {
@@ -50,130 +62,108 @@ const Header: React.FC<HeaderProps> = ({ activePage, onNavigate, userName, avata
   }, []);
 
   const navItems: { id: Page; label: string }[] = [
-    { id: 'dashboard', label: 'HOME' },
-    { id: 'ranking', label: 'LEAGUES' },
-    { id: 'squad', label: 'TEAM' },
-    { id: 'market', label: 'MARKET' },
-    { id: 'ai-coach', label: 'AI-SOLUT' },
+    { id: 'dashboard', label: 'INÍCIO' },
+    { id: 'ranking',   label: 'LIGAS' },
+    { id: 'squad',     label: 'TIME' },
+    { id: 'market',    label: 'MERCADO' },
+    { id: 'ai-coach',  label: 'IA' },
   ];
 
-  if (isAdmin) {
-    navItems.push({ id: 'admin', label: 'ADMIN' });
-  }
+  if (isAdmin) navItems.push({ id: 'admin', label: 'ADMIN' });
 
   const isMarketOpen = marketStatus?.isOpen ?? marketIsOpen ?? false;
 
   return (
-    <header className="bg-[#0a0a12] border border-[#1a1a2e] sticky top-0 z-50 h-16">
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
-        
-        {/* Logo */}
-        <div
-          className="flex items-center cursor-pointer shrink-0"
-          onClick={() => onNavigate('dashboard')}
-        >
-          <Logo />
-        </div>
+    <>
+      {/* ── HEADER (desktop + mobile top bar) ── */}
+      <header className="bg-[#0d1117] border-b border-[#1e2530] sticky top-0 z-50 h-20 sm:h-24">
+        <div className="max-w-[1440px] mx-auto px-6 md:px-12 h-full flex items-center justify-between w-full relative">
 
-        {/* Navigation - Centered */}
-        <nav className="hidden lg:flex items-center gap-8 absolute left-1/2 transform -translate-x-1/2">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
-              className={`relative py-5 text-[13px] font-semibold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${
-                activePage === item.id 
-                  ? 'text-white' 
-                  : 'text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              {item.label}
-              {activePage === item.id && (
-                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6366F1]"></span>
-              )}
-            </button>
-          ))}
-        </nav>
+          {/* Espaçador esquerdo — só mobile, equilibra o avatar direito */}
+          <div className="lg:hidden w-9 h-9 shrink-0" />
 
-        {/* Right side */}
-        <div className="flex items-center gap-4 sm:gap-6 shrink-0">
-          {/* Mobile menu button */}
-          <button
-            type="button"
-            className="lg:hidden w-8 h-8 rounded border border-white/10 bg-white/5 text-gray-300 hover:text-white transition-all flex items-center justify-center"
-            onClick={() => setIsMenuOpen((prev) => !prev)}
-            aria-label="Abrir menu"
+          {/* Logo — centralizado no mobile, alinhado à esquerda no desktop */}
+          <div
+            className="lg:static absolute left-[45%] -translate-x-1/2 lg:translate-x-0 flex items-center cursor-pointer shrink-0"
+            onClick={() => onNavigate('dashboard')}
           >
-            <i className={`fa-solid ${isMenuOpen ? 'fa-xmark' : 'fa-bars'} text-sm`}></i>
-          </button>
-
-          {/* Market Status */}
-          <div className="hidden md:flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${isMarketOpen ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'} animate-pulse`}></span>
-            <span className={`text-xs font-semibold uppercase tracking-wider ${isMarketOpen ? 'text-emerald-400' : 'text-red-400'}`}>
-              {isMarketOpen ? 'MARKET OPEN' : 'MARKET CLOSED'}
-            </span>
+            <Logo />
           </div>
 
-          {/* Notification Bell */}
-          <button className="hidden sm:flex w-9 h-9 items-center justify-center text-gray-500 hover:text-white transition-colors">
-            <i className="fa-regular fa-bell text-lg"></i>
-          </button>
-          
-          {/* User Avatar and Name */}
-          <div 
-            className="flex items-center gap-3 cursor-pointer group"
-            onClick={() => onNavigate('profile')}
-          >
-            <div className={`w-9 h-9 rounded-lg overflow-hidden border-2 transition-all ${activePage === 'profile' ? 'border-[#6366F1]' : 'border-gray-700 group-hover:border-gray-500'}`}>
-              <img
-                src={avatar}
-                className="w-full h-full object-cover"
-                alt="Avatar"
-              />
-            </div>
-            <span className="hidden lg:block text-sm font-semibold text-white uppercase tracking-wide">
-              {userName}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="lg:hidden absolute top-full inset-x-0 bg-[#0a0a12] border-b border-[#1a1a2e]">
-          <div className="max-w-[1440px] mx-auto px-4 py-4 space-y-2">
-            {/* Market Status - Mobile */}
-            <div className="flex items-center gap-2 px-4 py-3 mb-2 bg-white/5 rounded-lg">
-              <span className={`w-2 h-2 rounded-full ${isMarketOpen ? 'bg-emerald-500' : 'bg-red-500'} animate-pulse`}></span>
-              <span className={`text-xs font-semibold uppercase tracking-wider ${isMarketOpen ? 'text-emerald-400' : 'text-red-400'}`}>
-                {isMarketOpen ? 'MARKET OPEN' : 'MARKET CLOSED'}
-              </span>
-            </div>
-            
+          {/* Navigation — desktop only */}
+          <nav className="hidden lg:flex items-center gap-10">
             {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => {
-                  onNavigate(item.id);
-                  setIsMenuOpen(false);
-                }}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-semibold uppercase tracking-wider transition-all ${
-                  activePage === item.id
-                    ? 'bg-[#6366F1]/20 text-white border-l-2 border-[#6366F1]'
-                    : 'text-gray-500 hover:text-white hover:bg-white/5'
+                onClick={() => onNavigate(item.id)}
+                className={`relative py-5 text-[13px] font-medium tracking-wide transition-all duration-200 whitespace-nowrap ${
+                  activePage === item.id ? 'text-white' : 'text-[#8b949e] hover:text-white'
                 }`}
               >
-                <span>{item.label}</span>
+                {item.label}
                 {activePage === item.id && (
-                  <span className="w-2 h-2 rounded-full bg-[#6366F1] shadow-[0_0_8px_#6366F1]"></span>
+                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#3b82f6] rounded-t-sm" />
                 )}
               </button>
             ))}
+          </nav>
+
+          {/* Right side */}
+          <div className="flex items-center gap-5 shrink-0">
+            {/* Market status */}
+            <div className="hidden md:flex items-center gap-2">
+              <span className={`w-1.5 h-1.5 rounded-full ${isMarketOpen ? 'bg-emerald-400' : 'bg-red-400'}`} />
+              <span className={`text-[11px] font-semibold uppercase tracking-wider ${isMarketOpen ? 'text-emerald-400' : 'text-red-400'}`}>
+                {isMarketOpen ? 'MERCADO ABERTO' : 'MERCADO FECHADO'}
+              </span>
+            </div>
+
+            {/* Avatar */}
+            <div
+              className="flex items-center gap-3 cursor-pointer group"
+              onClick={() => onNavigate('profile')}
+            >
+              <div className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-all ${activePage === 'profile' ? 'border-[#3b82f6]' : 'border-[#2d3748] group-hover:border-[#4a5568]'}`}>
+                <img src={avatar} className="w-full h-full object-cover" alt="Avatar" />
+              </div>
+              <span className="hidden lg:block text-sm font-medium text-white">{userName}</span>
+            </div>
           </div>
         </div>
-      )}
-    </header>
+      </header>
+
+      {/* ── BOTTOM NAV — mobile only ── */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-[#0d1117]/95 backdrop-blur-md border-t border-white/[0.06]"
+           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="flex items-stretch">
+          {navItems.map((item) => {
+            const active = activePage === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => onNavigate(item.id)}
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-3 relative transition-all"
+              >
+                {/* Indicador ativo */}
+                {active && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-[2px] bg-[#3b82f6] rounded-full" />
+                )}
+
+                <i className={`fa-solid ${PAGE_ICONS[item.id] || 'fa-circle'} text-[16px] transition-all duration-200 ${
+                  active ? 'text-[#3b82f6]' : 'text-white/30'
+                }`} />
+
+                <span className={`text-[9px] font-black uppercase tracking-wider transition-all duration-200 ${
+                  active ? 'text-[#3b82f6]' : 'text-white/30'
+                }`}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </>
   );
 };
 

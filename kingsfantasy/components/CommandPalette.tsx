@@ -232,14 +232,14 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                   onClick={cmd.action}
                   className={`w-full flex items-center gap-4 px-6 py-4 transition-all duration-150 ${
                     isSelected 
-                      ? 'bg-white/10 border-l-2 border-[#6366F1]' 
+                      ? 'bg-white/10 border-l-2 border-[#3b82f6]' 
                       : 'border-l-2 border-transparent hover:bg-white/5'
                   }`}
                 >
                   {/* Ícone */}
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                     isSelected 
-                      ? 'bg-[#6366F1]/20 text-[#6366F1]' 
+                      ? 'bg-[#3b82f6]/20 text-[#3b82f6]' 
                       : 'bg-white/5 text-gray-500'
                   }`}>
                     <i className={`fa-solid ${cmd.icon} text-sm`}></i>
@@ -254,7 +254,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                         {cmd.label}
                       </span>
                       {isCurrentPage && (
-                        <span className="text-[9px] font-black text-[#6366F1] uppercase tracking-widest px-2 py-0.5 bg-[#6366F1]/10 rounded">
+                        <span className="text-[9px] font-black text-[#3b82f6] uppercase tracking-widest px-2 py-0.5 bg-[#3b82f6]/10 rounded">
                           Atual
                         </span>
                       )}

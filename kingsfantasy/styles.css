@@ -7,7 +7,7 @@
 
 :root {
     /* Paleta Profissional e Moderna */
-    --accent-primary: #6366F1;       /* Indigo vibrante */
+    --accent-primary: #3b82f6;       /* Indigo vibrante */
     --accent-secondary: #8B5CF6;     /* Purple sofisticado */
     --accent-success: #10B981;       /* Emerald */
     --accent-warning: #F59E0B;       /* Amber */
@@ -117,7 +117,7 @@ img {
     position: fixed;
     inset: 0;
     background-image: 
-        radial-gradient(circle at 50% -10%, rgba(94, 108, 255, 0.2) 0%, transparent 60%),
+        radial-gradient(circle at 50% -10%, rgba(59, 130, 246, 0.2) 0%, transparent 60%),
         radial-gradient(circle at 100% 100%, rgba(62, 70, 193, 0.3) 0%, transparent 50%);
     pointer-events: none;
     z-index: 4;

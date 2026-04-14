@@ -807,7 +807,7 @@ const AppContent: React.FC = () => {
             onRefresh={fetchPlayers}
           />
         );
-      case 'squad': return <SquadBuilder userTeam={userTeam} onFire={handleFirePlayer} onNavigateToMarket={() => setCurrentPage('market')} />;
+      case 'squad': return <SquadBuilder userTeam={userTeam} players={players} onFire={handleFirePlayer} onNavigateToMarket={() => setCurrentPage('market')} />;
       case 'ranking': return <Ranking onOpenCreateLeague={() => setIsCreateLeagueOpen(true)} userId={userTeam.userId} userName={userTeam.userName} selectedLeagueId={selectedLeagueId} userTeam={{ name: userTeam.name, totalPoints: userTeam.currentRoundPoints ?? userTeam.totalPoints, avatar: userTeam.avatar }} />;
       case 'ai-coach': return <AICoach userTeam={userTeam} availablePlayers={players} />;
       case 'profile':
@@ -956,7 +956,7 @@ const AppContent: React.FC = () => {
               showMarketTimer={currentPage === 'market'}
             />
           
-          <main className="flex-1 w-full max-w-[1440px] mx-auto px-6 md:px-12 py-12">
+          <main className="flex-1 w-full max-w-[1440px] mx-auto px-6 md:px-12 py-12 pb-24 lg:pb-12">
             <div key={currentPage} className="page-transition-container">
               {renderPage()}
             </div>

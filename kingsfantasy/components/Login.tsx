@@ -46,12 +46,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // BLOQUEIO: Impede criação de novas contas durante acesso antecipado
-    if (isSignUp) {
-      setErrorMsg("CADASTROS TEMPORARIAMENTE BLOQUEADOS - ACESSO ANTECIPADO");
-      return;
-    }
-    
     if (isSignUp && password !== confirmPassword) {
       setErrorMsg("AS SENHAS NÃO COINCIDEM");
       return;
@@ -199,235 +193,261 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       {/* Loading Overlay */}
       {loading && <LoadingScreen />}
       
-      {/* Full Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url(${backgroundImage})`,
-        }}
-      >
-        {/* Gradient Overlay para escurecer e destacar o formulário */}
-        <div className="absolute inset-0 bg-gradient-to-l from-black/90 via-black/70 to-black/40 md:from-black/80 md:via-black/50 md:to-transparent"></div>
-      </div>
+      {/* ── LAYOUT SPLIT ── */}
+      <div className="relative flex min-h-[100dvh] w-full animate-in fade-in duration-700">
 
-      <div className="relative w-full max-w-[1600px] min-h-full flex items-start sm:items-center justify-center mx-auto px-3 xs:px-4 sm:px-6 py-6 sm:py-8 md:py-12">
+        {/* ── PAINEL ESQUERDO — branding (só desktop) ── */}
+        <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] relative overflow-hidden">
+          {/* Background */}
+          <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${backgroundImage})` }} />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-black/40 to-black/80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-        {/* Form Container - Centralizado */}
-        <div className="relative w-full max-w-[550px] z-20">
-          <div className="glass-card rounded-2xl sm:rounded-3xl md:rounded-[40px] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] border border-white/10 animate-in fade-in zoom-in-95 duration-700">
-            
-            <div className="flex flex-col p-4 xs:p-5 sm:p-6 md:p-8 lg:p-10 xl:p-12 overflow-y-auto no-scrollbar relative bg-[#0F0F14]/50 backdrop-blur-2xl">
-              
-              {/* Toggle Button - BLOQUEADO TEMPORARIAMENTE */}
-              <div className="absolute top-4 xs:top-5 sm:top-6 right-4 xs:right-5 sm:right-6">
-                <button 
-                  disabled
-                  className="px-2 xs:px-3 sm:px-4 py-1.5 xs:py-2 sm:py-2.5 text-[9px] xs:text-[10px] sm:text-xs font-black text-gray-600 uppercase tracking-widest border border-white/5 rounded-lg cursor-not-allowed opacity-50"
-                  title="Cadastros temporariamente bloqueados - Acesso antecipado"
+          {/* Conteúdo branding */}
+          <div className="relative z-10 flex flex-col justify-between p-10 xl:p-14 w-full">
+            {/* Logo topo */}
+            <div className="flex items-center gap-3">
+              <img src={logo} alt="Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg" />
+              <span className="font-orbitron font-black text-lg text-white uppercase tracking-tight">
+                KINGS <span className="text-[#3b82f6]">LENDAS</span> FANTASY
+              </span>
+            </div>
+
+            {/* Título central */}
+            <div className="space-y-6">
+              <div>
+                <p className="text-[11px] font-black text-[#3b82f6] uppercase tracking-[0.4em] mb-3">TEMPORADA 2026</p>
+                <h2 className="font-orbitron font-black text-5xl xl:text-6xl text-white uppercase tracking-tighter leading-[0.9] mb-4">
+                  MONTE SEU<br /><span className="text-[#3b82f6]">TIME</span><br />PERFEITO
+                </h2>
+                <p className="text-sm text-gray-400 leading-relaxed max-w-sm">
+                  Escale os melhores jogadores do Kings Lendas, acumule pontos e domine o ranking da sua liga.
+                </p>
+              </div>
+
+              {/* Features */}
+              <div className="space-y-3">
+                {[
+                  { icon: 'fa-trophy', text: 'Compete em ligas com seus amigos' },
+                  { icon: 'fa-chart-line', text: 'Acompanhe pontuações em tempo real' },
+                  { icon: 'fa-robot', text: 'Receba dicas do AI Coach' },
+                ].map((f) => (
+                  <div key={f.icon} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#3b82f6]/15 border border-[#3b82f6]/25 flex items-center justify-center shrink-0">
+                      <i className={`fa-solid ${f.icon} text-[#3b82f6] text-xs`}></i>
+                    </div>
+                    <span className="text-sm text-gray-300 font-medium">{f.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Rodapé */}
+            <p className="text-[10px] text-gray-600 uppercase tracking-widest font-black">© 2026 KINGS LENDAS FANTASY</p>
+          </div>
+        </div>
+
+        {/* ── PAINEL DIREITO — formulário ── */}
+        <div className="flex-1 flex flex-col relative bg-[#08090e] lg:border-l lg:border-white/8">
+
+          {/* Background mobile (só aparece em telas pequenas) */}
+          <div className="absolute inset-0 lg:hidden bg-cover bg-center bg-no-repeat opacity-20" style={{ backgroundImage: `url(${backgroundImage})` }} />
+          <div className="absolute inset-0 lg:hidden bg-gradient-to-b from-[#08090e]/60 via-[#08090e]/80 to-[#08090e]" />
+
+          {/* Conteúdo do form */}
+          <div className="relative z-10 flex flex-col flex-1 items-center justify-center px-5 xs:px-6 sm:px-10 md:px-16 lg:px-12 xl:px-16 py-10">
+
+
+            <div className="w-full max-w-[400px] space-y-6 sm:space-y-7">
+
+              {/* Logo (mobile only) */}
+              <div className="flex lg:hidden items-center gap-2.5 mb-2">
+                <img src={logo} alt="Logo" className="w-9 h-9 rounded-xl object-cover" />
+                <span className="font-orbitron font-black text-base text-white uppercase tracking-tight">
+                  KINGS <span className="text-[#3b82f6]">LENDAS</span> FANTASY
+                </span>
+              </div>
+
+              {/* Título */}
+              <div>
+                <h1 className="font-orbitron font-black text-3xl sm:text-4xl text-white uppercase tracking-tighter leading-tight mb-1.5">
+                  {isSignUp ? 'CRIAR CONTA' : 'BEM-VINDO'}
+                </h1>
+                <p className="text-xs sm:text-sm text-gray-500">
+                  {isSignUp ? 'Junte-se ao maior campeonato do Brasil' : 'Entre para continuar sua jornada'}
+                </p>
+              </div>
+
+              {/* Social */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleSocialLogin('discord')}
+                  disabled={loading}
+                  className="group flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/8 rounded-xl hover:bg-[#5865F2]/10 hover:border-[#5865F2]/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="hidden xs:inline">ACESSO ANTECIPADO</span>
-                  <span className="xs:hidden">BLOQUEADO</span>
+                  <i className="fa-brands fa-discord text-gray-500 group-hover:text-[#5865F2] text-base transition-colors"></i>
+                  <span className="text-[11px] font-black text-gray-500 group-hover:text-white uppercase tracking-wider transition-colors">Discord</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSocialLogin('google')}
+                  disabled={loading}
+                  className="group flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/8 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <i className="fa-brands fa-google text-gray-500 group-hover:text-white text-base transition-colors"></i>
+                  <span className="text-[11px] font-black text-gray-500 group-hover:text-white uppercase tracking-wider transition-colors">Google</span>
                 </button>
               </div>
 
-              <div className="flex-1 flex flex-col justify-center max-w-[420px] mx-auto w-full pt-10 xs:pt-11 sm:pt-12">
-                
-                {/* Logo */}
-                <div className="mb-5 sm:mb-6 md:mb-8 animate-in fade-in slide-in-from-right duration-700 text-center">
-                  <div className="inline-flex items-center gap-2 sm:gap-2.5 mb-3 sm:mb-4 md:mb-5">
-                    <img src={logo} alt="Logo" className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 lg:w-12 lg:h-12 rounded-lg md:rounded-xl object-cover" />
-                    <div className="font-orbitron font-black text-base sm:text-lg md:text-xl text-white uppercase tracking-tight">
-                      KINGS <span className="text-[#6366F1]">LENDAS</span> <span className="hidden xs:inline">FANTASY</span>
-                    </div>
-                  </div>
-                  <h1 className="font-orbitron font-black text-2xl xs:text-3xl sm:text-4xl md:text-5xl text-white uppercase tracking-tighter mb-1.5 sm:mb-2 md:mb-3">
-                    {isSignUp ? 'CRIAR CONTA' : 'BEM-VINDO'}
-                  </h1>
-                  <p className="text-[11px] xs:text-xs sm:text-sm text-gray-500 font-medium px-2">
-                    {isSignUp ? 'Junte-se ao maior campeonato do Brasil' : 'Entre para continuar sua jornada'}
-                  </p>
-                  {/* Aviso de Acesso Antecipado */}
-                  <div className="mt-3 sm:mt-4 px-3 sm:px-4 py-2 sm:py-3 bg-[#6366F1]/10 border border-[#6366F1]/30 rounded-lg sm:rounded-xl">
-                    <p className="text-[9px] xs:text-[10px] font-bold text-[#6366F1] uppercase tracking-widest text-center leading-relaxed">
-                      🔒 Acesso Antecipado - Cadastros <span className="hidden xs:inline">Temporariamente</span> Bloqueados
-                    </p>
-                  </div>
-                </div>
+              {/* Divider */}
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-white/8"></div>
+                <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">ou e-mail</span>
+                <div className="h-px flex-1 bg-white/8"></div>
+              </div>
 
-                {/* Social Buttons - BLOQUEADOS TEMPORARIAMENTE */}
-                <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3 mb-5 sm:mb-6 md:mb-7 animate-in fade-in slide-in-from-right duration-700 delay-100">
-                  <button 
-                    type="button"
-                    disabled
-                    className="group flex items-center justify-center gap-1.5 sm:gap-2 md:gap-2.5 py-3 sm:py-3.5 md:py-4 bg-white/5 border border-white/5 rounded-lg sm:rounded-xl md:rounded-2xl transition-all opacity-50 cursor-not-allowed"
-                    title="Login social bloqueado - Acesso antecipado"
-                  >
-                    <i className="fa-brands fa-discord text-gray-600 text-base sm:text-lg md:text-xl"></i>
-                    <span className="text-[10px] xs:text-[11px] sm:text-xs font-black text-gray-600 uppercase tracking-wider">Discord</span>
-                  </button>
-                  <button 
-                    type="button"
-                    disabled
-                    className="group flex items-center justify-center gap-1.5 sm:gap-2 md:gap-2.5 py-3 sm:py-3.5 md:py-4 bg-white/5 border border-white/5 rounded-lg sm:rounded-xl md:rounded-2xl transition-all opacity-50 cursor-not-allowed"
-                    title="Login social bloqueado - Acesso antecipado"
-                  >
-                    <i className="fa-brands fa-google text-gray-600 text-base sm:text-lg md:text-xl"></i>
-                    <span className="text-[10px] xs:text-[11px] sm:text-xs font-black text-gray-600 uppercase tracking-wider">Google</span>
-                  </button>
-                </div>
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-4">
 
-                {/* Divider */}
-                <div className="relative flex items-center gap-2 sm:gap-3 mb-5 sm:mb-6 md:mb-7 animate-in fade-in duration-700 delay-200">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-white/10"></div>
-                  <span className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-600 uppercase tracking-widest">ou e-mail</span>
-                  <div className="h-px flex-1 bg-gradient-to-l from-transparent via-white/10 to-white/10"></div>
-                </div>
-
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-5 animate-in fade-in slide-in-from-right duration-700 delay-300">
-                  
-                  {/* Email */}
-                  <div className="space-y-1 sm:space-y-1.5 md:space-y-2">
-                    <label className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">E-mail</label>
-                    <input 
-                      type="email" 
+                {/* Email */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">E-mail</label>
+                  <div className="relative">
+                    <i className="fa-solid fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-xs pointer-events-none"></i>
+                    <input
+                      type="email"
                       placeholder="seu@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 md:py-4 px-3 sm:px-4 md:px-5 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
+                      className="w-full bg-white/[0.04] border border-white/8 rounded-xl py-3.5 pl-10 pr-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]/50 focus:bg-white/[0.07] transition-all"
                       required
                       disabled={loading}
                     />
                   </div>
+                </div>
 
-                  {/* Username (SignUp only) */}
-                  
-                  {/* Password */}
-                  <div className="space-y-1 sm:space-y-1.5 md:space-y-2">
-                    <label className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Senha</label>
+                {/* Senha */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Senha</label>
+                  <div className="relative">
+                    <i className="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-xs pointer-events-none"></i>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-white/[0.04] border border-white/8 rounded-xl py-3.5 pl-10 pr-11 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]/50 focus:bg-white/[0.07] transition-all"
+                      required
+                      disabled={loading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#3b82f6] transition-colors"
+                      disabled={loading}
+                    >
+                      <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-xs`}></i>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirmar senha (cadastro) */}
+                {isSignUp && (
+                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Confirmar Senha</label>
                     <div className="relative">
-                      <input 
-                        type={showPassword ? "text" : "password"} 
+                      <i className="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-xs pointer-events-none"></i>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
                         placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 md:py-4 pl-3 sm:pl-4 md:pl-5 pr-10 sm:pr-12 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
-                        required
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className={`w-full bg-white/[0.04] border rounded-xl py-3.5 pl-10 pr-11 text-sm text-white placeholder-gray-600 focus:outline-none transition-all ${
+                          confirmPassword && password !== confirmPassword
+                            ? 'border-red-500/50 focus:border-red-500'
+                            : 'border-white/8 focus:border-[#3b82f6]/50 focus:bg-white/[0.07]'
+                        }`}
+                        required={isSignUp}
                         disabled={loading}
                       />
-                      <button 
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#6366F1] transition-colors"
-                        disabled={loading}
-                      >
-                        <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-xs sm:text-sm`}></i>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Confirm Password (SignUp only) */}
-                  {isSignUp && (
-                    <div className="space-y-1 sm:space-y-1.5 md:space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <label className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Confirmar Senha</label>
-                      <div className="relative">
-                        <input 
-                          type={showPassword ? "text" : "password"} 
-                          placeholder="••••••••"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          className={`w-full bg-white/5 border rounded-lg sm:rounded-xl py-3 sm:py-3.5 md:py-4 pl-3 sm:pl-4 md:pl-5 pr-10 sm:pr-12 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none transition-all ${
-                            confirmPassword && password !== confirmPassword 
-                              ? 'border-red-500/50 focus:border-red-500' 
-                              : 'border-white/10 focus:border-[#6366F1]/50 focus:bg-white/[0.07]'
-                          }`}
-                          required={isSignUp}
-                          disabled={loading}
-                        />
-                        <button 
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#6366F1] transition-colors"
-                          disabled={loading}
-                        >
-                          <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-xs sm:text-sm`}></i>
-                        </button>
-                      </div>
-                      {confirmPassword && password !== confirmPassword && (
-                        <p className="text-[10px] xs:text-xs font-bold text-red-500 uppercase tracking-wider">Senhas não coincidem</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Remember Me */}
-                  {!isSignUp && (
-                    <div className="flex items-center justify-between gap-3 sm:gap-4 flex-wrap xs:flex-nowrap">
-                      <label className="flex items-center gap-2 sm:gap-3 cursor-pointer group">
-                        <input 
-                          type="checkbox" 
-                          checked={rememberMe} 
-                          onChange={(e) => setRememberMe(e.target.checked)}
-                          className="sr-only" 
-                          disabled={loading}
-                        />
-                        <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-md border transition-all flex items-center justify-center ${
-                          rememberMe ? 'bg-[#6366F1] border-[#6366F1]' : 'bg-white/5 border-white/10 group-hover:border-white/20'
-                        }`}>
-                          {rememberMe && (
-                            <i className="fa-solid fa-check text-white text-[10px] sm:text-xs"></i>
-                          )}
-                        </div>
-                        <span className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider group-hover:text-gray-300 transition-colors">
-                          Lembrar de mim
-                        </span>
-                      </label>
-
                       <button
                         type="button"
-                        onClick={() => {
-                          setForgotPasswordEmail(email);
-                          setForgotPasswordMsg(null);
-                          setIsForgotPasswordOpen(true);
-                        }}
-                        className="text-[9px] xs:text-[10px] font-black text-[#6366F1] uppercase tracking-widest hover:text-white transition-colors whitespace-nowrap"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#3b82f6] transition-colors"
                         disabled={loading}
                       >
-                        Esqueci minha senha
+                        <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-xs`}></i>
                       </button>
                     </div>
-                  )}
-                  
-                {/* Error Message */}
-                {errorMsg && (
-                  <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 bg-red-500/10 border border-red-500/30 rounded-lg sm:rounded-xl">
-                      <i className="fa-solid fa-circle-exclamation text-red-500 text-base sm:text-lg mt-0.5"></i>
-                      <p className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-red-400 uppercase tracking-wider leading-relaxed">
-                        {errorMsg}
-                      </p>
-                    </div>
+                    {confirmPassword && password !== confirmPassword && (
+                      <p className="text-[10px] font-black text-red-400 uppercase tracking-wider">Senhas não coincidem</p>
+                    )}
                   </div>
                 )}
 
-                  {/* Submit Button */}
-                  <button 
-                    type="submit" 
-                    disabled={loading || (isSignUp && confirmPassword !== '' && password !== confirmPassword)}
-                    className="w-full py-3.5 sm:py-4 md:py-5 bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white rounded-lg sm:rounded-xl font-orbitron font-black text-xs sm:text-sm uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-[0_10px_30px_rgba(99,102,241,0.25)] sm:shadow-[0_12px_35px_rgba(99,102,241,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 mt-4 sm:mt-5 md:mt-6 relative overflow-hidden group"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <span className="relative z-10">
-                      {loading ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <i className="fa-solid fa-spinner fa-spin"></i>
-                          <span className="hidden xs:inline">CARREGANDO...</span>
-                          <span className="xs:hidden">...</span>
-                        </div>
-                      ) : isSignUp ? 'CRIAR CONTA' : 'ENTRAR'}
-                    </span>
-                  </button>
-                </form>
-              </div>
+                {/* Lembrar / Esqueci */}
+                {!isSignUp && (
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="sr-only"
+                        disabled={loading}
+                      />
+                      <div className={`w-4 h-4 rounded border transition-all flex items-center justify-center ${rememberMe ? 'bg-[#3b82f6] border-[#3b82f6]' : 'bg-white/5 border-white/15 group-hover:border-white/30'}`}>
+                        {rememberMe && <i className="fa-solid fa-check text-white text-[9px]"></i>}
+                      </div>
+                      <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider group-hover:text-gray-300 transition-colors">Lembrar</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => { setForgotPasswordEmail(email); setForgotPasswordMsg(null); setIsForgotPasswordOpen(true); }}
+                      className="text-[10px] font-black text-[#3b82f6] hover:text-white uppercase tracking-widest transition-colors"
+                      disabled={loading}
+                    >
+                      Esqueci a senha
+                    </button>
+                  </div>
+                )}
+
+                {/* Erro */}
+                {errorMsg && (
+                  <div className="flex items-start gap-2.5 p-3.5 bg-red-500/8 border border-red-500/25 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <i className="fa-solid fa-circle-exclamation text-red-400 text-sm mt-0.5 shrink-0"></i>
+                    <p className="text-[10px] font-black text-red-400 uppercase tracking-wider leading-relaxed">{errorMsg}</p>
+                  </div>
+                )}
+
+                {/* Botão submit */}
+                <button
+                  type="submit"
+                  disabled={loading || (isSignUp && confirmPassword !== '' && password !== confirmPassword)}
+                  className="w-full py-4 bg-gradient-to-r from-[#3b82f6] to-[#6366f1] text-white rounded-xl font-orbitron font-black text-xs uppercase tracking-widest transition-all shadow-[0_8px_25px_rgba(59,130,246,0.3)] hover:shadow-[0_12px_35px_rgba(59,130,246,0.45)] hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100 relative overflow-hidden group mt-2"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    {loading
+                      ? <><i className="fa-solid fa-spinner fa-spin"></i> CARREGANDO...</>
+                      : isSignUp ? 'CRIAR CONTA' : 'ENTRAR'
+                    }
+                  </span>
+                </button>
+              </form>
+
+              {/* Toggle mobile (abaixo do form) */}
+              <p className="text-center text-[11px] text-gray-600">
+                {isSignUp ? 'Já tem uma conta?' : 'Ainda não tem conta?'}{' '}
+                <button
+                  onClick={() => { setIsSignUp(!isSignUp); setErrorMsg(null); }}
+                  disabled={loading}
+                  className="font-black text-[#3b82f6] hover:text-white transition-colors uppercase tracking-wider"
+                >
+                  {isSignUp ? 'Entrar' : 'Criar conta'}
+                </button>
+              </p>
             </div>
           </div>
         </div>
@@ -441,7 +461,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               <button
                 type="button"
                 onClick={() => setPendingEmail(null)}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#6366F1]/40 transition-colors"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#3b82f6]/40 transition-colors"
               >
                 <i className="fa-solid fa-xmark text-sm"></i>
               </button>
@@ -481,7 +501,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               <button
                 type="button"
                 onClick={() => setIsForgotPasswordOpen(false)}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#6366F1]/40 transition-colors"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#3b82f6]/40 transition-colors"
               >
                 <i className="fa-solid fa-xmark text-sm"></i>
               </button>
@@ -495,7 +515,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   value={forgotPasswordEmail}
                   onChange={(e) => setForgotPasswordEmail(e.target.value)}
                   placeholder="seu@email.com"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]/50 focus:bg-white/[0.07] transition-all"
                   required
                   disabled={isSendingForgotPassword}
                 />
@@ -541,7 +561,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   setResetPasswordMsg(null);
                   AuthService.clearRecoveryState();
                 }}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#6366F1]/40 transition-colors"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#3b82f6]/40 transition-colors"
               >
                 <i className="fa-solid fa-xmark text-sm"></i>
               </button>
@@ -555,7 +575,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]/50 focus:bg-white/[0.07] transition-all"
                   required
                   disabled={isSubmittingResetPassword}
                 />
@@ -568,7 +588,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   value={confirmNewPassword}
                   onChange={(e) => setConfirmNewPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]/50 focus:bg-white/[0.07] transition-all"
                   required
                   disabled={isSubmittingResetPassword}
                 />
@@ -582,7 +602,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
               <button
                 type="submit"
-                className="w-full py-3 sm:py-3.5 bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white rounded-lg sm:rounded-xl font-orbitron font-black text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-widest transition-all disabled:opacity-50"
+                className="w-full py-3 sm:py-3.5 bg-gradient-to-r from-[#3b82f6] to-[#8B5CF6] text-white rounded-lg sm:rounded-xl font-orbitron font-black text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-widest transition-all disabled:opacity-50"
                 disabled={isSubmittingResetPassword}
               >
                 {isSubmittingResetPassword ? 'SALVANDO...' : 'ATUALIZAR SENHA'}

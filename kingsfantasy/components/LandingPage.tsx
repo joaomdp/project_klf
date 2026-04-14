@@ -36,7 +36,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             <div className="space-y-3 sm:space-y-4 md:space-y-5 animate-in fade-in slide-in-from-left duration-700 delay-100">
               <h1 className="font-orbitron font-black text-4xl xs:text-5xl sm:text-6xl md:text-7xl lg:text-7xl xl:text-8xl text-white uppercase tracking-tighter leading-[0.9] break-words">
                 FANTASY<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#6366F1] via-[#8B5CF6] to-[#6366F1] animate-gradient">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3b82f6] via-[#8B5CF6] to-[#3b82f6] animate-gradient">
                   KINGS<br />LENDAS
                 </span>
               </h1>
@@ -60,9 +60,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
             {/* Features Grid */}
             <div className="grid grid-cols-1 xs:grid-cols-2 gap-2.5 sm:gap-3 md:gap-4 animate-in fade-in slide-in-from-left duration-700 delay-300">
-              <div className="flex items-start gap-2.5 sm:gap-3 md:gap-4 p-3 sm:p-4 md:p-5 bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-lg sm:rounded-xl md:rounded-2xl hover:bg-white/[0.05] hover:border-[#6366F1]/30 transition-all group">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0 group-hover:bg-[#6366F1]/20 transition-all">
-                  <i className="fa-solid fa-users text-[#6366F1] text-base sm:text-lg md:text-xl"></i>
+              <div className="flex items-start gap-2.5 sm:gap-3 md:gap-4 p-3 sm:p-4 md:p-5 bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-lg sm:rounded-xl md:rounded-2xl hover:bg-white/[0.05] hover:border-[#3b82f6]/30 transition-all group">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-[#3b82f6]/10 flex items-center justify-center shrink-0 group-hover:bg-[#3b82f6]/20 transition-all">
+                  <i className="fa-solid fa-users text-[#3b82f6] text-base sm:text-lg md:text-xl"></i>
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-bold text-xs sm:text-sm md:text-base text-white mb-0.5 sm:mb-1 uppercase tracking-wide truncate">Escale seu Time</h3>
@@ -85,7 +85,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             <div className="pt-1 sm:pt-2 animate-in fade-in slide-in-from-left duration-700 delay-400">
               <button
                 onClick={onGetStarted}
-                className="group relative inline-flex items-center gap-2 sm:gap-3 px-6 sm:px-8 md:px-10 py-3.5 sm:py-4 md:py-5 bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] rounded-lg sm:rounded-xl md:rounded-2xl font-orbitron font-black text-sm sm:text-base md:text-lg uppercase tracking-wider text-white shadow-[0_10px_40px_rgba(99,102,241,0.3)] sm:shadow-[0_15px_50px_rgba(99,102,241,0.4)] hover:shadow-[0_15px_60px_rgba(99,102,241,0.5)] sm:hover:shadow-[0_20px_70px_rgba(99,102,241,0.6)] hover:scale-105 active:scale-95 transition-all overflow-hidden w-full xs:w-auto justify-center"
+                className="group relative inline-flex items-center gap-2 sm:gap-3 px-6 sm:px-8 md:px-10 py-3.5 sm:py-4 md:py-5 bg-gradient-to-r from-[#3b82f6] to-[#8B5CF6] rounded-lg sm:rounded-xl md:rounded-2xl font-orbitron font-black text-sm sm:text-base md:text-lg uppercase tracking-wider text-white shadow-[0_10px_40px_rgba(99,102,241,0.3)] sm:shadow-[0_15px_50px_rgba(99,102,241,0.4)] hover:shadow-[0_15px_60px_rgba(99,102,241,0.5)] sm:hover:shadow-[0_20px_70px_rgba(99,102,241,0.6)] hover:scale-105 active:scale-95 transition-all overflow-hidden w-full xs:w-auto justify-center"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <span className="relative z-10">COMEÇAR AGORA</span>

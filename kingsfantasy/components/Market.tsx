@@ -5,6 +5,7 @@ import PlayerImage from './PlayerImage';
 import TeamLogo from './TeamLogo';
 import DiversityIndicator from './DiversityIndicator';
 import PaiCoin from './PaiCoin';
+import MatchHistoryModal from './MatchHistoryModal';
 
 interface MarketProps {
   players: Player[];
@@ -37,6 +38,7 @@ const Market: React.FC<MarketProps> = ({
   const [showConfirmCheck, setShowConfirmCheck] = useState(false);
   const [lastConfirmedTeam, setLastConfirmedTeam] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [historyPlayer, setHistoryPlayer] = useState<Player | null>(null);
 
   // Buscar dados frescos ao montar o componente (silencioso, sem toast)
   useEffect(() => {
@@ -124,229 +126,195 @@ const Market: React.FC<MarketProps> = ({
   }, [userTeam.players]);
 
 
+  const handleConfirm = async () => {
+    setShowConfirmCheck(true);
+    try {
+      await onConfirm();
+      const currentTeamSnapshot = JSON.stringify({
+        players: Object.keys(userTeam.players).reduce((acc, role) => {
+          const player = userTeam.players[role as Role];
+          if (player) acc[role] = { id: player.id, selectedChampion: player.selectedChampion?.id || null };
+          return acc;
+        }, {} as Record<string, any>)
+      });
+      setLastConfirmedTeam(currentTeamSnapshot);
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error('Erro ao confirmar:', error);
+    }
+    setTimeout(() => setShowConfirmCheck(false), 800);
+  };
+
   return (
+    <>
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 md:gap-10 animate-in fade-in duration-500 pb-16 sm:pb-20 px-3 xs:px-4 sm:px-6">
       {/* Check animado de confirmação */}
       {showConfirmCheck && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
           <div className="animate-in zoom-in duration-300">
-            <div className="w-24 h-24 xs:w-28 xs:h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-[#6366F1] to-[#8B5CF6] flex items-center justify-center shadow-[0_0_60px_rgba(99,102,241,0.7)] sm:shadow-[0_0_80px_rgba(99,102,241,0.8)]">
+            <div className="w-24 h-24 xs:w-28 xs:h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-[#3b82f6] to-[#8B5CF6] flex items-center justify-center shadow-[0_0_60px_rgba(99,102,241,0.7)]">
               <i className="fa-solid fa-check text-5xl xs:text-6xl text-white"></i>
             </div>
           </div>
         </div>
       )}
 
-        <div className="lg:col-span-4 space-y-6 sm:space-y-7 md:space-y-8">
-        <div className="lg:sticky lg:top-28 xl:top-32 space-y-6 sm:space-y-7 md:space-y-8">
-           <div className="relative aspect-[5/4.8] w-full rounded-2xl xs:rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] overflow-hidden border border-white/10 bg-black shadow-[0_0_40px_rgba(0,0,0,0.7)] sm:shadow-[0_0_50px_rgba(0,0,0,0.8)] group">
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
-              <img
-                src="https://i.imgur.com/myc9dfj.png"
-                className="absolute inset-0 w-full h-full object-cover object-[50%_35%] scale-[1.28] opacity-55 contrast-[1.2] saturate-125"
-                alt="Tactical Field"
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/15 to-black/55"></div>
-             
-             {rolesList.map(role => {
-               const p = userTeam.players[role.id];
-               return (
-                   <div key={role.id} className="absolute -translate-x-1/2 -translate-y-1/2 z-20" style={{ top: role.top, left: role.left }}>
-                      <div
-                        className={`relative group/pin flex flex-col items-center gap-0.5 ${isMarketOpen ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
-                        onClick={() => isMarketOpen && p && onFire(role.id)}
-                      >
-                       <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 transition-all duration-500 flex items-center justify-center overflow-hidden ${
-                          p ? 'border-[#6366F1] bg-black shadow-[0_0_20px_rgba(94,108,255,0.5)] scale-110' : 'border-white/10 bg-black/80 hover:border-white/40'
-                        }`}>
-                          {p ? (
-                            <PlayerImage player={p} priority className="w-full h-full rounded-full" imgClassName="w-full h-full object-cover" />
-                          ) : (
-                           <div className="w-1.5 h-1.5 bg-white/10 rounded-full animate-pulse"></div>
-                         )}
-                       </div>
-                       {p && (
-                         <span className="text-[8px] font-black uppercase text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/10 whitespace-nowrap">
-                           {p.name}
-                         </span>
-                       )}
+      {/* ── SIDEBAR ── */}
+      <div className="lg:col-span-4 order-1">
+        <div className="lg:sticky lg:top-28 xl:top-32 space-y-4 sm:space-y-6">
+
+          {/* Mapa tático — oculto no mobile, visível a partir de lg */}
+          <div className="hidden lg:block relative aspect-[5/4.8] w-full rounded-[2rem] overflow-hidden border border-white/10 bg-black shadow-[0_0_50px_rgba(0,0,0,0.8)] group">
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
+            <img src="https://i.imgur.com/myc9dfj.png" className="absolute inset-0 w-full h-full object-cover object-[50%_35%] scale-[1.28] opacity-55 contrast-[1.2] saturate-125" alt="Tactical Field" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/15 to-black/55"></div>
+            {rolesList.map(role => {
+              const p = userTeam.players[role.id];
+              return (
+                <div key={role.id} className="absolute -translate-x-1/2 -translate-y-1/2 z-20" style={{ top: role.top, left: role.left }}>
+                  <div className={`relative group/pin flex flex-col items-center gap-0.5 ${isMarketOpen ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`} onClick={() => isMarketOpen && p && onFire(role.id)}>
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 transition-all duration-500 flex items-center justify-center overflow-hidden ${p ? 'border-[#3b82f6] bg-black shadow-[0_0_20px_rgba(59,130,246,0.5)] scale-110' : 'border-white/10 bg-black/80 hover:border-white/40'}`}>
+                      {p ? <PlayerImage player={p} priority className="w-full h-full rounded-full" imgClassName="w-full h-full object-cover" /> : <div className="w-1.5 h-1.5 bg-white/10 rounded-full animate-pulse"></div>}
                     </div>
-                 </div>
-               );
-             })}
+                    {p && <span className="text-[8px] font-black uppercase text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/10 whitespace-nowrap">{p.name}</span>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          <div className="glass-card p-7 border border-white/5 space-y-8">
-            <div className="space-y-4">
-              <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.4em] block px-1">MINHA ESCALAÇÃO</span>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+          {/* Painel de escalação + ações */}
+          <div className="bg-[#0d1117] border border-white/8 rounded-xl overflow-hidden">
+
+            {/* Escalação */}
+            <div className="p-4 sm:p-5 border-b border-white/5">
+              <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.4em] block mb-3">MINHA ESCALAÇÃO</span>
+              <div className="grid grid-cols-5 gap-2 sm:gap-3">
                 {rolesList.map(role => {
                   const p = userTeam.players[role.id];
                   const champ = p?.selectedChampion || p?.lastChampion;
                   return (
-                     <div key={role.id} className="flex flex-col gap-2 items-center relative">
-                       <div className={`aspect-square w-full rounded-full border transition-all duration-500 relative flex items-center justify-center ${p ? 'border-[#6366F1] bg-black shadow-[0_0_15px_rgba(94,108,255,0.1)]' : 'border-white/5 bg-white/[0.02]'}`}>
-                         {p ? (
-                           <div className="w-full h-full rounded-full overflow-hidden">
-                             <PlayerImage player={p} priority className="w-full h-full rounded-full" imgClassName="w-full h-full object-cover" />
-                           </div>
-                         ) : (
-                           <img src={role.icon} className="w-3.5 h-3.5 brightness-0 invert opacity-10" alt="" />
-                         )}
-                         {champ && (
-                           <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-2 border-black bg-black overflow-hidden shadow-2xl z-20">
-                             <img src={champ.image} className="w-full h-full object-cover" alt="" />
-                           </div>
-                         )}
-                       </div>
-                       <span className={`text-[7px] font-black uppercase truncate w-full text-center ${p ? 'text-[#6366F1]' : 'text-gray-700'}`}>
-                         {p ? p.name : role.label}
-                       </span>
-                     </div>
+                    <div key={role.id} className="flex flex-col gap-1.5 items-center relative">
+                      <div className={`aspect-square w-full rounded-full border transition-all duration-500 relative flex items-center justify-center ${p ? 'border-[#3b82f6] bg-black shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'border-white/5 bg-white/[0.02]'}`}>
+                        {p ? (
+                          <div className="w-full h-full rounded-full overflow-hidden">
+                            <PlayerImage player={p} priority className="w-full h-full rounded-full" imgClassName="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <img src={role.icon} className="w-3.5 h-3.5 brightness-0 invert opacity-10" alt="" />
+                        )}
+                        {champ && (
+                          <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 border-black bg-black overflow-hidden shadow-2xl z-20">
+                            <img src={champ.image} className="w-full h-full object-cover" alt="" />
+                          </div>
+                        )}
+                      </div>
+                      <span className={`text-[7px] font-black uppercase truncate w-full text-center ${p ? 'text-[#3b82f6]' : 'text-gray-700'}`}>
+                        {p ? p.name.substring(0, 6) : role.label}
+                      </span>
+                    </div>
                   );
-                 })}
-                </div>
-             </div>
+                })}
+              </div>
+            </div>
 
-             {/* Buff de Diversidade */}
-             <div className="space-y-3">
-               <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.4em] block px-1">BÔNUS ATIVO</span>
-               <DiversityIndicator players={userTeam.players} />
-             </div>
+            {/* Bônus */}
+            <div className="p-4 sm:p-5 border-b border-white/5">
+              <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.4em] block mb-3">BÔNUS ATIVO</span>
+              <DiversityIndicator players={userTeam.players} />
+            </div>
 
-             {/* Aviso de alterações não salvas */}
+            {/* Aviso pendente */}
             {hasUnsavedChanges && (
-              <div className="bg-amber-500/10 border-2 border-amber-500/40 rounded-xl p-5 animate-in fade-in slide-in-from-top-4 duration-500">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/30 border-2 border-amber-500/50 flex items-center justify-center shrink-0 animate-pulse">
-                    <i className="fa-solid fa-exclamation-triangle text-amber-300 text-lg"></i>
+              <div className="mx-3 sm:mx-4 my-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 sm:p-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 animate-pulse">
+                    <i className="fa-solid fa-exclamation-triangle text-amber-300 text-sm"></i>
                   </div>
-                  <div className="flex-1">
-                    <h4 className="text-[11px] font-black text-amber-300 uppercase tracking-wider mb-2">Alterações Pendentes</h4>
-                    <p className="text-[10px] text-amber-200/90 leading-relaxed font-medium">
-                      Você modificou sua escalação. Clique em <span className="font-black text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded">CONFIRMAR</span> para salvar.
-                    </p>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-[10px] font-black text-amber-300 uppercase tracking-wider mb-0.5">Alterações Pendentes</h4>
+                    <p className="text-[9px] text-amber-200/80 font-medium leading-snug">Confirme para salvar sua escalação.</p>
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-6 pt-6 border-t border-white/5">
-              <div className="space-y-1">
-                <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest block">PAITRIMÔNIO</span>
-                <div className="flex items-center gap-2">
+            {/* Saldo + Valor */}
+            <div className="grid grid-cols-2 divide-x divide-white/5 border-t border-white/5">
+              <div className="px-4 py-3">
+                <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest block mb-1">PAITRIMÔNIO</span>
+                <div className="flex items-center gap-1.5">
                   <PaiCoin size="sm" />
-                  <span className="text-2xl font-orbitron font-black text-white">{userTeam.budget.toFixed(1)}</span>
+                  <span className="text-lg font-orbitron font-black text-white">{userTeam.budget.toFixed(1)}</span>
                 </div>
               </div>
-              <div className="space-y-1 text-right">
-                <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest block">VALOR TIME</span>
-                <div className="flex items-center justify-end gap-2">
+              <div className="px-4 py-3 text-right">
+                <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest block mb-1">VALOR TIME</span>
+                <div className="flex items-center justify-end gap-1.5">
                   <PaiCoin size="sm" />
-                  <span className="text-2xl font-orbitron font-black text-[#6366F1]">{teamValue.toFixed(1)}</span>
+                  <span className="text-lg font-orbitron font-black text-[#3b82f6]">{teamValue.toFixed(1)}</span>
                 </div>
               </div>
             </div>
-            
-             <div className="grid grid-cols-2 gap-3">
-              <button 
+
+            {/* Botões */}
+            <div className="grid grid-cols-2 gap-0 border-t border-white/5">
+              <button
                 onClick={onClear}
                 disabled={!isMarketOpen}
-                className={`py-3.5 border text-[9px] font-black uppercase tracking-widest transition-all ${isMarketOpen ? 'bg-white/5 border-white/10 text-gray-400 hover:text-white' : 'bg-white/5 border-white/10 text-gray-600 cursor-not-allowed opacity-60'}`}
-              >
-                LIMPAR
-              </button>
-              <button 
-                onClick={async () => {
-                  // Mostra check animado
-                  setShowConfirmCheck(true);
-                  
-                  // Chama a função de confirmação
-                  try {
-                    await onConfirm();
-                    
-                    // Salva snapshot do time confirmado
-                    const currentTeamSnapshot = JSON.stringify({
-                      players: Object.keys(userTeam.players).reduce((acc, role) => {
-                        const player = userTeam.players[role as Role];
-                        if (player) {
-                          acc[role] = {
-                            id: player.id,
-                            selectedChampion: player.selectedChampion?.id || null
-                          };
-                        }
-                        return acc;
-                      }, {} as Record<string, any>)
-                    });
-                    setLastConfirmedTeam(currentTeamSnapshot);
-                    setHasUnsavedChanges(false);
-                  } catch (error) {
-                    console.error('Erro ao confirmar:', error);
-                  }
-                  
-                  // Remove o check após 800ms
-                  setTimeout(() => {
-                    setShowConfirmCheck(false);
-                  }, 800);
-                }}
+                className={`py-3.5 text-[9px] font-black uppercase tracking-widest transition-all border-r border-white/5 ${isMarketOpen ? 'text-gray-400 hover:text-white hover:bg-white/[0.03]' : 'text-gray-600 cursor-not-allowed opacity-60'}`}
+              >LIMPAR</button>
+              <button
+                onClick={handleConfirm}
                 disabled={!isMarketOpen}
-                className={`py-3.5 text-[9px] font-black uppercase tracking-widest transition-all ${isMarketOpen ? 'bg-[#6366F1] text-black hover:scale-[1.02] shadow-[0_0_20px_rgba(94,108,255,0.4)]' : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-70'}`}
-              >
-                CONFIRMAR
-              </button>
+                className={`py-3.5 text-[9px] font-black uppercase tracking-widest transition-all ${isMarketOpen ? 'bg-[#3b82f6]/10 text-[#3b82f6] hover:bg-[#3b82f6] hover:text-black' : 'text-gray-600 cursor-not-allowed opacity-70'}`}
+              >CONFIRMAR</button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="lg:col-span-8 space-y-6">
-        <div className="sticky top-28 z-40 pb-4 space-y-4">
+      {/* ── LISTA DE JOGADORES ── */}
+      <div className="lg:col-span-8 order-2 space-y-4 sm:space-y-6">
+        <div className="sticky top-[72px] sm:top-[80px] z-40 pb-3 space-y-2 sm:space-y-3 bg-[#060a0f]/80 backdrop-blur-xl -mx-3 xs:-mx-4 sm:-mx-6 px-3 xs:px-4 sm:px-6 pt-2">
           {/* Barra de Pesquisa */}
-          <div className="relative bg-black/60 backdrop-blur-xl border border-white/5 p-1">
-            <i className="fa-solid fa-magnifying-glass absolute left-6 top-1/2 -translate-y-1/2 text-gray-700 text-xs z-10"></i>
-            <input 
-              type="text" 
-              placeholder="PROCURAR LENDAS NA ILHA..." 
-              className="w-full bg-white/[0.03] border border-white/5 py-4 pl-14 pr-6 text-[11px] font-black text-white uppercase focus:outline-none focus:bg-white/[0.05] focus:border-[#6366F1]/30 transition-all"
-              value={searchTerm} 
+          <div className="relative bg-black/60 border border-white/8 rounded-xl overflow-hidden">
+            <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-xs z-10"></i>
+            <input
+              type="text"
+              placeholder="PROCURAR LENDAS..."
+              className="w-full bg-transparent py-3 sm:py-3.5 pl-10 pr-4 text-[11px] font-black text-white uppercase placeholder-gray-700 focus:outline-none transition-all"
+              value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
           {/* Filtro de Lanes */}
-          <div className="relative bg-black/60 backdrop-blur-xl border border-white/5 p-1">
-            <div className="flex items-center gap-2 p-1 overflow-x-auto no-scrollbar">
-              {Object.entries(roleMetadata).map(([key, data]) => (
-                <button 
-                  key={key} 
-                  onClick={() => setFilterRole(key as any)} 
-                  className={`flex-1 min-w-fit flex items-center justify-center gap-2.5 px-4 py-3 transition-all duration-300 ${
-                    filterRole === key 
-                      ? 'bg-[#6366F1]/10 text-white border border-[#6366F1]/40 shadow-[0_0_20px_rgba(94,108,255,0.2)]' 
-                      : 'text-gray-600 hover:text-gray-400 hover:bg-white/[0.02]'
-                  }`}
-                >
-                  <img 
-                    src={data.icon} 
-                    className={`w-3.5 h-3.5 transition-all ${filterRole === key ? 'brightness-150' : 'brightness-50 opacity-30'}`} 
-                    alt="" 
-                  />
-                  <span className="text-[10px] font-black uppercase tracking-[0.15em]">{data.label}</span>
-                </button>
-              ))}
-            </div>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5 snap-x">
+            {Object.entries(roleMetadata).map(([key, data]) => (
+              <button
+                key={key}
+                onClick={() => setFilterRole(key as any)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl shrink-0 snap-start transition-all duration-200 touch-manipulation border ${
+                  filterRole === key
+                    ? 'bg-[#3b82f6]/15 border-[#3b82f6]/50 text-white'
+                    : 'bg-black/60 border-white/8 text-gray-500 hover:text-gray-300 hover:border-white/20'
+                }`}
+              >
+                <img src={data.icon} className={`w-3.5 h-3.5 shrink-0 transition-all ${filterRole === key ? 'brightness-150' : 'brightness-50 opacity-40'}`} alt="" />
+                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.1em] whitespace-nowrap">{data.label}</span>
+              </button>
+            ))}
           </div>
 
           {currentRoundLabel && (
-            <div className="bg-black/60 backdrop-blur-xl border border-white/5 px-4 py-3">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                Confrontos da {currentRoundLabel}
-              </p>
+            <div className="bg-black/40 border border-white/5 rounded-lg px-3 py-2">
+              <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Confrontos da {currentRoundLabel}</p>
             </div>
           )}
         </div>
 
-        <div className={`space-y-4 transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
+        <div className={`space-y-3 transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
           {filteredPlayers.map((player) => {
             const hiredPlayer = userTeam.players[player.role];
             const isHired = hiredPlayer?.id === player.id;
@@ -355,94 +323,101 @@ const Market: React.FC<MarketProps> = ({
             const matchupList = player.teamId ? (teamMatchups[player.teamId] || []) : [];
 
             return (
-              <div key={player.id} className={`relative group bg-black/40 border transition-all duration-500 overflow-hidden ${isHired ? 'border-[#6366F1]/60 shadow-[0_0_30px_rgba(94,108,255,0.1)]' : 'border-white/5 hover:border-white/20'}`}>
-                
-                <div className="absolute -top-12 -right-12 w-64 h-64 pointer-events-none z-0 transition-all duration-1000 ease-out opacity-[0.03] grayscale blur-[2px] group-hover:opacity-[0.15] group-hover:grayscale-0 group-hover:blur-0 group-hover:rotate-12 group-hover:scale-110">
-                  <img 
-                    src="https://i.imgur.com/4odZyzF.png" 
-                    className="w-full h-full object-contain invert-[0.1] sepia-[1] saturate-[5] hue-rotate-[210deg]" 
-                    alt="" 
-                  />
+              <div key={player.id} onClick={() => setHistoryPlayer(player)} className={`relative group bg-black/40 border transition-all duration-500 overflow-hidden cursor-pointer rounded-xl ${isHired ? 'border-[#3b82f6]/50 shadow-[0_0_20px_rgba(59,130,246,0.08)]' : 'border-white/5 hover:border-white/15'}`}>
+
+                <div className="absolute -top-12 -right-12 w-48 sm:w-64 h-48 sm:h-64 pointer-events-none z-0 transition-all duration-1000 ease-out opacity-[0.03] grayscale blur-[2px] group-hover:opacity-[0.12] group-hover:grayscale-0 group-hover:blur-0 group-hover:rotate-12 group-hover:scale-110">
+                  <img src="https://i.imgur.com/4odZyzF.png" className="w-full h-full object-contain invert-[0.1] sepia-[1] saturate-[5] hue-rotate-[210deg]" alt="" />
                 </div>
 
-                 <div className="flex flex-col md:flex-row items-stretch relative z-10">
-                   <div className="relative w-full md:w-52 h-60 md:h-auto min-h-[200px] shrink-0 overflow-hidden bg-black/70 border-r border-white/5">
-                     <PlayerImage
-                       player={player}
-                       className="absolute inset-0 w-full h-full"
-                       imgClassName="w-full h-full object-cover"
-                       smartFocus
-                     />
-                    <div className="absolute top-3 left-3 z-20"><TeamLogo logoUrl={player.teamLogo} teamName={player.team} className="w-8 h-8" /></div>
-                    
+                <div className="flex items-stretch relative z-10">
+
+                  {/* Imagem do jogador */}
+                  <div className="relative w-[38%] sm:w-44 md:w-52 shrink-0 overflow-hidden bg-black/70 min-h-[140px] sm:min-h-[180px]">
+                    {player.teamLogo && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                        <img src={player.teamLogo} alt="" className="w-4/5 h-auto object-contain opacity-[0.06] group-hover:opacity-15 transition-opacity duration-500" />
+                      </div>
+                    )}
+                    <PlayerImage player={player} className="absolute inset-0 w-full h-full z-10" imgClassName="w-full h-full object-cover" smartFocus />
+                    <div className="absolute top-2 left-2 z-20">
+                      <TeamLogo logoUrl={player.teamLogo} teamName={player.team} className="w-6 h-6 sm:w-8 sm:h-8" />
+                    </div>
                     {hiredChamp && (
-                      <div className="absolute bottom-2 right-6 z-30 w-14 h-14 rounded-full border-2 border-[#6366F1] bg-black shadow-2xl overflow-hidden animate-in zoom-in duration-500">
-                         <img src={hiredChamp.image} className="w-full h-full object-cover" alt={hiredChamp.name} />
+                      <div className="absolute bottom-2 right-2 z-30 w-9 h-9 sm:w-12 sm:h-12 rounded-full border-2 border-[#3b82f6] bg-black shadow-xl overflow-hidden animate-in zoom-in duration-500">
+                        <img src={hiredChamp.image} className="w-full h-full object-cover" alt={hiredChamp.name} />
                       </div>
                     )}
                   </div>
 
-                  <div className="flex-1 p-6 md:p-10 flex flex-col justify-center gap-6">
-                    <div>
-                   <div className="flex items-center gap-3 mb-1">
-                     <img src={roleMetadata[player.role].icon} className="w-3.5 h-3.5 brightness-200 opacity-40" alt="" />
-                     <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em]">{player.team}</span>
-                   </div>
-                    <h3 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#6366F1] transition-colors">{player.name}</h3>
-                    <p className="mt-2 mb-1 text-[10px] uppercase tracking-[0.15em] text-gray-500">Confrontos da rodada</p>
-                    <div className="mt-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar pr-1">
-                      {matchupList.length > 0 ? (
-                        matchupList.map((matchup, index) => (
-                          <div
-                            key={`${player.id}-matchup-${matchup.opponentName}-${index}`}
-                            className="w-10 h-10 overflow-hidden shrink-0"
-                            title={`Contra: ${matchup.opponentName}`}
-                          >
-                            {matchup.opponentLogoUrl ? (
-                              <img
-                                src={matchup.opponentLogoUrl}
-                                alt={matchup.opponentName}
-                                className="w-full h-full object-contain"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-gray-400 uppercase">
-                                {matchup.opponentName.slice(0, 2)}
-                              </div>
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-[10px] uppercase tracking-[0.15em] text-gray-500">Confrontos: a definir</p>
-                      )}
-                    </div>
-                     </div>
-                    <div className="flex items-center gap-10">
-                      <div>
-                        <div className="flex items-end gap-1.5 mb-1"><span className="text-2xl font-black text-white font-orbitron tracking-tighter leading-none">{Number(player.avgPoints || 0).toFixed(1)}</span><span className="text-[10px] font-black text-[#6366F1] mb-0.5">PTS</span></div>
-                        <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">MÉDIA</span>
-                      </div>
-                      <div className="w-px h-8 bg-white/5"></div>
-                      <div>
-                        <div className="flex items-end gap-1.5 mb-1"><span className="text-2xl font-black text-white font-orbitron tracking-tighter leading-none">{Number(player.points || 0).toFixed(1)}</span></div>
-                        <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">ÚLT. JOGO</span>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Info — ocupa o resto */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-between p-3 sm:p-5 md:p-7 gap-2">
 
-                  <div className={`w-full md:w-60 shrink-0 flex flex-col justify-between p-8 md:p-10 md:border-l border-white/5 ${isHired ? 'bg-[#6366F1]/5' : 'bg-white/[0.01]'}`}>
-                    <div className="text-right">
-                      <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest block mb-1">VALOR</span>
-                      <div className="flex items-center justify-end gap-2">
-                        <PaiCoin size="sm" />
-                        <span className={`text-2xl font-black font-orbitron tracking-tighter leading-none ${!canAfford && !isHired ? 'text-red-500' : 'text-white'}`}>{player.price.toFixed(1)}</span>
+                    {/* Topo: role + nome + confrontos */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <img src={roleMetadata[player.role].icon} className="w-3 h-3 brightness-200 opacity-40 shrink-0" alt="" />
+                        <span className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em] truncate">{player.team}</span>
+                      </div>
+                      <h3 className="text-base xs:text-lg sm:text-2xl md:text-3xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#3b82f6] transition-colors truncate mb-2">
+                        {player.name}
+                      </h3>
+                      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                        {matchupList.length > 0 ? (
+                          matchupList.map((matchup, index) => (
+                            <div key={`${player.id}-matchup-${matchup.opponentName}-${index}`} className="w-6 h-6 sm:w-8 sm:h-8 shrink-0" title={`Contra: ${matchup.opponentName}`}>
+                              {matchup.opponentLogoUrl
+                                ? <img src={matchup.opponentLogoUrl} alt={matchup.opponentName} className="w-full h-full object-contain" />
+                                : <div className="w-full h-full flex items-center justify-center text-[8px] font-black text-gray-500 uppercase">{matchup.opponentName.slice(0, 2)}</div>
+                              }
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-[8px] text-gray-700 uppercase tracking-wider font-black">A definir</span>
+                        )}
                       </div>
                     </div>
-                    <button 
-                      onClick={() => isMarketOpen && (isHired ? onFire(player.role) : onHire(player))}
-                      disabled={!isMarketOpen || !canAfford}
-                      className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all ${!isMarketOpen ? 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-70' : isHired ? 'border border-red-500/40 text-red-500 hover:bg-red-500 hover:text-white' : !canAfford ? 'bg-gray-800 text-gray-600 cursor-not-allowed opacity-50' : 'bg-[#6366F1] text-black hover:scale-[1.02] shadow-[0_0_20px_rgba(94,108,255,0.3)]'}`}>
-                      {!isMarketOpen ? 'MERCADO FECHADO' : isHired ? 'DISPENSAR' : !canAfford ? 'SEM SALDO' : 'ESCALAR'}
-                    </button>
+
+                    {/* Rodapé: stats + preço/botão */}
+                    <div className="flex items-end justify-between gap-2">
+
+                      {/* Stats */}
+                      <div className="flex items-center gap-3 sm:gap-5">
+                        <div>
+                          <div className="flex items-end gap-1 mb-0.5">
+                            <span className="text-base sm:text-xl font-black text-white font-orbitron tracking-tighter leading-none">{Number(player.avgPoints || 0).toFixed(1)}</span>
+                            <span className="text-[8px] font-black text-[#3b82f6] mb-0.5">PTS</span>
+                          </div>
+                          <span className="text-[7px] sm:text-[8px] font-black text-gray-600 uppercase tracking-widest">MÉDIA</span>
+                        </div>
+                        <div className="w-px h-6 bg-white/8 hidden xs:block"></div>
+                        <div className="hidden xs:block">
+                          <div className="flex items-end gap-1 mb-0.5">
+                            <span className="text-base sm:text-xl font-black text-white font-orbitron tracking-tighter leading-none">{Number(player.points || 0).toFixed(1)}</span>
+                          </div>
+                          <span className="text-[7px] sm:text-[8px] font-black text-gray-600 uppercase tracking-widest">ÚLT. JOGO</span>
+                        </div>
+                      </div>
+
+                      {/* Preço + botão (mobile e desktop) */}
+                      <div className={`flex flex-col items-end gap-1.5 shrink-0 ${isHired ? '' : ''}`}>
+                        <div className="flex items-center gap-1">
+                          <PaiCoin size="sm" />
+                          <span className={`text-sm sm:text-base font-black font-orbitron tracking-tighter leading-none ${!canAfford && !isHired ? 'text-red-500' : 'text-white'}`}>{player.price.toFixed(1)}</span>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); isMarketOpen && (isHired ? onFire(player.role) : onHire(player)); }}
+                          disabled={!isMarketOpen || !canAfford}
+                          className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider transition-all touch-manipulation whitespace-nowrap ${
+                            !isMarketOpen ? 'bg-white/5 text-gray-600 cursor-not-allowed opacity-70'
+                            : isHired ? 'border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500'
+                            : !canAfford ? 'bg-white/5 text-gray-600 cursor-not-allowed opacity-50'
+                            : 'bg-[#3b82f6] text-black shadow-[0_0_12px_rgba(59,130,246,0.3)]'
+                          }`}
+                        >
+                          {!isMarketOpen ? 'FECHADO' : isHired ? 'DISPENSAR' : !canAfford ? 'SEM SALDO' : 'ESCALAR'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -451,6 +426,16 @@ const Market: React.FC<MarketProps> = ({
         </div>
       </div>
     </div>
+
+
+    {historyPlayer && (
+      <MatchHistoryModal
+        player={historyPlayer}
+        onClose={() => setHistoryPlayer(null)}
+        userBudget={userTeam.budget}
+      />
+    )}
+    </>
   );
 };
 

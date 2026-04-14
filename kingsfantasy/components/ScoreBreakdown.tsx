@@ -45,7 +45,7 @@ const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({ roundId, userTeamId, on
         {/* Header */}
         <div className="px-4 sm:px-8 py-4 sm:py-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <i className="fa-solid fa-chart-line text-[#6366F1]"></i>
+            <i className="fa-solid fa-chart-line text-[#3b82f6]"></i>
             <h2 className="text-xl font-orbitron font-black text-white uppercase tracking-tight">
               DETALHAMENTO DE PONTOS
             </h2>
@@ -62,7 +62,7 @@ const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({ roundId, userTeamId, on
         <div className="p-4 sm:p-8">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <i className="fa-solid fa-spinner fa-spin text-4xl text-[#6366F1]"></i>
+              <i className="fa-solid fa-spinner fa-spin text-4xl text-[#3b82f6]"></i>
               <span className="text-sm font-orbitron text-gray-500 uppercase tracking-widest">
                 Carregando pontuação...
               </span>
@@ -80,7 +80,7 @@ const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({ roundId, userTeamId, on
           ) : (
             <div className="space-y-6">
               {/* Total Points - Big Display */}
-              <div className="bg-gradient-to-r from-[#6366F1]/20 to-purple-600/20 border border-[#6366F1]/40 p-4 sm:p-6 text-center">
+              <div className="bg-gradient-to-r from-[#3b82f6]/20 to-purple-600/20 border border-[#3b82f6]/40 p-4 sm:p-6 text-center">
                 <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] block mb-2">
                   PONTUAÇÃO TOTAL
                 </span>
@@ -182,7 +182,7 @@ const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({ roundId, userTeamId, on
               {/* Summary */}
               <div className="pt-4 border-t border-white/5">
                 <div className="flex items-start gap-2 p-4 bg-white/[0.02] border border-white/5 rounded">
-                  <i className="fa-solid fa-info-circle text-[#6366F1] text-sm mt-0.5"></i>
+                  <i className="fa-solid fa-info-circle text-[#3b82f6] text-sm mt-0.5"></i>
                   <div className="text-[9px] text-gray-500 leading-relaxed">
                     <p className="mb-2">
                       <span className="font-bold text-gray-400">Cálculo:</span> Pontos Totais = Pontos Base + Bônus de Diversidade + Bônus de Campeões

@@ -83,6 +83,124 @@ const aiCoachLimiter = rateLimit({
 });
 
 // ============================================================================
+// EMAIL OTP — in-memory store (email -> { code, expiresAt, attempts })
+// ============================================================================
+interface OtpEntry { code: string; expiresAt: number; attempts: number; }
+const otpStore = new Map<string, OtpEntry>();
+
+// Cleanup expired entries every 10 min
+setInterval(() => {
+  const now = Date.now();
+  otpStore.forEach((entry, key) => {
+    if (entry.expiresAt < now) otpStore.delete(key);
+  });
+}, 10 * 60 * 1000);
+
+const otpRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 3,
+  message: { success: false, error: 'Muitas tentativas. Aguarde 1 minuto.' }
+});
+
+app.post('/api/auth/send-otp', otpRateLimiter, async (req: Request, res: Response) => {
+  const { email } = req.body as { email?: string };
+  if (!email || typeof email !== 'string') {
+    res.status(400).json({ success: false, error: 'Email inválido.' });
+    return;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 min
+  otpStore.set(normalizedEmail, { code, expiresAt, attempts: 0 });
+
+  const brevoApiKey = process.env.BREVO_API_KEY;
+  const fromEmail = process.env.BREVO_FROM_EMAIL || 'noreply@kingslendas.gg';
+  const fromName = process.env.BREVO_FROM_NAME || 'Kings Lendas';
+
+  if (!brevoApiKey) {
+    console.warn(`[OTP] Código para ${normalizedEmail}: ${code} (BREVO_API_KEY não configurado)`);
+    res.json({ success: true, dev: true });
+    return;
+  }
+
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': brevoApiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: { name: fromName, email: fromEmail },
+        to: [{ email: normalizedEmail }],
+        subject: `${code} é o seu código Kings Lendas`,
+        htmlContent: `
+          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#08090e;color:#fff;padding:40px 32px;border-radius:16px">
+            <h1 style="font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Kings Lendas</h1>
+            <p style="color:#6b7280;font-size:13px;margin-bottom:32px">Verificação de Email</p>
+            <p style="color:#d1d5db;font-size:14px;margin-bottom:24px">Use o código abaixo para confirmar seu email:</p>
+            <div style="background:#1a1b23;border:2px solid #3b82f6;border-radius:12px;padding:24px;text-align:center;margin-bottom:32px">
+              <span style="font-size:42px;font-weight:900;letter-spacing:12px;color:#3b82f6">${code}</span>
+            </div>
+            <p style="color:#6b7280;font-size:12px">Válido por 10 minutos. Não compartilhe este código.</p>
+          </div>
+        `
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      console.error('[OTP] Brevo error:', err);
+      res.status(500).json({ success: false, error: 'Erro ao enviar email.' });
+      return;
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[OTP] Exception sending email:', error);
+    res.status(500).json({ success: false, error: 'Erro ao enviar email.' });
+  }
+});
+
+app.post('/api/auth/verify-otp', otpRateLimiter, async (req: Request, res: Response) => {
+  const { email, code } = req.body as { email?: string; code?: string };
+  if (!email || !code) {
+    res.status(400).json({ success: false, error: 'Email e código são obrigatórios.' });
+    return;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const entry = otpStore.get(normalizedEmail);
+
+  if (!entry) {
+    res.status(400).json({ success: false, error: 'Código expirado. Solicite um novo.' });
+    return;
+  }
+
+  if (Date.now() > entry.expiresAt) {
+    otpStore.delete(normalizedEmail);
+    res.status(400).json({ success: false, error: 'Código expirado. Solicite um novo.' });
+    return;
+  }
+
+  entry.attempts += 1;
+  if (entry.attempts > 5) {
+    otpStore.delete(normalizedEmail);
+    res.status(400).json({ success: false, error: 'Muitas tentativas. Solicite um novo código.' });
+    return;
+  }
+
+  if (entry.code !== code.trim()) {
+    res.status(400).json({ success: false, error: 'Código inválido.' });
+    return;
+  }
+
+  otpStore.delete(normalizedEmail);
+  res.json({ success: true });
+});
+
+// ============================================================================
 // ADMIN PANEL ROUTES (Protected)
 // ============================================================================
 app.use('/api/admin', adminRoutes);
@@ -407,6 +525,29 @@ app.get('/api/schedule/upcoming', async (req: Request, res: Response) => {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
     });
+  }
+});
+
+app.get('/api/players/pick-counts', async (req: Request, res: Response) => {
+  try {
+    const { data: teams, error } = await adminSupabase
+      .from('user_teams')
+      .select('lineup');
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    const counts: Record<string, number> = {};
+    for (const team of teams || []) {
+      const lineup = team.lineup as Record<string, { id: string }> | null;
+      if (!lineup) continue;
+      for (const player of Object.values(lineup)) {
+        if (player?.id) counts[String(player.id)] = (counts[String(player.id)] || 0) + 1;
+      }
+    }
+
+    return res.json(counts);
+  } catch (e) {
+    return res.status(500).json({ error: 'Erro ao calcular pick counts' });
   }
 });
 

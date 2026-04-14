@@ -32,7 +32,7 @@ const TeamLogo: React.FC<TeamLogoProps> = ({ logoUrl, teamName, className = "w-5
       />
       {hasError && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[8px] font-black text-[#6366F1]/30">{getInitials(teamName)}</span>
+          <span className="text-[8px] font-black text-[#3b82f6]/30">{getInitials(teamName)}</span>
         </div>
       )}
     </div>

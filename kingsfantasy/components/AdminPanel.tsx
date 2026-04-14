@@ -1313,7 +1313,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                   <select
                     value={newPlayerForm.role}
                     onChange={(event) => setNewPlayerForm((prev) => ({ ...prev, role: event.target.value }))}
-                    className="bg-black/40 border border-white/10 text-sm text-gray-200 px-4 py-3 rounded-lg w-full focus:outline-none focus:border-[#6366F1]/60 focus:ring-1 focus:ring-[#6366F1]/30"
+                    className="bg-black/40 border border-white/10 text-sm text-gray-200 px-4 py-3 rounded-lg w-full focus:outline-none focus:border-[#3b82f6]/60 focus:ring-1 focus:ring-[#3b82f6]/30"
                   >
                     <option value="">Role</option>
                     <option value="TOP">TOP</option>
@@ -1330,7 +1330,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                   <select
                     value={newPlayerForm.team_id}
                     onChange={(event) => setNewPlayerForm((prev) => ({ ...prev, team_id: event.target.value }))}
-                    className="bg-black/40 border border-white/10 text-sm text-gray-200 px-4 py-2 rounded-lg w-full focus:outline-none focus:border-[#6366F1]/60 focus:ring-1 focus:ring-[#6366F1]/30"
+                    className="bg-black/40 border border-white/10 text-sm text-gray-200 px-4 py-2 rounded-lg w-full focus:outline-none focus:border-[#3b82f6]/60 focus:ring-1 focus:ring-[#3b82f6]/30"
                   >
                     <option value="">Selecionar time</option>
                     {teams.map((team) => (
@@ -1450,7 +1450,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                     <select
                       value={playerEditForm.role}
                       onChange={(event) => setPlayerEditForm((prev) => ({ ...prev, role: event.target.value }))}
-                      className="bg-black/40 border border-white/10 text-sm text-gray-200 px-3 py-2.5 rounded-lg w-full focus:outline-none focus:border-[#6366F1]/60 focus:ring-1 focus:ring-[#6366F1]/30"
+                      className="bg-black/40 border border-white/10 text-sm text-gray-200 px-3 py-2.5 rounded-lg w-full focus:outline-none focus:border-[#3b82f6]/60 focus:ring-1 focus:ring-[#3b82f6]/30"
                     >
                       <option value="">Role</option>
                       <option value="TOP">TOP</option>
@@ -1467,7 +1467,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                     <select
                       value={playerEditForm.team_id}
                       onChange={(event) => setPlayerEditForm((prev) => ({ ...prev, team_id: event.target.value }))}
-                      className="bg-black/40 border border-white/10 text-sm text-gray-200 px-3 py-2 rounded-lg w-full focus:outline-none focus:border-[#6366F1]/60 focus:ring-1 focus:ring-[#6366F1]/30"
+                      className="bg-black/40 border border-white/10 text-sm text-gray-200 px-3 py-2 rounded-lg w-full focus:outline-none focus:border-[#3b82f6]/60 focus:ring-1 focus:ring-[#3b82f6]/30"
                     >
                       <option value="">Selecionar time</option>
                       {teams.map((team) => (
@@ -1587,7 +1587,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Buscar por nome, time ou rota"
-                  className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-300 pl-8 pr-4 py-2 rounded-full focus:outline-none focus:border-[#6366F1]/60"
+                  className="bg-black/40 border border-white/10 text-xs uppercase tracking-wider text-gray-300 pl-8 pr-4 py-2 rounded-full focus:outline-none focus:border-[#3b82f6]/60"
                 />
               </div>
               <button
@@ -2040,7 +2040,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                         setSelectedRoundIdForActions(String(round.id));
                       }}
                       className={`cursor-pointer hover:bg-white/[0.03] odd:bg-white/[0.02] ${
-                        String(round.id) === selectedRoundIdForActions ? 'ring-1 ring-[#6366F1]/50 bg-[#6366F1]/5' : ''
+                        String(round.id) === selectedRoundIdForActions ? 'ring-1 ring-[#3b82f6]/50 bg-[#3b82f6]/5' : ''
                       }`}
                     >
                       <td className="px-4 py-3 text-xs font-bold text-gray-300 uppercase tracking-wider">
@@ -2460,7 +2460,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                         onClick={() => setActiveGameNumber(game.gameNumber)}
                         className={`flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] border transition-all ${
                           isActive
-                            ? 'border-[#6366F1]/60 bg-[#6366F1]/10 text-white shadow-[0_0_12px_rgba(99,102,241,0.15)]'
+                            ? 'border-[#3b82f6]/60 bg-[#3b82f6]/10 text-white shadow-[0_0_12px_rgba(99,102,241,0.15)]'
                             : isLocked
                               ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400'
                               : 'border-white/10 bg-black/30 text-gray-500 hover:text-gray-300 hover:border-white/20'
@@ -3452,10 +3452,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
   return (
     <div className="space-y-10">
       <section className="glass-card p-8 border border-white/5 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#6366F1_0%,transparent_55%)] opacity-20"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#3b82f6_0%,transparent_55%)] opacity-20"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
-            <p className="text-xs font-black text-[#6366F1] uppercase tracking-[0.4em]">Admin Ops</p>
+            <p className="text-xs font-black text-[#3b82f6] uppercase tracking-[0.4em]">Admin Ops</p>
             <h1 className="mt-3 text-3xl md:text-4xl font-orbitron font-black text-white uppercase tracking-tight">
               Painel de Controle
             </h1>
@@ -3502,7 +3502,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                   disabled={!isEnabled}
                   className={`w-full text-left px-3 py-2 border text-xs uppercase tracking-wider transition-all ${
                     activeSection === section.id
-                      ? 'border-[#6366F1]/60 text-[#6366F1] bg-[#6366F1]/10'
+                      ? 'border-[#3b82f6]/60 text-[#3b82f6] bg-[#3b82f6]/10'
                       : 'border-white/10 text-gray-500'
                   } ${isEnabled ? '' : 'opacity-60 cursor-not-allowed'}`}
                 >

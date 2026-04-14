@@ -23,7 +23,7 @@ const LoadingScreen: React.FC = () => {
           {/* Círculo de loading ao redor do logo */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div 
-              className="w-40 h-40 rounded-full border-4 border-transparent border-t-[#6366F1] border-r-[#8B5CF6] animate-spin"
+              className="w-40 h-40 rounded-full border-4 border-transparent border-t-[#3b82f6] border-r-[#8B5CF6] animate-spin"
               style={{ animationDuration: '1.5s' }}
             ></div>
           </div>
@@ -31,9 +31,9 @@ const LoadingScreen: React.FC = () => {
         
         <div className="flex flex-col items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#6366F1] animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 rounded-full bg-[#3b82f6] animate-bounce" style={{ animationDelay: '0ms' }}></div>
             <div className="w-2 h-2 rounded-full bg-[#8B5CF6] animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-2 h-2 rounded-full bg-[#6366F1] animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            <div className="w-2 h-2 rounded-full bg-[#3b82f6] animate-bounce" style={{ animationDelay: '300ms' }}></div>
           </div>
           <p className="text-sm font-bold text-white uppercase tracking-widest">Carregando...</p>
         </div>

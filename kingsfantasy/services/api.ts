@@ -505,10 +505,32 @@ export const DataService = {
 
   async getPlayerHistory(playerId: number | string): Promise<any[]> {
     try {
-      const response = await fetch(`${this.API_BASE_URL}/players/${playerId}/history`);
+      const select = [
+        'id',
+        'match_id',
+        'game_number',
+        'kills',
+        'deaths',
+        'assists',
+        'cs',
+        'fantasy_points',
+        'is_winner',
+        'champion:champions!player_performances_champion_id_fkey(id,name,image_url)',
+        'match:matches!player_performances_match_id_fkey(id,scheduled_time,team_a_id,team_b_id,team_a:teams!matches_team_a_id_fkey(id,name,logo_url),team_b:teams!matches_team_b_id_fkey(id,name,logo_url),round:rounds!matches_round_id_fkey(id,round_number,season))',
+      ].join(',');
+
+      const url = `${SUPABASE_URL}/rest/v1/player_performances?select=${encodeURIComponent(select)}&player_id=eq.${playerId}&order=match_id.desc`;
+
+      const response = await fetch(url, {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      });
+
       if (!response.ok) return [];
       const data = await response.json();
-      return data.performances || [];
+      return Array.isArray(data) ? data : [];
     } catch (e) {
       console.error('Erro ao buscar historico do jogador:', e);
       return [];
@@ -591,6 +613,17 @@ export const DataService = {
     } catch (error) {
       console.error('❌ Erro ao buscar jogadores:', error);
       return [];
+    }
+  },
+
+  async getPlayerPickCounts(): Promise<Record<string, number>> {
+    try {
+      const response = await fetch(`${this.API_BASE_URL}/players/pick-counts`);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (e) {
+      console.error('Erro ao buscar pick counts:', e);
+      return {};
     }
   },
 
@@ -1062,6 +1095,40 @@ export const DataService = {
    * Base URL da API do backend
    */
   API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://projectklf-production.up.railway.app/api',
+
+  // =====================================================
+  // EMAIL OTP
+  // =====================================================
+
+  async sendEmailOtp(email: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const res = await fetch(`${this.API_BASE_URL}/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data?.error || 'Erro ao enviar código.' };
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Erro ao enviar código.' };
+    }
+  },
+
+  async verifyEmailOtp(email: string, code: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const res = await fetch(`${this.API_BASE_URL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data?.error || 'Código inválido.' };
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Código inválido.' };
+    }
+  },
 
   // =====================================================
   // ADMIN API

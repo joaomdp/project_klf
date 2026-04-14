@@ -35,26 +35,17 @@ export const AuthService = {
    * @returns Promise with session data or error
    */
   async signUp(email: string, pass: string, userName?: string) {
-    // BLOQUEIO: Impede criação de novas contas durante acesso antecipado
-    console.warn('⚠️ Cadastros bloqueados - Acesso antecipado');
-    return { 
-      data: null, 
-      error: 'Cadastros temporariamente bloqueados - Acesso antecipado' 
-    };
-    
-    // CÓDIGO ORIGINAL COMENTADO PARA BLOQUEIO DE CADASTROS
-    /*
     const anonKey = DataService.getAnonKey();
     try {
       const trimmedUserName = userName?.trim();
       const res = await fetch(`${DataService.SUPABASE_URL}/auth/v1/signup`, {
         method: 'POST',
-        headers: { 
-          'apikey': anonKey, 
-          'Content-Type': 'application/json' 
+        headers: {
+          'apikey': anonKey,
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
-          email, 
+        body: JSON.stringify({
+          email,
           password: pass,
           ...(trimmedUserName
             ? {
@@ -67,9 +58,9 @@ export const AuthService = {
             : {})
         })
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok) {
         console.error('❌ SignUp Error:', data);
         const rawMsg = data.msg || data.error_description || data.error || 'Erro ao criar conta.';
@@ -79,11 +70,11 @@ export const AuthService = {
         }
         throw new Error(rawMsg);
       }
-      
+
       // Case 1: Supabase returns access_token directly (email confirmation disabled)
       if (data.access_token) {
         const decodedToken = decodeJWT(data.access_token);
-        
+
         const session = {
           access_token: data.access_token,
           refresh_token: data.refresh_token,
@@ -96,11 +87,11 @@ export const AuthService = {
             }
           }
         };
-        
+
         localStorage.setItem('nexus_session', JSON.stringify(session));
         return { data: session, error: null };
       }
-      
+
       // Case 2: User created but needs email confirmation
       if (data.id || data.user?.id) {
         const confirmationSentAt = data.confirmation_sent_at || data.user?.confirmation_sent_at;
@@ -110,13 +101,12 @@ export const AuthService = {
           return { data: null, error: null, requiresEmailConfirmation: true };
         }
       }
-      
+
       throw new Error('Resposta inesperada do servidor.');
     } catch (e: any) {
       console.error('❌ Exception em signUp:', e);
       return { data: null, error: e.message };
     }
-    */
   },
 
   /**

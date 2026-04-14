@@ -85,11 +85,11 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-[10px] xs:text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-0.5 xs:mb-1">{label}</span>
-          <span className="text-xs xs:text-sm font-bold text-white group-hover:text-[#6366F1] transition-colors duration-300 truncate block">{value}</span>
+          <span className="text-xs xs:text-sm font-bold text-white group-hover:text-[#3b82f6] transition-colors duration-300 truncate block">{value}</span>
         </div>
       </div>
       <div className="w-7 h-7 xs:w-8 xs:h-8 flex items-center justify-center group-hover:bg-white/[0.05] rounded-lg transition-all duration-300 shrink-0 ml-2">
-        <i className="fa-solid fa-chevron-right text-[10px] xs:text-xs text-gray-600 group-hover:text-[#6366F1] group-hover:translate-x-1 transition-all duration-300"></i>
+        <i className="fa-solid fa-chevron-right text-[10px] xs:text-xs text-gray-600 group-hover:text-[#3b82f6] group-hover:translate-x-1 transition-all duration-300"></i>
       </div>
     </div>
   );
@@ -137,8 +137,8 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
         <ModalBackdrop onClose={() => setIsEditTeamModalOpen(false)}>
           <form onSubmit={handleSaveTeamName} className="bg-[#0B0411]/95 backdrop-blur-xl border border-white/10 w-full max-w-md p-6 xs:p-8 space-y-5 xs:space-y-6 shadow-2xl rounded-lg xs:rounded-xl">
             <div className="flex items-center gap-3 xs:gap-4">
-              <div className="w-11 h-11 xs:w-12 xs:h-12 bg-[#6366F1]/10 flex items-center justify-center border border-[#6366F1]/20 rounded-lg xs:rounded-xl shrink-0">
-                <i className="fa-solid fa-shield-halved text-lg xs:text-xl text-[#6366F1]"></i>
+              <div className="w-11 h-11 xs:w-12 xs:h-12 bg-[#3b82f6]/10 flex items-center justify-center border border-[#3b82f6]/20 rounded-lg xs:rounded-xl shrink-0">
+                <i className="fa-solid fa-shield-halved text-lg xs:text-xl text-[#3b82f6]"></i>
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-base xs:text-lg text-white">Nome da Equipe</h3>
@@ -150,7 +150,7 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
                 type="text"
                 value={tempTeamName}
                 onChange={(e) => { setTempTeamName(e.target.value.toUpperCase()); setTeamNameError(null); }}
-                className={`w-full bg-white/5 border rounded-lg xs:rounded-xl py-3 xs:py-3.5 px-3 xs:px-4 text-xs xs:text-sm font-bold text-white placeholder:text-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all ${teamNameError ? 'border-red-500/50' : 'border-white/10'}`}
+                className={`w-full bg-white/5 border rounded-lg xs:rounded-xl py-3 xs:py-3.5 px-3 xs:px-4 text-xs xs:text-sm font-bold text-white placeholder:text-gray-600 focus:outline-none focus:border-[#3b82f6]/50 focus:bg-white/[0.07] transition-all ${teamNameError ? 'border-red-500/50' : 'border-white/10'}`}
                 placeholder="DIGITE O NOME..."
                 autoFocus
               />
@@ -160,7 +160,7 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
               <button type="button" onClick={() => setIsEditTeamModalOpen(false)} className="flex-1 py-2.5 xs:py-3 bg-white/5 border border-white/10 rounded-lg xs:rounded-xl text-gray-400 text-[10px] xs:text-xs font-bold hover:bg-white/10 hover:text-white transition-all duration-300 touch-manipulation min-h-[44px]">
                 Cancelar
               </button>
-              <button type="submit" className="flex-1 py-2.5 xs:py-3 bg-[#6366F1]/90 rounded-lg xs:rounded-xl text-white text-[10px] xs:text-xs font-bold hover:bg-[#6366F1] transition-all duration-300 touch-manipulation min-h-[44px]">
+              <button type="submit" className="flex-1 py-2.5 xs:py-3 bg-[#3b82f6]/90 rounded-lg xs:rounded-xl text-white text-[10px] xs:text-xs font-bold hover:bg-[#3b82f6] transition-all duration-300 touch-manipulation min-h-[44px]">
                 Salvar
               </button>
             </div>
@@ -186,7 +186,7 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
                 onClick={() => { setCurrentLang('PT'); setIsLanguageModalOpen(false); }} 
                 className={`w-full py-3 xs:py-3.5 px-3 xs:px-4 text-xs xs:text-sm font-bold transition-all duration-300 flex items-center gap-2 xs:gap-3 rounded-lg xs:rounded-xl touch-manipulation min-h-[48px] ${
                   currentLang === 'PT' 
-                    ? 'bg-[#6366F1]/90 text-white' 
+                    ? 'bg-[#3b82f6]/90 text-white' 
                     : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 hover:text-white'
                 }`}
               >
@@ -197,7 +197,7 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
                 onClick={() => { setCurrentLang('EN'); setIsLanguageModalOpen(false); }} 
                 className={`w-full py-3 xs:py-3.5 px-3 xs:px-4 text-xs xs:text-sm font-bold transition-all duration-300 flex items-center gap-2 xs:gap-3 rounded-lg xs:rounded-xl touch-manipulation min-h-[48px] ${
                   currentLang === 'EN' 
-                    ? 'bg-[#6366F1]/90 text-white' 
+                    ? 'bg-[#3b82f6]/90 text-white' 
                     : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 hover:text-white'
                 }`}
               >
@@ -215,8 +215,8 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
           <div className="bg-[#0B0411]/95 backdrop-blur-xl border border-white/10 w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] rounded-lg xs:rounded-xl">
             <div className="p-4 xs:p-5 sm:p-6 border-b border-white/5 shrink-0 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 xs:gap-4 flex-1 min-w-0">
-                <div className="w-9 h-9 xs:w-10 xs:h-10 bg-[#6366F1]/10 flex items-center justify-center border border-[#6366F1]/20 rounded-lg xs:rounded-xl shrink-0">
-                  <i className="fa-solid fa-image text-sm xs:text-base text-[#6366F1]"></i>
+                <div className="w-9 h-9 xs:w-10 xs:h-10 bg-[#3b82f6]/10 flex items-center justify-center border border-[#3b82f6]/20 rounded-lg xs:rounded-xl shrink-0">
+                  <i className="fa-solid fa-image text-sm xs:text-base text-[#3b82f6]"></i>
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-base xs:text-lg text-white truncate">Escolher Avatar</h3>
@@ -234,7 +234,7 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
                   <input 
                     type="text" 
                     placeholder="Buscar campeão..." 
-                    className="w-full bg-white/5 border border-white/10 rounded-lg xs:rounded-xl py-2.5 xs:py-3 pl-9 xs:pl-11 pr-3 xs:pr-4 text-xs xs:text-sm font-medium text-white placeholder:text-gray-600 focus:outline-none focus:border-[#6366F1]/50 focus:bg-white/[0.07] transition-all" 
+                    className="w-full bg-white/5 border border-white/10 rounded-lg xs:rounded-xl py-2.5 xs:py-3 pl-9 xs:pl-11 pr-3 xs:pr-4 text-xs xs:text-sm font-medium text-white placeholder:text-gray-600 focus:outline-none focus:border-[#3b82f6]/50 focus:bg-white/[0.07] transition-all" 
                     value={champSearch} 
                     onChange={(e) => setChampSearch(e.target.value)} 
                     autoFocus 
@@ -247,7 +247,7 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
                       onClick={() => handleSaveAvatar(champ.url)} 
                       className={`group relative aspect-square overflow-hidden border-2 rounded-lg xs:rounded-xl transition-all duration-300 animate-in fade-in zoom-in-95 fill-mode-both touch-manipulation ${
                         formData.avatar === champ.url 
-                          ? 'border-[#6366F1]/80 scale-105' 
+                          ? 'border-[#3b82f6]/80 scale-105' 
                           : 'border-white/10 hover:border-white/30 hover:scale-105'
                       }`}
                       style={{ animationDelay: `${index * 20}ms`, animationDuration: '400ms' }}
@@ -260,7 +260,7 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
                         alt={champ.name} 
                       />
                       {formData.avatar === champ.url && (
-                        <div className="absolute inset-0 bg-[#6366F1]/20 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-[#3b82f6]/20 flex items-center justify-center">
                           <i className="fa-solid fa-check text-white text-lg xs:text-xl"></i>
                         </div>
                       )}
@@ -279,8 +279,8 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
          {/* AVATAR HEADER - MINIMALISTA */}
          <div className="relative py-6 xs:py-8 px-3 xs:px-4 text-center">
            <div className="relative inline-block group mb-5 xs:mb-6 animate-in zoom-in-95 duration-500 fill-mode-both" onClick={() => setIsChangingAvatar(true)}>
-             <div className="absolute inset-[-16px] xs:inset-[-20px] bg-[#6366F1]/10 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-             <div className="relative w-28 h-28 xs:w-32 xs:h-32 sm:w-36 sm:h-36 overflow-hidden cursor-pointer border-2 border-white/10 rounded-xl xs:rounded-2xl group-hover:border-[#6366F1]/50 transition-all duration-500 shadow-lg touch-manipulation">
+             <div className="absolute inset-[-16px] xs:inset-[-20px] bg-[#3b82f6]/10 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+             <div className="relative w-28 h-28 xs:w-32 xs:h-32 sm:w-36 sm:h-36 overflow-hidden cursor-pointer border-2 border-white/10 rounded-xl xs:rounded-2xl group-hover:border-[#3b82f6]/50 transition-all duration-500 shadow-lg touch-manipulation">
                 <img src={formData.avatar} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Avatar" />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-300">
                    <i className="fa-solid fa-camera text-white text-xl xs:text-2xl group-hover:scale-110 transition-transform duration-300"></i>
@@ -309,7 +309,7 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
                 setTempTeamName(formData.name);
                 setIsEditTeamModalOpen(true);
               }} 
-              color="text-[#6366F1]"
+              color="text-[#3b82f6]"
               delay="0"
             />
             

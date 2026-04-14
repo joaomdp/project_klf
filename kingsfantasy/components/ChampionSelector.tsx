@@ -67,8 +67,8 @@ const ChampionSelector: React.FC<ChampionSelectorProps> = ({ playerName, playerI
           <div className="absolute inset-0 z-[300] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center animate-in fade-in duration-300">
              {confirmingChamp && (
                <div className="relative animate-in zoom-in duration-500">
-                 <div className="absolute inset-0 rounded-full bg-[#6366F1] blur-3xl opacity-50 animate-pulse"></div>
-                 <div className="relative w-48 h-48 rounded-full border-4 border-[#6366F1] overflow-hidden shadow-[0_0_60px_rgba(99,102,241,0.8)]">
+                 <div className="absolute inset-0 rounded-full bg-[#3b82f6] blur-3xl opacity-50 animate-pulse"></div>
+                 <div className="relative w-48 h-48 rounded-full border-4 border-[#3b82f6] overflow-hidden shadow-[0_0_60px_rgba(99,102,241,0.8)]">
                     <img src={confirmingChamp.image} className="w-full h-full object-cover scale-110" alt="" />
                  </div>
                </div>
@@ -76,9 +76,9 @@ const ChampionSelector: React.FC<ChampionSelectorProps> = ({ playerName, playerI
              <div className="mt-10 flex flex-col items-center gap-3">
                <h3 className="font-orbitron font-black text-white text-3xl uppercase tracking-[0.4em] animate-pulse">SINCRONIZANDO</h3>
                <div className="flex gap-2">
-                 <div className="w-2 h-2 bg-[#6366F1] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                 <div className="w-2 h-2 bg-[#6366F1] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                 <div className="w-2 h-2 bg-[#6366F1] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                 <div className="w-2 h-2 bg-[#3b82f6] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                 <div className="w-2 h-2 bg-[#3b82f6] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                 <div className="w-2 h-2 bg-[#3b82f6] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                </div>
              </div>
           </div>
@@ -98,12 +98,12 @@ const ChampionSelector: React.FC<ChampionSelectorProps> = ({ playerName, playerI
             {/* Título */}
             <div className="space-y-2">
               <div className="flex items-center gap-3">
-                <div className="w-1 h-7 bg-[#6366F1]"></div>
+                <div className="w-1 h-7 bg-[#3b82f6]"></div>
                 <h2 className="font-orbitron font-black text-2xl sm:text-3xl text-white uppercase tracking-tighter">SELEÇÃO DE CAMPEÃO</h2>
               </div>
               <div className="flex items-center gap-2 ml-4">
                 <span className="text-[9px] font-black text-gray-600 uppercase tracking-[0.3em]">JOGADOR:</span>
-                <span className="text-[10px] font-black text-[#6366F1] uppercase tracking-wider">{playerName}</span>
+                <span className="text-[10px] font-black text-[#3b82f6] uppercase tracking-wider">{playerName}</span>
               </div>
             </div>
 
@@ -115,7 +115,7 @@ const ChampionSelector: React.FC<ChampionSelectorProps> = ({ playerName, playerI
                 <input 
                   type="text" 
                   placeholder="BUSCAR CAMPEÃO..." 
-                  className="w-full bg-black/40 border border-white/10 py-4 pl-12 pr-6 text-[10px] font-black text-white uppercase placeholder:text-gray-700 focus:outline-none focus:border-[#6366F1]/50 focus:bg-black/60 transition-all" 
+                  className="w-full bg-black/40 border border-white/10 py-4 pl-12 pr-6 text-[10px] font-black text-white uppercase placeholder:text-gray-700 focus:outline-none focus:border-[#3b82f6]/50 focus:bg-black/60 transition-all" 
                   value={searchTerm} 
                   onChange={(e) => setSearchTerm(e.target.value)} 
                 />
@@ -129,7 +129,7 @@ const ChampionSelector: React.FC<ChampionSelectorProps> = ({ playerName, playerI
                     onClick={() => setSelectedRole(filter.id as any)} 
                     className={`flex items-center justify-center gap-2 px-4 py-4 border transition-all group ${
                       selectedRole === filter.id 
-                        ? 'bg-[#6366F1] border-[#6366F1] shadow-[0_0_20px_rgba(99,102,241,0.4)]' 
+                        ? 'bg-[#3b82f6] border-[#3b82f6] shadow-[0_0_20px_rgba(99,102,241,0.4)]' 
                         : 'bg-black/40 border-white/10 hover:border-white/30 hover:bg-white/5'
                     }`}
                   >
@@ -167,16 +167,16 @@ const ChampionSelector: React.FC<ChampionSelectorProps> = ({ playerName, playerI
                     onClick={() => !isConfirming && handleSelect(champ)} 
                     className="group flex flex-col items-center gap-2 transition-all hover:scale-105 active:scale-95"
                   >
-                    <div className="relative w-full aspect-square overflow-hidden border-2 border-white/10 bg-black group-hover:border-[#6366F1] transition-all duration-300 shadow-lg group-hover:shadow-[0_0_20px_rgba(99,102,241,0.4)]">
+                    <div className="relative w-full aspect-square overflow-hidden border-2 border-white/10 bg-black group-hover:border-[#3b82f6] transition-all duration-300 shadow-lg group-hover:shadow-[0_0_20px_rgba(99,102,241,0.4)]">
                       <img 
                         src={champ.image} 
                         className="w-full h-full object-cover grayscale-[0.3] group-hover:grayscale-0 transition-all duration-500 group-hover:scale-110" 
                         alt={champ.name} 
                       />
                       {/* Overlay gradient no hover */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#6366F1]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#3b82f6]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     </div>
-                    <span className="text-[9px] font-black text-gray-700 group-hover:text-[#6366F1] uppercase tracking-tight transition-colors text-center leading-tight">
+                    <span className="text-[9px] font-black text-gray-700 group-hover:text-[#3b82f6] uppercase tracking-tight transition-colors text-center leading-tight">
                       {champ.name}
                     </span>
                   </button>

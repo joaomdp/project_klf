@@ -14,7 +14,7 @@ const ParticleEffect: React.FC = () => (
     {[...Array(20)].map((_, i) => (
       <div
         key={i}
-        className="absolute w-1 h-1 bg-[#6366F1] rounded-full animate-ping"
+        className="absolute w-1 h-1 bg-[#3b82f6] rounded-full animate-ping"
         style={{
           left: `${Math.random() * 100}%`,
           top: `${Math.random() * 100}%`,
@@ -45,7 +45,7 @@ const DiversityIndicator: React.FC<DiversityIndicatorProps> = ({ players, classN
   return (
     <div className={`glass-card p-6 relative overflow-hidden ${className}`}>
       {/* Efeito de glow de fundo */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#6366F1]/10 to-[#8B5CF6]/10 opacity-50"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-[#3b82f6]/10 to-[#8B5CF6]/10 opacity-50"></div>
       
       {/* Animação de partículas quando nível = 5 */}
       {isMaxLevel && <ParticleEffect />}
@@ -56,7 +56,7 @@ const DiversityIndicator: React.FC<DiversityIndicatorProps> = ({ players, classN
           BUFF DE VARIEDADE
         </h3>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-sm">
-          <i className="fa-solid fa-users text-[#6366F1] text-xs"></i>
+          <i className="fa-solid fa-users text-[#3b82f6] text-xs"></i>
           <span className="text-[10px] font-bold text-white">
             {diversity.uniqueTeams}/5
           </span>
@@ -73,7 +73,7 @@ const DiversityIndicator: React.FC<DiversityIndicatorProps> = ({ players, classN
           className="absolute top-1/2 left-0 h-[3px] -translate-y-1/2 transition-all duration-500 ease-out rounded-full"
           style={{ 
             width: `${(diversity.uniqueTeams - 1) * 25}%`,
-            background: 'linear-gradient(90deg, #6366F1, #8B5CF6)',
+            background: 'linear-gradient(90deg, #3b82f6, #8B5CF6)',
             boxShadow: '0 0 20px rgba(99, 102, 241, 0.8), 0 0 40px rgba(139, 92, 246, 0.4)'
           }}
         ></div>
@@ -89,7 +89,7 @@ const DiversityIndicator: React.FC<DiversityIndicatorProps> = ({ players, classN
                 <div 
                   className={`w-5 h-5 rounded-full border-2 transition-all duration-300 ${
                     isActive
-                      ? 'bg-gradient-to-br from-[#6366F1] to-[#8B5CF6] border-[#6366F1]' 
+                      ? 'bg-gradient-to-br from-[#3b82f6] to-[#8B5CF6] border-[#3b82f6]' 
                       : 'bg-[#1a1a1a] border-white/20'
                   } ${isCurrent ? 'scale-110' : ''}`}
                   style={isActive ? { 
@@ -131,7 +131,7 @@ const DiversityIndicator: React.FC<DiversityIndicatorProps> = ({ players, classN
               <span 
                 className={`text-[10px] font-black transition-all duration-300 ${
                   isActive
-                    ? 'text-transparent bg-clip-text bg-gradient-to-r from-[#6366F1] to-[#8B5CF6]' 
+                    ? 'text-transparent bg-clip-text bg-gradient-to-r from-[#3b82f6] to-[#8B5CF6]' 
                     : 'text-gray-700'
                 }`}
                 style={isActive ? {
@@ -149,8 +149,8 @@ const DiversityIndicator: React.FC<DiversityIndicatorProps> = ({ players, classN
       {isMaxLevel && (
         <div className="mt-4 pt-4 border-t border-white/10 relative z-10">
           <div className="flex items-center justify-center gap-2 text-center">
-            <i className="fa-solid fa-trophy text-[#6366F1] text-sm animate-bounce"></i>
-            <span className="text-[9px] font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] uppercase tracking-widest">
+            <i className="fa-solid fa-trophy text-[#3b82f6] text-sm animate-bounce"></i>
+            <span className="text-[9px] font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#3b82f6] to-[#8B5CF6] uppercase tracking-widest">
               Diversidade Máxima!
             </span>
             <i className="fa-solid fa-trophy text-[#8B5CF6] text-sm animate-bounce" style={{ animationDelay: '0.2s' }}></i>

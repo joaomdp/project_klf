@@ -132,14 +132,14 @@ const MarketTimer: React.FC<MarketTimerProps> = ({ className = '', onMarketClose
   if (compact) {
     const renderCompact = (title: string, subtitle: string, open: boolean, showSpinner = false) => (
       <div className={`flex flex-col text-right ${className}`}>
-        <span className={`text-[10px] font-black tracking-wider uppercase ${open ? 'text-[#6366F1]' : 'text-red-500'}`}>
+        <span className={`text-[10px] font-black tracking-wider uppercase ${open ? 'text-[#3b82f6]' : 'text-red-500'}`}>
           {title}
         </span>
         <div className="flex items-center justify-end gap-1.5 mt-1.5">
           {showSpinner ? (
             <i className="fa-solid fa-spinner fa-spin text-[10px] text-gray-500"></i>
           ) : (
-            <span className={`w-2 h-2 rounded-full animate-pulse shadow-lg ${open ? 'bg-[#6366F1] shadow-[#6366F1]/50' : 'bg-red-500 shadow-red-500/50'}`}></span>
+            <span className={`w-2 h-2 rounded-full animate-pulse shadow-lg ${open ? 'bg-[#3b82f6] shadow-[#3b82f6]/50' : 'bg-red-500 shadow-red-500/50'}`}></span>
           )}
           <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">
             {subtitle}

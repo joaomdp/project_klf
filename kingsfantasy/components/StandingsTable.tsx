@@ -49,71 +49,85 @@ const StandingsTable: React.FC = () => {
     };
 
     loadStandings();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
   const hasData = standings.length > 0;
   const displayStandings = useMemo(() => standings, [standings]);
 
+  const total = displayStandings.reduce((sum, e) => sum + e.wins + e.losses, 0) / displayStandings.length || 1;
+
   return (
     <section>
-      <div className="flex items-center gap-6 mb-6">
-        <h2 className="text-[10px] sm:text-[12px] font-black text-gray-500 uppercase tracking-[0.3em] sm:tracking-[0.4em]">TABELA - KINGS LENDAS</h2>
-        <div className="h-px flex-1 bg-white/10"></div>
+      <div className="flex items-center gap-4 mb-5">
+        <h2 className="text-[11px] font-black text-gray-500 uppercase tracking-[0.4em] whitespace-nowrap">TABELA - KINGS LENDAS</h2>
+        <div className="h-px flex-1 bg-white/8"></div>
       </div>
 
-      <div className="border border-white/10 bg-black/40 backdrop-blur-xl shadow-2xl">
-        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.35em] text-gray-500">
-          <span>Equipe</span>
-          <div className="flex items-center gap-8">
-            <span>V</span>
-            <span>D</span>
+      <div className="rounded-xl overflow-hidden border border-white/8">
+        {/* Header */}
+        <div className="px-4 py-2.5 bg-white/[0.03] border-b border-white/8 flex items-center justify-between">
+          <span className="text-[9px] font-black uppercase tracking-[0.35em] text-gray-600">Equipe</span>
+          <div className="flex items-center gap-6 pr-0">
+            <span className="w-5 text-center text-[9px] font-black uppercase tracking-[0.35em] text-gray-600">V</span>
+            <span className="w-5 text-center text-[9px] font-black uppercase tracking-[0.35em] text-gray-600">D</span>
           </div>
         </div>
 
         <div className="divide-y divide-white/5">
-          {displayStandings.map((entry) => (
-            <div
-              key={entry.rank}
-              className={`relative flex items-center justify-between px-6 py-4 overflow-hidden bg-gradient-to-r ${entry.accent}`}
-            >
-              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_80%_50%,rgba(255,255,255,0.12),transparent_55%)]" />
-              <div className="absolute right-6 inset-y-0 w-40 opacity-10">
-                <div className="w-full h-full bg-white/10 blur-2xl rounded-full" />
-              </div>
-
-              <div className="relative z-10 flex items-center gap-4">
-                <span className="text-sm font-black text-white/80 w-6">{entry.rank}</span>
-                <div className="w-10 h-10 border border-white/10 bg-black/40 flex items-center justify-center">
-                  {entry.logo ? (
-                    <TeamLogo logoUrl={entry.logo} teamName={entry.name} className="w-8 h-8" />
-                  ) : (
-                    <span className="text-xs font-black text-white/70">LOGO</span>
-                  )}
-                </div>
-                <span className="text-sm font-orbitron font-black text-white uppercase tracking-tight">
-                  {entry.name}
-                </span>
-              </div>
-
-              <div className="relative z-10 flex items-center gap-12 text-sm font-black text-white">
-                <span>{entry.wins}</span>
-                <span className="text-white/60">{entry.losses}</span>
-              </div>
+          {isLoading && (
+            <div className="py-8 text-center text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
+              <i className="fa-solid fa-spinner fa-spin mr-2"></i>Carregando...
             </div>
-          ))}
+          )}
           {!isLoading && !hasData && (
-            <div className="px-6 py-6 text-center text-xs font-black uppercase tracking-[0.3em] text-gray-500">
+            <div className="py-8 text-center text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
               Tabela indisponível
             </div>
           )}
-          {isLoading && (
-            <div className="px-6 py-6 text-center text-xs font-black uppercase tracking-[0.3em] text-gray-500">
-              Carregando tabela...
-            </div>
-          )}
+          {displayStandings.map((entry) => {
+            const games = entry.wins + entry.losses;
+            const winRate = games > 0 ? (entry.wins / games) * 100 : 0;
+
+            return (
+              <div
+                key={entry.rank}
+                className={`relative flex items-center justify-between px-4 py-3 overflow-hidden bg-gradient-to-r ${entry.accent} hover:brightness-110 transition-all duration-200`}
+              >
+                {/* Glow direita */}
+                <div className="absolute right-0 inset-y-0 w-32 opacity-10 bg-gradient-to-l from-white/20 to-transparent pointer-events-none" />
+
+                <div className="relative z-10 flex items-center gap-3 min-w-0">
+                  {/* Rank */}
+                  <span className={`text-xs font-black w-5 shrink-0 text-center ${entry.rank === 1 ? 'text-amber-400' : entry.rank === 2 ? 'text-gray-400' : entry.rank === 3 ? 'text-orange-600' : 'text-white/40'}`}>
+                    {entry.rank}
+                  </span>
+
+                  {/* Logo */}
+                  <div className="w-8 h-8 shrink-0 flex items-center justify-center">
+                    {entry.logo ? (
+                      <TeamLogo logoUrl={entry.logo} teamName={entry.name} className="w-full h-full object-contain" />
+                    ) : (
+                      <div className="w-full h-full bg-white/5 border border-white/10 rounded flex items-center justify-center">
+                        <span className="text-[7px] font-black text-white/40">{entry.name.slice(0, 2)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nome */}
+                  <span className="text-[15px] font-orbitron font-black text-white uppercase tracking-tight truncate block leading-none min-w-0">
+                    {entry.name}
+                  </span>
+                </div>
+
+                {/* V / D */}
+                <div className="relative z-10 flex items-center gap-6 shrink-0">
+                  <span className="w-5 text-center text-sm font-black text-white">{entry.wins}</span>
+                  <span className="w-5 text-center text-sm font-black text-white/40">{entry.losses}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

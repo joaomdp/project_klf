@@ -454,39 +454,31 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       </div>
 
       {pendingEmail && (
-        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300 px-3 xs:px-4 sm:px-6">
-          <div className="glass-card border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 max-w-md w-full shadow-[0_40px_120px_rgba(0,0,0,0.6)]">
-            <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
-              <h3 className="text-base sm:text-lg font-orbitron font-black text-white uppercase tracking-tight">Confirme seu email</h3>
-              <button
-                type="button"
-                onClick={() => setPendingEmail(null)}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#3b82f6]/40 transition-colors"
-              >
-                <i className="fa-solid fa-xmark text-sm"></i>
-              </button>
+        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300 px-5">
+          <div className="bg-[#0d0e14] border border-white/8 rounded-2xl p-8 max-w-sm w-full flex flex-col items-center gap-6 text-center shadow-[0_32px_80px_rgba(0,0,0,0.7)]">
+            <div className="w-12 h-12 bg-[#3b82f6] rounded-full flex items-center justify-center shadow-[0_0_24px_rgba(59,130,246,0.4)]">
+              <i className="fa-solid fa-envelope text-white text-base"></i>
             </div>
-            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
-              Enviamos um link de confirmacao para <span className="text-white font-bold break-all">{pendingEmail}</span>.
-              Confirme o email para concluir seu cadastro.
-            </p>
-            <div className="mt-5 sm:mt-6 flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-2 xs:gap-3">
+            <div>
+              <h3 className="font-orbitron font-black text-white text-lg uppercase tracking-tight mb-2">Confirme seu email</h3>
+              <p className="text-gray-500 text-xs leading-relaxed">
+                Enviamos um link para <span className="text-gray-300 break-all">{pendingEmail}</span>. Verifique sua caixa de entrada.
+              </p>
+            </div>
+            <div className="w-full flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => setPendingEmail(null)}
-                className="btn-secondary text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-wider"
+                onClick={() => { setPendingEmail(null); setIsSignUp(false); }}
+                className="w-full py-3 bg-[#3b82f6] text-white font-black text-xs uppercase tracking-widest rounded-xl hover:brightness-110 active:scale-[0.98] transition-all"
               >
-                Entendi
+                Ir para login
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setPendingEmail(null);
-                  setIsSignUp(false);
-                }}
-                className="btn-primary text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-wider"
+                onClick={() => setPendingEmail(null)}
+                className="w-full py-3 bg-white/5 border border-white/8 text-gray-400 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-white/8 transition-all"
               >
-                Voltar para login
+                Fechar
               </button>
             </div>
           </div>
@@ -494,54 +486,52 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       )}
 
       {isForgotPasswordOpen && (
-        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300 px-3 xs:px-4 sm:px-6">
-          <div className="glass-card border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 max-w-md w-full shadow-[0_40px_120px_rgba(0,0,0,0.6)]">
-            <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
-              <h3 className="text-base sm:text-lg font-orbitron font-black text-white uppercase tracking-tight">Recuperar senha</h3>
-              <button
-                type="button"
-                onClick={() => setIsForgotPasswordOpen(false)}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#3b82f6]/40 transition-colors"
-              >
-                <i className="fa-solid fa-xmark text-sm"></i>
-              </button>
+        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300 px-5">
+          <div className="bg-[#0d0e14] border border-white/8 rounded-2xl p-8 max-w-sm w-full shadow-[0_32px_80px_rgba(0,0,0,0.7)]">
+
+            {/* Header */}
+            <div className="flex flex-col items-center gap-4 mb-7">
+              <div className="w-11 h-11 bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-full flex items-center justify-center">
+                <i className="fa-solid fa-lock text-[#3b82f6] text-sm"></i>
+              </div>
+              <div className="text-center">
+                <h3 className="font-orbitron font-black text-white text-base uppercase tracking-tight">Recuperar senha</h3>
+                <p className="text-gray-500 text-[11px] mt-1">Informe o e-mail da sua conta</p>
+              </div>
             </div>
 
-            <form onSubmit={handleForgotPassword} className="space-y-3 sm:space-y-4">
-              <div className="space-y-1.5 sm:space-y-2">
-                <label className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">E-mail da conta</label>
-                <input
-                  type="email"
-                  value={forgotPasswordEmail}
-                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]/50 focus:bg-white/[0.07] transition-all"
-                  required
-                  disabled={isSendingForgotPassword}
-                />
-              </div>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <input
+                type="email"
+                value={forgotPasswordEmail}
+                onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                placeholder="seu@email.com"
+                className="w-full bg-white/[0.04] border border-white/8 rounded-xl py-3.5 px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]/50 transition-all"
+                required
+                disabled={isSendingForgotPassword}
+              />
 
               {forgotPasswordMsg && (
-                <div className={`p-2.5 sm:p-3 rounded-lg sm:rounded-xl border ${forgotPasswordMsg.includes('ENVIADO') ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
-                  <p className="text-[10px] xs:text-[11px] font-bold uppercase tracking-wider break-words">{forgotPasswordMsg}</p>
-                </div>
+                <p className={`text-[11px] text-center font-medium ${forgotPasswordMsg.includes('ENVIADO') ? 'text-green-400' : 'text-red-400'}`}>
+                  {forgotPasswordMsg}
+                </p>
               )}
 
-              <div className="flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-2 xs:gap-3 pt-1 sm:pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsForgotPasswordOpen(false)}
-                  className="btn-secondary text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-wider"
-                  disabled={isSendingForgotPassword}
-                >
-                  Cancelar
-                </button>
+              <div className="flex flex-col gap-2 pt-1">
                 <button
                   type="submit"
-                  className="btn-primary text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-wider"
+                  className="w-full py-3.5 bg-[#3b82f6] text-white font-black text-xs uppercase tracking-widest rounded-xl hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-40"
                   disabled={isSendingForgotPassword}
                 >
                   {isSendingForgotPassword ? 'Enviando...' : 'Enviar link'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPasswordOpen(false)}
+                  className="w-full py-3 bg-white/5 border border-white/8 text-gray-500 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-white/8 transition-all"
+                  disabled={isSendingForgotPassword}
+                >
+                  Cancelar
                 </button>
               </div>
             </form>
@@ -550,63 +540,85 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       )}
 
       {isResetPasswordOpen && (
-        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300 px-3 xs:px-4 sm:px-6">
-          <div className="glass-card border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 max-w-md w-full shadow-[0_40px_120px_rgba(0,0,0,0.6)]">
-            <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
-              <h3 className="text-base sm:text-lg font-orbitron font-black text-white uppercase tracking-tight">Definir nova senha</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsResetPasswordOpen(false);
-                  setResetPasswordMsg(null);
-                  AuthService.clearRecoveryState();
-                }}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-[#3b82f6]/40 transition-colors"
-              >
-                <i className="fa-solid fa-xmark text-sm"></i>
-              </button>
+        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300 px-5">
+          <div className="bg-[#0d0e14] border border-white/8 rounded-2xl p-8 max-w-sm w-full shadow-[0_32px_80px_rgba(0,0,0,0.7)]">
+
+            {/* Header */}
+            <div className="flex flex-col items-center gap-4 mb-7">
+              <div className="w-11 h-11 bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-full flex items-center justify-center">
+                <i className="fa-solid fa-key text-[#3b82f6] text-sm"></i>
+              </div>
+              <div className="text-center">
+                <h3 className="font-orbitron font-black text-white text-base uppercase tracking-tight">Nova senha</h3>
+                <p className="text-gray-500 text-[11px] mt-1">Escolha uma senha segura</p>
+              </div>
             </div>
 
-            <form onSubmit={handleResetPassword} className="space-y-3 sm:space-y-4">
-              <div className="space-y-1.5 sm:space-y-2">
-                <label className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Nova senha</label>
+            <form onSubmit={handleResetPassword} className="space-y-3">
+              <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]/50 focus:bg-white/[0.07] transition-all"
+                  placeholder="Nova senha"
+                  className="w-full bg-white/[0.04] border border-white/8 rounded-xl py-3.5 pl-4 pr-11 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]/50 transition-all"
                   required
                   disabled={isSubmittingResetPassword}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#3b82f6] transition-colors"
+                >
+                  <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-xs`}></i>
+                </button>
               </div>
 
-              <div className="space-y-1.5 sm:space-y-2">
-                <label className="text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Confirmar nova senha</label>
+              <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={confirmNewPassword}
                   onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg sm:rounded-xl py-3 sm:py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#3b82f6]/50 focus:bg-white/[0.07] transition-all"
+                  placeholder="Confirmar senha"
+                  className={`w-full bg-white/[0.04] border rounded-xl py-3.5 pl-4 pr-11 text-sm text-white placeholder-gray-600 focus:outline-none transition-all ${
+                    confirmNewPassword && newPassword !== confirmNewPassword
+                      ? 'border-red-500/40 focus:border-red-500/60'
+                      : 'border-white/8 focus:border-[#3b82f6]/50'
+                  }`}
                   required
                   disabled={isSubmittingResetPassword}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#3b82f6] transition-colors"
+                >
+                  <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-xs`}></i>
+                </button>
               </div>
 
               {resetPasswordMsg && (
-                <div className={`p-2.5 sm:p-3 rounded-lg sm:rounded-xl border ${resetPasswordMsg.includes('SUCESSO') ? 'bg-green-500/10 border-green-500/30 text-green-300' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
-                  <p className="text-[10px] xs:text-[11px] font-bold uppercase tracking-wider break-words">{resetPasswordMsg}</p>
-                </div>
+                <p className={`text-[11px] text-center font-medium ${resetPasswordMsg.includes('SUCESSO') ? 'text-green-400' : 'text-red-400'}`}>
+                  {resetPasswordMsg}
+                </p>
               )}
 
-              <button
-                type="submit"
-                className="w-full py-3 sm:py-3.5 bg-gradient-to-r from-[#3b82f6] to-[#8B5CF6] text-white rounded-lg sm:rounded-xl font-orbitron font-black text-[10px] xs:text-[11px] sm:text-xs uppercase tracking-widest transition-all disabled:opacity-50"
-                disabled={isSubmittingResetPassword}
-              >
-                {isSubmittingResetPassword ? 'SALVANDO...' : 'ATUALIZAR SENHA'}
-              </button>
+              <div className="flex flex-col gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="w-full py-3.5 bg-[#3b82f6] text-white font-black text-xs uppercase tracking-widest rounded-xl hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-40"
+                  disabled={isSubmittingResetPassword}
+                >
+                  {isSubmittingResetPassword ? 'Salvando...' : 'Atualizar senha'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIsResetPasswordOpen(false); setResetPasswordMsg(null); AuthService.clearRecoveryState(); }}
+                  className="w-full py-3 bg-white/5 border border-white/8 text-gray-500 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-white/8 transition-all"
+                >
+                  Cancelar
+                </button>
+              </div>
             </form>
           </div>
         </div>

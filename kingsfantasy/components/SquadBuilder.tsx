@@ -238,14 +238,15 @@ const SquadBuilder: React.FC<SquadBuilderProps> = ({ userTeam, players, onFire, 
                         <h3 className="font-orbitron font-black text-[12px] truncate uppercase tracking-tighter text-white leading-none mb-2">
                           {p.name}
                         </h3>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-1">
                           <div>
-                            <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest block leading-none mb-0.5">Valor</span>
-                            <span className="text-[10px] font-orbitron font-black text-[#3b82f6]">C$ {p.price}</span>
+                            <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest block leading-none mb-0.5">Média</span>
+                            <span className="text-[10px] font-orbitron font-black text-[#3b82f6]">{p.avgPoints > 0 ? Number(p.avgPoints).toFixed(1) : '—'}</span>
                           </div>
+                          <div className="w-px h-5 bg-white/10"></div>
                           <div className="text-right">
-                            <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest block leading-none mb-0.5">Pts</span>
-                            <span className="text-[10px] font-orbitron font-black text-white">{formatValue(Number(p.points || p.avgPoints || 0))}</span>
+                            <span className="text-[7px] font-black text-gray-500 uppercase tracking-widest block leading-none mb-0.5">Últ.</span>
+                            <span className="text-[10px] font-orbitron font-black text-white">{p.points > 0 ? Number(p.points).toFixed(1) : '—'}</span>
                           </div>
                         </div>
                       </div>

@@ -207,7 +207,7 @@ const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({ player, onClose, 
           <PlayerImage
             player={player}
             className="absolute inset-0 w-full h-full"
-            imgClassName="w-full h-full object-cover object-[center_15%]"
+            imgClassName="w-full h-full object-contain object-top"
           />
 
           {/* Gradiente de baixo */}

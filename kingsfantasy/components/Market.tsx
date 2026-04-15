@@ -338,7 +338,7 @@ const Market: React.FC<MarketProps> = ({
                         <img src={player.teamLogo} alt="" className="w-4/5 h-auto object-contain opacity-[0.06] group-hover:opacity-15 transition-opacity duration-500" />
                       </div>
                     )}
-                    <PlayerImage player={player} className="absolute inset-0 w-full h-full z-10" imgClassName="w-full h-full object-cover" smartFocus />
+                    <PlayerImage player={player} className="absolute inset-0 w-full h-full z-10" imgClassName="w-full h-full object-contain object-bottom" />
                     <div className="absolute top-2 left-2 z-20">
                       <TeamLogo logoUrl={player.teamLogo} teamName={player.team} className="w-6 h-6 sm:w-8 sm:h-8" />
                     </div>
@@ -384,15 +384,15 @@ const Market: React.FC<MarketProps> = ({
                       <div className="flex items-center gap-3 sm:gap-5">
                         <div>
                           <div className="flex items-end gap-1 mb-0.5">
-                            <span className="text-base sm:text-xl font-black text-white font-orbitron tracking-tighter leading-none">{Number(player.avgPoints || 0).toFixed(1)}</span>
+                            <span className="text-base sm:text-xl font-black text-white font-orbitron tracking-tighter leading-none">{player.avgPoints > 0 ? Number(player.avgPoints).toFixed(1) : '—'}</span>
                             <span className="text-[8px] font-black text-[#3b82f6] mb-0.5">PTS</span>
                           </div>
                           <span className="text-[7px] sm:text-[8px] font-black text-gray-600 uppercase tracking-widest">MÉDIA</span>
                         </div>
-                        <div className="w-px h-6 bg-white/8 hidden xs:block"></div>
-                        <div className="hidden xs:block">
+                        <div className="w-px h-6 bg-white/8"></div>
+                        <div>
                           <div className="flex items-end gap-1 mb-0.5">
-                            <span className="text-base sm:text-xl font-black text-white font-orbitron tracking-tighter leading-none">{Number(player.points || 0).toFixed(1)}</span>
+                            <span className="text-base sm:text-xl font-black text-white font-orbitron tracking-tighter leading-none">{player.points > 0 ? Number(player.points).toFixed(1) : '—'}</span>
                           </div>
                           <span className="text-[7px] sm:text-[8px] font-black text-gray-600 uppercase tracking-widest">ÚLT. JOGO</span>
                         </div>

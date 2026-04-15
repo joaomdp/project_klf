@@ -33,8 +33,10 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [otpExpiry, setOtpExpiry] = useState(0); // countdown in seconds until code expires
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const expiryRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [userName, setUserName] = useState('');
   const [teamName, setTeamName] = useState('');
   const [dbTeams, setDbTeams] = useState<{id: string, name: string, logo: string}[]>([]);
@@ -82,20 +84,31 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
     }
   }, [selectedFavTeam]);
 
-  // Auto-send OTP when component mounts + cleanup cooldown on unmount
+  // Auto-send OTP when component mounts + cleanup on unmount
   useEffect(() => {
     sendOtp();
-    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+      if (expiryRef.current) clearInterval(expiryRef.current);
+    };
   }, []);
 
   const startCooldown = () => {
     setResendCooldown(60);
     cooldownRef.current = setInterval(() => {
       setResendCooldown(prev => {
-        if (prev <= 1) {
-          clearInterval(cooldownRef.current!);
-          return 0;
-        }
+        if (prev <= 1) { clearInterval(cooldownRef.current!); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const startExpiryTimer = () => {
+    if (expiryRef.current) clearInterval(expiryRef.current);
+    setOtpExpiry(120); // 2 minutes
+    expiryRef.current = setInterval(() => {
+      setOtpExpiry(prev => {
+        if (prev <= 1) { clearInterval(expiryRef.current!); return 0; }
         return prev - 1;
       });
     }, 1000);
@@ -110,7 +123,10 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
     setIsSendingOtp(false);
     if (result.ok) {
       setOtpSent(true);
+      setOtpCode(['', '', '', '', '', '']);
+      setOtpError('');
       startCooldown();
+      startExpiryTimer();
     } else {
       setOtpError(result.error || 'Erro ao enviar código.');
     }
@@ -374,26 +390,30 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
 
       {/* EMAIL VERIFY */}
       {step === 'email-verify' && (
-        <div className="w-full max-w-sm px-6 sm:px-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
-          <div className="text-center space-y-2 mb-8">
-            <div className="w-14 h-14 bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <i className="fa-solid fa-envelope text-[#3b82f6] text-xl"></i>
+        <div className="w-full max-w-xs px-6 sm:px-0 flex flex-col items-center gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
+
+          {/* Logo + título */}
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 bg-[#3b82f6] rounded-full flex items-center justify-center shadow-[0_0_24px_rgba(59,130,246,0.5)]">
+              <i className="fa-solid fa-envelope text-white text-base"></i>
             </div>
-            <h2 className="text-white font-orbitron font-black text-2xl sm:text-3xl uppercase tracking-tight">
-              Verifique seu Email
-            </h2>
-            <p className="text-gray-500 text-xs font-medium leading-relaxed">
-              {isSendingOtp
-                ? 'Enviando código...'
-                : otpSent
-                  ? <>Enviamos um código de 6 dígitos para <span className="text-white font-semibold">{AuthService.getSession()?.user?.email}</span></>
-                  : 'Preparando envio do código...'
-              }
-            </p>
+            <div className="text-center">
+              <h2 className="text-white font-orbitron font-black text-xl uppercase tracking-tight">
+                Código de Acesso
+              </h2>
+              <p className="text-gray-500 text-xs mt-1.5 leading-relaxed">
+                {isSendingOtp
+                  ? 'Enviando código...'
+                  : otpSent
+                    ? <>Enviamos para <span className="text-gray-300">{AuthService.getSession()?.user?.email}</span></>
+                    : 'Preparando envio...'
+                }
+              </p>
+            </div>
           </div>
 
           {/* OTP inputs */}
-          <div className="flex gap-2 sm:gap-3 justify-center" onPaste={handleOtpPaste}>
+          <div className="flex gap-2.5 justify-center" onPaste={handleOtpPaste}>
             {otpCode.map((digit, i) => (
               <input
                 key={i}
@@ -404,55 +424,60 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
                 value={digit}
                 onChange={e => handleOtpInput(i, e.target.value)}
                 onKeyDown={e => handleOtpKeyDown(i, e)}
-                className={`w-12 h-14 sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-black text-white bg-white/5 border-2 rounded-2xl focus:outline-none transition-all ${
+                className={`w-11 h-13 sm:w-12 sm:h-14 text-center text-2xl font-black text-white bg-transparent border-b-2 focus:outline-none transition-all ${
                   otpError
-                    ? 'border-red-500/60 bg-red-500/5'
+                    ? 'border-red-500/60 text-red-400'
                     : digit
-                      ? 'border-[#3b82f6] bg-[#3b82f6]/10 shadow-[0_0_12px_rgba(59,130,246,0.3)]'
-                      : 'border-white/10 focus:border-[#3b82f6]'
+                      ? 'border-[#3b82f6] text-[#3b82f6]'
+                      : 'border-white/20 focus:border-[#3b82f6]'
                 }`}
                 disabled={isVerifyingOtp}
               />
             ))}
           </div>
 
-          {otpError && (
-            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 animate-in fade-in duration-200">
-              <i className="fa-solid fa-circle-exclamation text-red-400 text-xs shrink-0"></i>
-              <p className="text-[10px] font-black text-red-400 uppercase tracking-wide">{otpError}</p>
-            </div>
-          )}
+          {/* Mensagens */}
+          <div className="w-full space-y-2 text-center">
+            {otpSent && otpExpiry > 0 && (
+              <p className={`text-[11px] font-medium ${otpExpiry <= 30 ? 'text-amber-400' : 'text-gray-600'}`}>
+                Expira em{' '}
+                <span className={otpExpiry <= 30 ? 'text-amber-300 font-black' : 'text-gray-400 font-black'}>
+                  {Math.floor(otpExpiry / 60)}:{String(otpExpiry % 60).padStart(2, '0')}
+                </span>
+              </p>
+            )}
+            {otpSent && otpExpiry === 0 && (
+              <p className="text-[11px] text-red-400 font-medium">Código expirado — solicite um novo</p>
+            )}
+            {otpError && (
+              <p className="text-[11px] text-red-400 font-medium animate-in fade-in duration-200">{otpError}</p>
+            )}
+          </div>
 
+          {/* Botão confirmar */}
           <button
             onClick={() => verifyOtp()}
-            disabled={otpCode.join('').length < 6 || isVerifyingOtp}
-            className="w-full py-4 bg-[#3b82f6] text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-[0_12px_40px_rgba(59,130,246,0.3)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 disabled:hover:scale-100 flex items-center justify-center gap-2"
+            disabled={otpCode.join('').length < 6 || isVerifyingOtp || otpExpiry === 0}
+            className="w-full py-3.5 bg-[#3b82f6] text-white font-black text-xs uppercase tracking-widest rounded-xl hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-2"
           >
             {isVerifyingOtp ? (
-              <>
-                <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></span>
-                VERIFICANDO...
-              </>
-            ) : (
-              <>
-                CONFIRMAR CÓDIGO
-                <i className="fa-solid fa-arrow-right text-xs"></i>
-              </>
-            )}
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : 'Confirmar'}
           </button>
 
-          <div className="text-center">
+          {/* Reenviar */}
+          <div className="text-center -mt-4">
             {resendCooldown > 0 ? (
-              <p className="text-[11px] text-gray-600 font-medium">
+              <p className="text-[11px] text-gray-600">
                 Reenviar em <span className="text-gray-400 font-black">{resendCooldown}s</span>
               </p>
             ) : (
               <button
                 onClick={sendOtp}
                 disabled={isSendingOtp}
-                className="text-[11px] text-gray-500 hover:text-[#3b82f6] font-black uppercase tracking-wider transition-colors disabled:opacity-40"
+                className="text-[11px] text-gray-500 hover:text-[#3b82f6] transition-colors disabled:opacity-40"
               >
-                {isSendingOtp ? 'Enviando...' : 'Reenviar código'}
+                {isSendingOtp ? 'Enviando...' : 'Não recebi o código'}
               </button>
             )}
           </div>

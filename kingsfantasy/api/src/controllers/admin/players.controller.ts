@@ -2,6 +2,16 @@ import { Response } from 'express';
 import { adminSupabase } from '../../config/supabase';
 import { PLAYERS_BUCKET } from '../../scripts/utils/constants';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware';
+import sharp from 'sharp';
+
+// Normaliza qualquer imagem para canvas 400×600 PNG (proporção 2:3)
+// O jogador cabe inteiro (contain) com fundo preto transparente
+async function normalizePlayerImage(input: Buffer): Promise<Buffer> {
+  return sharp(input)
+    .resize(400, 600, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .png()
+    .toBuffer();
+}
 
 /**
  * PLAYERS CONTROLLER
@@ -142,19 +152,17 @@ export async function createPlayer(req: AuthenticatedRequest, res: Response) {
         });
       }
 
-      const [meta, base64Data] = image_name.split(',', 2);
-      const mimeMatch = meta.match(/data:(.*);base64/);
-      const mimeType = mimeMatch?.[1] || 'image/jpeg';
-      const extension = mimeType.split('/')[1] || 'jpg';
-      const safeName = `${Date.now()}-${name.replace(/[^a-zA-Z0-9._-]/g, '_')}.${extension}`;
+      const [, base64Data] = image_name.split(',', 2);
+      const safeName = `${Date.now()}-${name.replace(/[^a-zA-Z0-9._-]/g, '_')}.png`;
 
-      const buffer = Buffer.from(base64Data, 'base64');
+      const rawBuffer = Buffer.from(base64Data, 'base64');
+      const buffer = await normalizePlayerImage(rawBuffer);
       const uploadPath = `players/${safeName}`;
 
       const { error: uploadError } = await adminSupabase
         .storage
         .from(PLAYERS_BUCKET)
-        .upload(uploadPath, buffer, { contentType: mimeType, upsert: true });
+        .upload(uploadPath, buffer, { contentType: 'image/png', upsert: true });
 
       if (uploadError) {
         console.error('❌ Error uploading player image:', uploadError);
@@ -309,19 +317,17 @@ export async function updatePlayer(req: AuthenticatedRequest, res: Response) {
         });
       }
 
-      const [meta, base64Data] = image_name.split(',', 2);
-      const mimeMatch = meta.match(/data:(.*);base64/);
-      const mimeType = mimeMatch?.[1] || 'image/jpeg';
-      const extension = mimeType.split('/')[1] || 'jpg';
-      const safeName = `${Date.now()}-${id}.${extension}`;
+      const [, base64Data] = image_name.split(',', 2);
+      const safeName = `${Date.now()}-${id}.png`;
 
-      const buffer = Buffer.from(base64Data, 'base64');
+      const rawBuffer = Buffer.from(base64Data, 'base64');
+      const buffer = await normalizePlayerImage(rawBuffer);
       const uploadPath = `players/${safeName}`;
 
       const { error: uploadError } = await adminSupabase
         .storage
         .from(PLAYERS_BUCKET)
-        .upload(uploadPath, buffer, { contentType: mimeType, upsert: true });
+        .upload(uploadPath, buffer, { contentType: 'image/png', upsert: true });
 
       if (uploadError) {
         console.error('❌ Error uploading player image:', uploadError);

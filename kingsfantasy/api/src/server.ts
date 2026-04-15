@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -62,6 +63,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Rate limiting global
 const globalLimiter = rateLimit({
@@ -111,7 +113,7 @@ app.post('/api/auth/send-otp', otpRateLimiter, async (req: Request, res: Respons
 
   const normalizedEmail = email.trim().toLowerCase();
   const code = String(Math.floor(100000 + Math.random() * 900000));
-  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 min
+  const expiresAt = Date.now() + 2 * 60 * 1000; // 2 min
   otpStore.set(normalizedEmail, { code, expiresAt, attempts: 0 });
 
   const brevoApiKey = process.env.BREVO_API_KEY;
@@ -136,15 +138,44 @@ app.post('/api/auth/send-otp', otpRateLimiter, async (req: Request, res: Respons
         to: [{ email: normalizedEmail }],
         subject: `${code} é o seu código Kings Lendas`,
         htmlContent: `
-          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#08090e;color:#fff;padding:40px 32px;border-radius:16px">
-            <h1 style="font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Kings Lendas</h1>
-            <p style="color:#6b7280;font-size:13px;margin-bottom:32px">Verificação de Email</p>
-            <p style="color:#d1d5db;font-size:14px;margin-bottom:24px">Use o código abaixo para confirmar seu email:</p>
-            <div style="background:#1a1b23;border:2px solid #3b82f6;border-radius:12px;padding:24px;text-align:center;margin-bottom:32px">
-              <span style="font-size:42px;font-weight:900;letter-spacing:12px;color:#3b82f6">${code}</span>
-            </div>
-            <p style="color:#6b7280;font-size:12px">Válido por 10 minutos. Não compartilhe este código.</p>
-          </div>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0F0F14;border-radius:20px;overflow:hidden;border:1px solid #1e2030;max-width:480px;margin:0 auto;font-family:Arial,sans-serif">
+            <tr><td style="background:linear-gradient(90deg,#3b82f6,#8B5CF6);height:4px;font-size:0;line-height:0">&nbsp;</td></tr>
+            <tr>
+              <td style="padding:36px 40px 0;text-align:center">
+                <img src="${process.env.APP_URL || 'https://kingsfantasy-api.onrender.com'}/logo.png" height="48" alt="Kings Lendas" style="display:inline-block;border-radius:10px" />
+              </td>
+            </tr>
+            <tr><td style="padding:20px 40px 0"><div style="height:1px;background:linear-gradient(90deg,transparent,#1e2030,transparent)"></div></td></tr>
+            <tr>
+              <td style="padding:36px 40px 0;text-align:center">
+                <p style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;margin:0 0 12px">Verificação de Conta</p>
+                <h1 style="font-size:26px;font-weight:900;color:#fff;margin:0 0 12px;letter-spacing:1px">Confirme seu email</h1>
+                <p style="font-size:14px;color:#9ca3af;margin:0 0 28px;line-height:1.6">
+                  Use o código abaixo para ativar sua conta.<br>
+                  <span style="color:#6b7280;font-size:12px">Válido por 2 minutos.</span>
+                </p>
+                <div style="background:#1a1b2e;border:1px solid #2a2b3d;border-radius:16px;padding:28px 24px;margin-bottom:28px;position:relative">
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:80px;height:2px;background:linear-gradient(90deg,#3b82f6,#8B5CF6);border-radius:0 0 4px 4px"></div>
+                  <p style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;margin:0 0 14px">Seu código</p>
+                  <div style="font-family:'Courier New',monospace;font-size:46px;font-weight:900;letter-spacing:14px;color:#3b82f6">${code.split('').join(' ')}</div>
+                </div>
+                <div style="background:#1a1a1a;border:1px solid #2a2020;border-radius:10px;padding:12px 18px;margin-bottom:28px;text-align:left">
+                  <p style="font-size:12px;color:#9ca3af;margin:0;line-height:1.6">
+                    ⚠️ <strong style="color:#f59e0b">Não solicitou isso?</strong> Ignore este email. Sua conta permanece segura.
+                  </p>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 40px 36px">
+                <div style="height:1px;background:linear-gradient(90deg,transparent,#1e2030,transparent);margin-bottom:20px"></div>
+                <p style="font-size:11px;color:#4b5563;text-align:center;margin:0;line-height:1.8">
+                  Kings Lendas Fantasy<br>
+                  <span style="color:#374151">Não compartilhe este código com ninguém.</span>
+                </p>
+              </td>
+            </tr>
+          </table>
         `
       })
     });

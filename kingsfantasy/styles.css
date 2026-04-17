@@ -263,10 +263,19 @@ body::before {
 
 /* Focus states profissionais */
 button:focus-visible,
-input:focus-visible,
 textarea:focus-visible {
     outline: 2px solid var(--accent-primary);
     outline-offset: 2px;
+}
+
+input:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
+input.no-focus-outline:focus-visible {
+    outline: none;
+    outline-offset: 0;
 }
 
 /* Loading skeleton */

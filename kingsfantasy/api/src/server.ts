@@ -28,7 +28,9 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS
   : [
     'http://localhost:3000',
     'https://kingslendas.vercel.app',
-    'https://www.kingslendas.vercel.app'
+    'https://www.kingslendas.vercel.app',
+    'https://fantasykings.com.br',
+    'https://www.fantasykings.com.br'
   ]
 ).map((origin) => origin.trim());
 
@@ -37,10 +39,11 @@ const isAllowedOrigin = (origin?: string) => {
   if (allowedOrigins.includes(origin)) return true;
   try {
     const url = new URL(origin);
-    // Restringe apenas a subdomínios do projeto na Vercel
     return url.protocol === 'https:' && (
       url.hostname.endsWith('.kingslendas.vercel.app') ||
-      url.hostname === 'kingslendas.vercel.app'
+      url.hostname === 'kingslendas.vercel.app' ||
+      url.hostname === 'fantasykings.com.br' ||
+      url.hostname.endsWith('.fantasykings.com.br')
     );
   } catch (error) {
     return false;
@@ -229,6 +232,94 @@ app.post('/api/auth/verify-otp', otpRateLimiter, async (req: Request, res: Respo
 
   otpStore.delete(normalizedEmail);
   res.json({ success: true });
+});
+
+// ============================================================================
+// PROFILE — team name update (30-day cooldown)
+// ============================================================================
+const RESERVED_TEAM_NAMES = ['T1', 'LOUD', 'PAIN', 'FURIA', 'FLUXO', 'RED CANIDS', 'KABUM', 'INTZ', 'LOS GRANDES', 'ITAFANTASY', 'LIBERTY', 'VIVO KEYD', 'KEYD'];
+const TEAM_NAME_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+app.patch('/api/profile/team-name', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    return res.status(401).json({ success: false, error: 'Não autenticado.' });
+  }
+
+  const { team_name } = req.body as { team_name?: string };
+  if (!team_name || typeof team_name !== 'string') {
+    return res.status(400).json({ success: false, error: 'Nome inválido.' });
+  }
+
+  const normalizedName = team_name.trim().toUpperCase();
+
+  if (normalizedName.length < 3 || normalizedName.length > 10) {
+    return res.status(400).json({ success: false, error: 'O nome deve ter entre 3 e 10 caracteres.' });
+  }
+
+  if (RESERVED_TEAM_NAMES.includes(normalizedName)) {
+    return res.status(400).json({ success: false, error: 'Este nome é reservado para times oficiais.' });
+  }
+
+  const { data: current, error: fetchError } = await adminSupabase
+    .from('user_teams')
+    .select('id, team_name, team_name_changed_at')
+    .eq('user_id', userId)
+    .single();
+
+  if (fetchError || !current) {
+    return res.status(404).json({ success: false, error: 'Time não encontrado.' });
+  }
+
+  // No change
+  if (current.team_name === normalizedName) {
+    return res.json({ success: true, team_name: normalizedName });
+  }
+
+  // 30-day cooldown check
+  if (current.team_name_changed_at) {
+    const changedAt = new Date(current.team_name_changed_at).getTime();
+    const elapsed = Date.now() - changedAt;
+    if (elapsed < TEAM_NAME_COOLDOWN_MS) {
+      const daysRemaining = Math.ceil((TEAM_NAME_COOLDOWN_MS - elapsed) / (24 * 60 * 60 * 1000));
+      const nextChangeAt = new Date(changedAt + TEAM_NAME_COOLDOWN_MS).toISOString();
+      return res.status(429).json({
+        success: false,
+        error: `Você já trocou o nome recentemente. Aguarde ${daysRemaining} dia(s).`,
+        days_remaining: daysRemaining,
+        next_change_at: nextChangeAt
+      });
+    }
+  }
+
+  // Uniqueness check (case-insensitive, excluding current user)
+  const { data: taken } = await adminSupabase
+    .from('user_teams')
+    .select('id')
+    .ilike('team_name', normalizedName)
+    .neq('user_id', userId)
+    .maybeSingle();
+
+  if (taken) {
+    return res.status(409).json({ success: false, error: 'Este nome já está em uso por outro time.' });
+  }
+
+  const { error: updateError } = await adminSupabase
+    .from('user_teams')
+    .update({
+      team_name: normalizedName,
+      team_name_changed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('user_id', userId);
+
+  if (updateError) {
+    console.error('[profile/team-name] update error:', updateError);
+    return res.status(500).json({ success: false, error: 'Erro ao salvar nome. Tente novamente.' });
+  }
+
+  console.log(`✅ Team name updated for user ${userId}: "${current.team_name}" → "${normalizedName}"`);
+  return res.json({ success: true, team_name: normalizedName });
 });
 
 // ============================================================================

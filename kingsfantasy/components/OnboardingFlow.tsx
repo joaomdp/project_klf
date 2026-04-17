@@ -37,6 +37,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const expiryRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const otpInitiated = useRef(false);
   const [userName, setUserName] = useState('');
   const [teamName, setTeamName] = useState('');
   const [dbTeams, setDbTeams] = useState<{id: string, name: string, logo: string}[]>([]);
@@ -85,7 +86,10 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
   }, [selectedFavTeam]);
 
   // Auto-send OTP when component mounts + cleanup on unmount
+  // Guard via ref to prevent double-send caused by React StrictMode
   useEffect(() => {
+    if (otpInitiated.current) return;
+    otpInitiated.current = true;
     sendOtp();
     return () => {
       if (cooldownRef.current) clearInterval(cooldownRef.current);
@@ -480,6 +484,16 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
                 {isSendingOtp ? 'Enviando...' : 'Não recebi o código'}
               </button>
             )}
+          </div>
+
+          {/* E-mail errado — escape hatch */}
+          <div className="text-center -mt-2">
+            <button
+              onClick={() => AuthService.signOut()}
+              className="text-[10px] text-gray-700 hover:text-red-400 transition-colors uppercase tracking-widest font-black"
+            >
+              E-mail errado? Voltar ao início
+            </button>
           </div>
         </div>
       )}

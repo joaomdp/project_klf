@@ -765,6 +765,7 @@ export const DataService = {
         currentRoundPoints: derivedCurrentRoundPoints ?? Number(dbTeam.current_round_points || 0),
         totalPoints: derivedTotalPoints ?? Number(dbTeam.total_points || 0),
         favoriteTeam: dbTeam.favorite_team,
+        teamNameChangedAt: dbTeam.team_name_changed_at ?? null,
         preferences: {
           publicProfile: true,
           marketNotifications: true,
@@ -1095,6 +1096,41 @@ export const DataService = {
    * Base URL da API do backend
    */
   API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://projectklf-production.up.railway.app/api',
+
+  // =====================================================
+  // PROFILE
+  // =====================================================
+
+  async updateTeamName(newName: string): Promise<{
+    ok: boolean;
+    error?: string;
+    daysRemaining?: number;
+    nextChangeAt?: string;
+  }> {
+    const token = this.getUserToken();
+    try {
+      const res = await fetch(`${this.API_BASE_URL}/profile/team-name`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ team_name: newName })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return {
+          ok: false,
+          error: data?.error || 'Erro ao atualizar nome.',
+          daysRemaining: data?.days_remaining,
+          nextChangeAt: data?.next_change_at
+        };
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Erro ao atualizar nome.' };
+    }
+  },
 
   // =====================================================
   // EMAIL OTP

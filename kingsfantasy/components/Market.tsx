@@ -276,41 +276,53 @@ const Market: React.FC<MarketProps> = ({
 
       {/* ── LISTA DE JOGADORES ── */}
       <div className="lg:col-span-8 order-2 space-y-4 sm:space-y-6">
-        <div className="sticky top-[72px] sm:top-[80px] z-40 pb-3 space-y-2 sm:space-y-3 bg-[#060a0f]/80 backdrop-blur-xl -mx-3 xs:-mx-4 sm:-mx-6 px-3 xs:px-4 sm:px-6 pt-2">
-          {/* Barra de Pesquisa */}
-          <div className="relative bg-black/60 border border-white/8 rounded-xl overflow-hidden">
-            <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-xs z-10"></i>
-            <input
-              type="text"
-              placeholder="PROCURAR LENDAS..."
-              className="w-full bg-transparent py-3 sm:py-3.5 pl-10 pr-4 text-[11px] font-black text-white uppercase placeholder-gray-700 focus:outline-none transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+        <div className="sticky top-[72px] sm:top-[80px] z-40 backdrop-blur-xl -mx-3 xs:-mx-4 sm:-mx-6 px-3 xs:px-4 sm:px-6 pt-3 pb-4">
 
-          {/* Filtro de Lanes */}
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5 snap-x">
-            {Object.entries(roleMetadata).map(([key, data]) => (
-              <button
-                key={key}
-                onClick={() => setFilterRole(key as any)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl shrink-0 snap-start transition-all duration-200 touch-manipulation border ${
-                  filterRole === key
-                    ? 'bg-[#3b82f6]/15 border-[#3b82f6]/50 text-white'
-                    : 'bg-black/60 border-white/8 text-gray-500 hover:text-gray-300 hover:border-white/20'
-                }`}
-              >
-                <img src={data.icon} className={`w-3.5 h-3.5 shrink-0 transition-all ${filterRole === key ? 'brightness-150' : 'brightness-50 opacity-40'}`} alt="" />
-                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.1em] whitespace-nowrap">{data.label}</span>
-              </button>
-            ))}
+          {/* Barra de pesquisa + filtros num bloco integrado */}
+          <div className="bg-[#0d1117] border border-white/[0.07] rounded-xl overflow-hidden focus-within:border-white/20 transition-colors duration-200">
+
+            {/* Search */}
+            <div className="flex items-center gap-3 px-4 border-b border-white/[0.06]">
+              <i className="fa-solid fa-magnifying-glass text-gray-500 text-xs shrink-0"></i>
+              <input
+                type="text"
+                placeholder="Procurar jogador..."
+                className="no-focus-outline flex-1 bg-transparent py-3.5 text-[11px] font-medium text-white placeholder-gray-500 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none border-none"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button onClick={() => setSearchTerm('')} className="text-gray-600 hover:text-white transition-colors shrink-0 p-1">
+                  <i className="fa-solid fa-xmark text-[10px]"></i>
+                </button>
+              )}
+            </div>
+
+            {/* Filtros de role */}
+            <div className="flex overflow-x-auto no-scrollbar px-1">
+              {Object.entries(roleMetadata).map(([key, data]) => {
+                const active = filterRole === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setFilterRole(key as any)}
+                    className={`relative flex items-center gap-1.5 px-3.5 sm:px-5 py-3 shrink-0 transition-all duration-200 touch-manipulation ${
+                      active ? 'text-white' : 'text-gray-600 hover:text-gray-300'
+                    }`}
+                  >
+                    <img src={data.icon} className={`w-3 h-3 shrink-0 transition-all ${active ? 'brightness-200' : 'brightness-50 opacity-50'}`} alt="" />
+                    <span className="text-[9px] font-black uppercase tracking-widest whitespace-nowrap">{data.label}</span>
+                    {active && <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-[#3b82f6] rounded-full" />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {currentRoundLabel && (
-            <div className="bg-black/40 border border-white/5 rounded-lg px-3 py-2">
-              <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Confrontos da {currentRoundLabel}</p>
-            </div>
+            <p className="text-[9px] font-black text-gray-600 uppercase tracking-[0.25em] mt-3 px-1">
+              {currentRoundLabel}
+            </p>
           )}
         </div>
 
@@ -332,7 +344,7 @@ const Market: React.FC<MarketProps> = ({
                 <div className="flex items-stretch relative z-10">
 
                   {/* Imagem do jogador */}
-                  <div className="relative w-[38%] sm:w-44 md:w-52 shrink-0 overflow-hidden bg-black/70 min-h-[140px] sm:min-h-[180px]">
+                  <div className="relative w-24 sm:w-44 md:w-52 shrink-0 overflow-hidden bg-black/70">
                     {player.teamLogo && (
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
                         <img src={player.teamLogo} alt="" className="w-4/5 h-auto object-contain opacity-[0.06] group-hover:opacity-15 transition-opacity duration-500" />
@@ -340,31 +352,31 @@ const Market: React.FC<MarketProps> = ({
                     )}
                     <PlayerImage player={player} className="absolute inset-0 w-full h-full z-10" imgClassName="w-full h-full object-contain object-bottom" />
                     <div className="absolute top-2 left-2 z-20">
-                      <TeamLogo logoUrl={player.teamLogo} teamName={player.team} className="w-6 h-6 sm:w-8 sm:h-8" />
+                      <TeamLogo logoUrl={player.teamLogo} teamName={player.team} className="w-5 h-5 sm:w-8 sm:h-8" />
                     </div>
                     {hiredChamp && (
-                      <div className="absolute bottom-2 right-2 z-30 w-9 h-9 sm:w-12 sm:h-12 rounded-full border-2 border-[#3b82f6] bg-black shadow-xl overflow-hidden animate-in zoom-in duration-500">
+                      <div className="absolute bottom-2 right-2 z-30 w-7 h-7 sm:w-12 sm:h-12 rounded-full border-2 border-[#3b82f6] bg-black shadow-xl overflow-hidden animate-in zoom-in duration-500">
                         <img src={hiredChamp.image} className="w-full h-full object-cover" alt={hiredChamp.name} />
                       </div>
                     )}
                   </div>
 
                   {/* Info — ocupa o resto */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-between p-3 sm:p-5 md:p-7 gap-2">
+                  <div className="flex-1 min-w-0 flex flex-col justify-between p-2.5 sm:p-5 md:p-7 gap-2">
 
                     {/* Topo: role + nome + confrontos */}
                     <div>
-                      <div className="flex items-center gap-1.5 mb-1">
+                      <div className="flex items-center gap-1.5 mb-0.5">
                         <img src={roleMetadata[player.role].icon} className="w-3 h-3 brightness-200 opacity-40 shrink-0" alt="" />
                         <span className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em] truncate">{player.team}</span>
                       </div>
-                      <h3 className="text-base xs:text-lg sm:text-2xl md:text-3xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#3b82f6] transition-colors truncate mb-2">
+                      <h3 className="text-sm sm:text-2xl md:text-3xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#3b82f6] transition-colors truncate mb-1.5">
                         {player.name}
                       </h3>
                       <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
                         {matchupList.length > 0 ? (
                           matchupList.map((matchup, index) => (
-                            <div key={`${player.id}-matchup-${matchup.opponentName}-${index}`} className="w-6 h-6 sm:w-8 sm:h-8 shrink-0" title={`Contra: ${matchup.opponentName}`}>
+                            <div key={`${player.id}-matchup-${matchup.opponentName}-${index}`} className="w-5 h-5 sm:w-8 sm:h-8 shrink-0" title={`Contra: ${matchup.opponentName}`}>
                               {matchup.opponentLogoUrl
                                 ? <img src={matchup.opponentLogoUrl} alt={matchup.opponentName} className="w-full h-full object-contain" />
                                 : <div className="w-full h-full flex items-center justify-center text-[8px] font-black text-gray-500 uppercase">{matchup.opponentName.slice(0, 2)}</div>
@@ -378,28 +390,28 @@ const Market: React.FC<MarketProps> = ({
                     </div>
 
                     {/* Rodapé: stats + preço/botão */}
-                    <div className="flex items-end justify-between gap-2">
+                    <div className="flex items-end justify-between gap-1.5">
 
                       {/* Stats */}
-                      <div className="flex items-center gap-3 sm:gap-5">
+                      <div className="flex items-center gap-2 sm:gap-5">
                         <div>
-                          <div className="flex items-end gap-1 mb-0.5">
-                            <span className="text-base sm:text-xl font-black text-white font-orbitron tracking-tighter leading-none">{player.avgPoints > 0 ? Number(player.avgPoints).toFixed(1) : '—'}</span>
-                            <span className="text-[8px] font-black text-[#3b82f6] mb-0.5">PTS</span>
+                          <div className="flex items-end gap-0.5 mb-0.5">
+                            <span className="text-sm sm:text-xl font-black text-white font-orbitron tracking-tighter leading-none">{player.avgPoints > 0 ? Number(player.avgPoints).toFixed(1) : '—'}</span>
+                            <span className="text-[7px] font-black text-[#3b82f6] mb-0.5">PTS</span>
                           </div>
-                          <span className="text-[7px] sm:text-[8px] font-black text-gray-600 uppercase tracking-widest">MÉDIA</span>
+                          <span className="text-[7px] font-black text-gray-600 uppercase tracking-widest">MÉDIA</span>
                         </div>
-                        <div className="w-px h-6 bg-white/8"></div>
+                        <div className="w-px h-5 bg-white/8"></div>
                         <div>
-                          <div className="flex items-end gap-1 mb-0.5">
-                            <span className="text-base sm:text-xl font-black text-white font-orbitron tracking-tighter leading-none">{player.points > 0 ? Number(player.points).toFixed(1) : '—'}</span>
+                          <div className="flex items-end gap-0.5 mb-0.5">
+                            <span className="text-sm sm:text-xl font-black text-white font-orbitron tracking-tighter leading-none">{player.points > 0 ? Number(player.points).toFixed(1) : '—'}</span>
                           </div>
-                          <span className="text-[7px] sm:text-[8px] font-black text-gray-600 uppercase tracking-widest">ÚLT. JOGO</span>
+                          <span className="text-[7px] font-black text-gray-600 uppercase tracking-widest">ÚLT. JOGO</span>
                         </div>
                       </div>
 
-                      {/* Preço + botão (mobile e desktop) */}
-                      <div className={`flex flex-col items-end gap-1.5 shrink-0 ${isHired ? '' : ''}`}>
+                      {/* Preço + botão */}
+                      <div className="flex flex-col items-end gap-1 shrink-0">
                         <div className="flex items-center gap-1">
                           <PaiCoin size="sm" />
                           <span className={`text-sm sm:text-base font-black font-orbitron tracking-tighter leading-none ${!canAfford && !isHired ? 'text-red-500' : 'text-white'}`}>{player.price.toFixed(1)}</span>
@@ -407,7 +419,7 @@ const Market: React.FC<MarketProps> = ({
                         <button
                           onClick={(e) => { e.stopPropagation(); isMarketOpen && (isHired ? onFire(player.role) : onHire(player)); }}
                           disabled={!isMarketOpen || !canAfford}
-                          className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider transition-all touch-manipulation whitespace-nowrap ${
+                          className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider transition-all touch-manipulation whitespace-nowrap ${
                             !isMarketOpen ? 'bg-white/5 text-gray-600 cursor-not-allowed opacity-70'
                             : isHired ? 'border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500'
                             : !canAfford ? 'bg-white/5 text-gray-600 cursor-not-allowed opacity-50'

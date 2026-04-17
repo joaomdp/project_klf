@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { UserTeam } from '../types';
 import { CHAMPIONS_LIST } from '../constants';
+import { DataService } from '../services/api';
 
 interface ProfileProps {
   userTeam: UserTeam;
@@ -18,6 +19,17 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
   const [champSearch, setChampSearch] = useState('');
   const [tempTeamName, setTempTeamName] = useState(userTeam.name);
   const [teamNameError, setTeamNameError] = useState<string | null>(null);
+  const [isSavingTeamName, setIsSavingTeamName] = useState(false);
+
+  const teamNameCooldownDays = (() => {
+    if (!userTeam.teamNameChangedAt) return 0;
+    const changedAt = new Date(userTeam.teamNameChangedAt).getTime();
+    const cooldownMs = 30 * 24 * 60 * 60 * 1000;
+    const elapsed = Date.now() - changedAt;
+    if (elapsed >= cooldownMs) return 0;
+    return Math.ceil((cooldownMs - elapsed) / (24 * 60 * 60 * 1000));
+  })();
+  const canChangeTeamName = teamNameCooldownDays === 0;
   const [currentLang, setCurrentLang] = useState<'PT' | 'EN'>('PT');
   const [formData, setFormData] = useState({
     name: userTeam.name,
@@ -41,22 +53,26 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
     setChampSearch('');
   };
 
-  const handleSaveTeamName = (e?: React.FormEvent) => {
+  const handleSaveTeamName = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    
-    const lowerName = tempTeamName.toLowerCase().trim();
-    if (!lowerName) return;
 
-    const reservedTeams = ["t1", "loud", "pain", "furia", "fluxo", "red canids", "kabum", "intz", "los grandes", "itafantasy"];
+    const trimmed = tempTeamName.trim();
+    if (!trimmed) return;
 
-    if (reservedTeams.includes(lowerName) && lowerName !== userTeam.name.toLowerCase()) {
-      setTeamNameError("Este nome de time é reservado e não pode ser utilizado.");
-      return;
-    }
+    setIsSavingTeamName(true);
     setTeamNameError(null);
 
-    setFormData(prev => ({ ...prev, name: tempTeamName }));
-    onUpdate({ name: tempTeamName });
+    const result = await DataService.updateTeamName(trimmed);
+    setIsSavingTeamName(false);
+
+    if (!result.ok) {
+      setTeamNameError(result.error || 'Erro ao salvar nome.');
+      return;
+    }
+
+    const saved = trimmed.toUpperCase();
+    setFormData(prev => ({ ...prev, name: saved }));
+    onUpdate({ name: saved, teamNameChangedAt: new Date().toISOString() });
     setIsEditTeamModalOpen(false);
   };
 
@@ -134,35 +150,63 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
 
       {/* MODAL: EDIT TEAM */}
       {isEditTeamModalOpen && (
-        <ModalBackdrop onClose={() => setIsEditTeamModalOpen(false)}>
+        <ModalBackdrop onClose={() => { setIsEditTeamModalOpen(false); setTeamNameError(null); }}>
           <form onSubmit={handleSaveTeamName} className="bg-[#0B0411]/95 backdrop-blur-xl border border-white/10 w-full max-w-md p-6 xs:p-8 space-y-5 xs:space-y-6 shadow-2xl rounded-lg xs:rounded-xl">
             <div className="flex items-center gap-3 xs:gap-4">
-              <div className="w-11 h-11 xs:w-12 xs:h-12 bg-[#3b82f6]/10 flex items-center justify-center border border-[#3b82f6]/20 rounded-lg xs:rounded-xl shrink-0">
-                <i className="fa-solid fa-shield-halved text-lg xs:text-xl text-[#3b82f6]"></i>
+              <div className={`w-11 h-11 xs:w-12 xs:h-12 flex items-center justify-center border rounded-lg xs:rounded-xl shrink-0 ${canChangeTeamName ? 'bg-[#3b82f6]/10 border-[#3b82f6]/20' : 'bg-amber-500/10 border-amber-500/20'}`}>
+                <i className={`fa-solid text-lg xs:text-xl ${canChangeTeamName ? 'fa-shield-halved text-[#3b82f6]' : 'fa-clock text-amber-400'}`}></i>
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-base xs:text-lg text-white">Nome da Equipe</h3>
-                <p className="text-[10px] xs:text-xs text-gray-500 mt-0.5">Altere a identidade do seu time</p>
+                <p className="text-[10px] xs:text-xs text-gray-500 mt-0.5">
+                  {canChangeTeamName ? 'Altere a identidade do seu time' : `Disponível em ${teamNameCooldownDays} dia(s)`}
+                </p>
               </div>
             </div>
-            <div>
-              <input
-                type="text"
-                value={tempTeamName}
-                onChange={(e) => { setTempTeamName(e.target.value.toUpperCase()); setTeamNameError(null); }}
-                className={`w-full bg-white/5 border rounded-lg xs:rounded-xl py-3 xs:py-3.5 px-3 xs:px-4 text-xs xs:text-sm font-bold text-white placeholder:text-gray-600 focus:outline-none focus:border-[#3b82f6]/50 focus:bg-white/[0.07] transition-all ${teamNameError ? 'border-red-500/50' : 'border-white/10'}`}
-                placeholder="DIGITE O NOME..."
-                autoFocus
-              />
-              {teamNameError && <p className="text-red-400 text-[10px] xs:text-xs mt-2">{teamNameError}</p>}
-            </div>
+
+            {!canChangeTeamName ? (
+              <div className="bg-amber-500/8 border border-amber-500/20 rounded-xl p-4 space-y-1.5">
+                <p className="text-amber-300 text-xs font-black uppercase tracking-wide">Troca bloqueada</p>
+                <p className="text-amber-400/80 text-[11px] leading-relaxed">
+                  O nome da equipe só pode ser alterado uma vez a cada 30 dias.<br />
+                  Disponível novamente em <span className="font-black text-amber-300">{teamNameCooldownDays} dia(s)</span>.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <input
+                  type="text"
+                  value={tempTeamName}
+                  onChange={(e) => { setTempTeamName(e.target.value.toUpperCase()); setTeamNameError(null); }}
+                  className={`w-full bg-white/5 border rounded-lg xs:rounded-xl py-3 xs:py-3.5 px-3 xs:px-4 text-xs xs:text-sm font-bold text-white placeholder:text-gray-600 focus:outline-none focus:border-[#3b82f6]/50 focus:bg-white/[0.07] transition-all ${teamNameError ? 'border-red-500/50' : 'border-white/10'}`}
+                  placeholder="DIGITE O NOME..."
+                  maxLength={10}
+                  autoFocus
+                />
+                <p className="text-[10px] text-gray-600 mt-1.5">3–10 caracteres · apenas letras e números</p>
+                {teamNameError && <p className="text-red-400 text-[10px] xs:text-xs mt-2">{teamNameError}</p>}
+              </div>
+            )}
+
             <div className="flex gap-2 xs:gap-3">
-              <button type="button" onClick={() => setIsEditTeamModalOpen(false)} className="flex-1 py-2.5 xs:py-3 bg-white/5 border border-white/10 rounded-lg xs:rounded-xl text-gray-400 text-[10px] xs:text-xs font-bold hover:bg-white/10 hover:text-white transition-all duration-300 touch-manipulation min-h-[44px]">
-                Cancelar
+              <button
+                type="button"
+                onClick={() => { setIsEditTeamModalOpen(false); setTeamNameError(null); }}
+                className="flex-1 py-2.5 xs:py-3 bg-white/5 border border-white/10 rounded-lg xs:rounded-xl text-gray-400 text-[10px] xs:text-xs font-bold hover:bg-white/10 hover:text-white transition-all duration-300 touch-manipulation min-h-[44px]"
+              >
+                {canChangeTeamName ? 'Cancelar' : 'Fechar'}
               </button>
-              <button type="submit" className="flex-1 py-2.5 xs:py-3 bg-[#3b82f6]/90 rounded-lg xs:rounded-xl text-white text-[10px] xs:text-xs font-bold hover:bg-[#3b82f6] transition-all duration-300 touch-manipulation min-h-[44px]">
-                Salvar
-              </button>
+              {canChangeTeamName && (
+                <button
+                  type="submit"
+                  disabled={isSavingTeamName || !tempTeamName.trim() || tempTeamName.trim().toUpperCase() === formData.name}
+                  className="flex-1 py-2.5 xs:py-3 bg-[#3b82f6]/90 rounded-lg xs:rounded-xl text-white text-[10px] xs:text-xs font-bold hover:bg-[#3b82f6] transition-all duration-300 touch-manipulation min-h-[44px] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSavingTeamName ? (
+                    <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Salvando...</>
+                  ) : 'Salvar'}
+                </button>
+              )}
             </div>
           </form>
         </ModalBackdrop>
@@ -301,15 +345,16 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
           </div>
           
           <div className="space-y-2 xs:space-y-3">
-            <SettingItem 
-              icon="fa-shield-halved" 
-              label="NOME DA EQUIPE" 
-              value={formData.name} 
+            <SettingItem
+              icon={canChangeTeamName ? 'fa-shield-halved' : 'fa-lock'}
+              label="NOME DA EQUIPE"
+              value={canChangeTeamName ? formData.name : `${formData.name} · ${teamNameCooldownDays}d`}
               onClick={() => {
                 setTempTeamName(formData.name);
+                setTeamNameError(null);
                 setIsEditTeamModalOpen(true);
-              }} 
-              color="text-[#3b82f6]"
+              }}
+              color={canChangeTeamName ? 'text-[#3b82f6]' : 'text-amber-400'}
               delay="0"
             />
             

@@ -49,6 +49,7 @@ export interface UserTeam {
   level: number;
   honor: number;
   favoriteTeam?: string;
+  teamNameChangedAt?: string | null;
   shield?: UserShield;
   players: {
     [key in Role]?: Player;

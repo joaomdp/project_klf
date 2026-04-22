@@ -34,7 +34,10 @@
       "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -type f -name *AdminPanel* -o -name *admin*panel*)",
       "Bash(find /c/Users/joaom/OneDrive/Documentos/project_klf/kingsfantasy -type f \\\\\\(-name *.tsx -o -name *.jsx \\\\\\))",
       "Bash(/tmp/budget_search_summary.txt:*)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(npm prune *)",
+      "Bash(npm run *)",
+      "Bash(taskkill //F //IM node.exe)"
     ]
   }
 }

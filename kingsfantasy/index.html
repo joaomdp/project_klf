@@ -3,12 +3,51 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' https://esm.sh;
+      style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
+      font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;
+      img-src 'self' data: blob: https:;
+      connect-src 'self' https://*.supabase.co wss://*.supabase.co https://esm.sh;
+      frame-ancestors 'none';
+      base-uri 'self';
+      form-action 'self';
+    ">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <meta name="theme-color" content="#0F0F14">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Kings Lendas Fantasy | Ilha Edition</title>
+
+    <title>Kings Lendas Fantasy — Fantasy Game do CBLOL & LTA Sul</title>
+    <meta name="description" content="Monte seu time de League of Legends e compita com amigos no maior fantasy game do cenário competitivo brasileiro. Ligas, ranking, estatísticas reais e IA Coach.">
+    <meta name="keywords" content="fantasy, league of legends, lol, cblol, lta sul, fantasy game, kings lendas, ilha das lendas, fantasy lol, fantasy brasil">
+    <meta name="author" content="Kings Lendas Fantasy">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="Portuguese">
+    <link rel="canonical" href="https://fantasykings.com.br/">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Kings Lendas Fantasy">
+    <meta property="og:title" content="Kings Lendas Fantasy — Fantasy Game do CBLOL & LTA Sul">
+    <meta property="og:description" content="Monte seu time de LoL e dispute ligas com amigos usando dados reais do competitivo. Grátis.">
+    <meta property="og:url" content="https://fantasykings.com.br/">
+    <meta property="og:image" content="https://fantasykings.com.br/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="pt_BR">
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Kings Lendas Fantasy — Fantasy Game do CBLOL & LTA Sul">
+    <meta name="twitter:description" content="Monte seu time de LoL e dispute ligas com amigos usando dados reais do competitivo.">
+    <meta name="twitter:image" content="https://fantasykings.com.br/og-image.png">
+
+    <!-- Ícones / PWA -->
     <link rel="icon" type="image/png" href="/assets/images/logo/logo.png">
+    <link rel="apple-touch-icon" href="/assets/images/logo/logo.png">
+    <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
@@ -17,7 +56,6 @@
   "imports": {
     "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "recharts": "https://esm.sh/recharts@^3.6.0",
     "react-dom": "https://esm.sh/react-dom@^19.2.3"

@@ -17,13 +17,7 @@
     "db:add-analyst-rating": "ts-node src/scripts/7-add-analyst-rating.ts",
     "db:validate": "ts-node src/scripts/8-validate-all.ts",
     "db:seed-all": "ts-node src/scripts/9-seed-all.ts",
-    "test-riot-api": "ts-node scripts/test-riot-api.ts",
-    "check-riot-account": "ts-node scripts/check-riot-account.ts",
-    "import-round": "ts-node scripts/auto-import-idl-round.ts",
-    "import-season": "ts-node scripts/import-season.ts",
     "list-db": "ts-node scripts/list-database-state.ts",
-    "verify-mappings": "ts-node scripts/verify-mappings.ts",
-    "find-tournament-matches": "ts-node scripts/find-tournament-matches.ts",
     "describe-tables": "ts-node scripts/describe-tables.ts",
     "db:reset": "ts-node scripts/reset-performances.ts"
   },
@@ -38,7 +32,6 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.13.4",
-    "cheerio": "^1.2.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",

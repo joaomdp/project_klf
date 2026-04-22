@@ -3,14 +3,15 @@ import backgroundImage from '../assets/images/backgrounds/skt-back.optimized.jpg
 
 interface LandingPageProps {
   onGetStarted: () => void;
+  onBack?: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onBack }) => {
   return (
     <div className="fixed inset-0 z-[5000] overflow-y-auto overflow-x-hidden">
-      
+
       {/* Full Background Image */}
-      <div 
+      <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage: `url(${backgroundImage})`,
@@ -19,6 +20,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         {/* Gradient Overlay para escurecer */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/40 md:from-black/80 md:via-black/50 md:to-transparent"></div>
       </div>
+
+      {/* Botão voltar — só aparece quando veio do modo visitante */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="fixed top-5 right-5 z-30 w-10 h-10 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center"
+          aria-label="Voltar"
+        >
+          <i className="fa-solid fa-xmark text-lg" />
+        </button>
+      )}
 
       <div className="relative z-10 w-full min-h-full max-w-[1800px] mx-auto flex items-center px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 py-12 sm:py-16 md:py-20">
         

@@ -28,12 +28,6 @@ export interface Player {
   selectedChampion?: Champion;
 }
 
-export interface UserShield {
-  shape: string;
-  color: string;
-  symbol: string;
-}
-
 export interface UserPreferences {
   publicProfile: boolean;
   marketNotifications: boolean;
@@ -50,7 +44,6 @@ export interface UserTeam {
   honor: number;
   favoriteTeam?: string;
   teamNameChangedAt?: string | null;
-  shield?: UserShield;
   players: {
     [key in Role]?: Player;
   };

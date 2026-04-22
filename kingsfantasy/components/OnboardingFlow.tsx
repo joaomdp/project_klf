@@ -5,12 +5,8 @@ import { AuthService } from '../services/auth';
 import { useToast } from './Toast';
 
 interface OnboardingFlowProps {
-  onComplete: (data: { userName: string; teamName: string; avatar: string; favoriteTeam: string; shield: any }) => void;
+  onComplete: (data: { userName: string; teamName: string; avatar: string; favoriteTeam: string }) => void;
 }
-
-const SHIELD_SHAPES = ['fa-shield', 'fa-shield-halved', 'fa-shield-heart', 'fa-certificate', 'fa-clapperboard'];
-const SHIELD_SYMBOLS = ['fa-bolt', 'fa-fire', 'fa-crown', 'fa-skull', 'fa-dragon', 'fa-ghost', 'fa-hand-fist'];
-const COLORS = ['#FFFFFF', '#3b82f6', '#FFB800', '#00FF94', '#00E0FF', '#FF4655', '#B05EFF', '#FF5EB0'];
 
 const RESERVED_NAMES = ["T1", "LOUD", "PAIN", "FURIA", "FLUXO", "RED CANIDS", "KABUM", "INTZ", "LOS GRANDES", "ITAFANTASY", "LIBERTY", "VIVO KEYD", "KEYD"];
 
@@ -56,9 +52,6 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
   const [isLoadingTeams, setIsLoadingTeams] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [shieldShape, setShieldShape] = useState(SHIELD_SHAPES[0]);
-  const [shieldColor, setShieldColor] = useState('#3b82f6');
-  const [shieldSymbol, setShieldSymbol] = useState(SHIELD_SYMBOLS[2]);
 
   const teamButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -347,7 +340,6 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
       teamName,
       avatar: selectedAvatar,
       favoriteTeam: selectedFavTeam?.name,
-      shield: { shape: shieldShape, color: shieldColor, symbol: shieldSymbol }
     });
   };
 

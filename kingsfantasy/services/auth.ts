@@ -1,5 +1,44 @@
 import { DataService } from './api';
 
+const SESSION_KEY = 'nexus_session';
+const REMEMBER_KEY = 'nexus_remember';
+
+/**
+ * Persists the session in localStorage (remember=true) or sessionStorage (remember=false).
+ * If remember is omitted, inherits the last saved preference (default: true).
+ */
+function writeSession(session: any, remember?: boolean) {
+  const persistent = typeof remember === 'boolean'
+    ? remember
+    : localStorage.getItem(REMEMBER_KEY) !== '0';
+
+  const target = persistent ? localStorage : sessionStorage;
+  const other = persistent ? sessionStorage : localStorage;
+
+  target.setItem(SESSION_KEY, JSON.stringify(session));
+  other.removeItem(SESSION_KEY);
+  localStorage.setItem(REMEMBER_KEY, persistent ? '1' : '0');
+}
+
+/**
+ * Reads the session from sessionStorage first, then localStorage.
+ */
+function readSession(): any | null {
+  const raw = sessionStorage.getItem(SESSION_KEY) ?? localStorage.getItem(SESSION_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(REMEMBER_KEY);
+}
+
 /**
  * Helper function to decode JWT token and extract user data
  * @param token - JWT token string
@@ -34,7 +73,7 @@ export const AuthService = {
    * @param userName - Display username
    * @returns Promise with session data or error
    */
-  async signUp(email: string, pass: string, userName?: string) {
+  async signUp(email: string, pass: string, userName?: string, remember: boolean = true) {
     const anonKey = DataService.getAnonKey();
     try {
       const trimmedUserName = userName?.trim();
@@ -88,7 +127,7 @@ export const AuthService = {
           }
         };
 
-        localStorage.setItem('nexus_session', JSON.stringify(session));
+        writeSession(session, remember);
         return { data: session, error: null };
       }
 
@@ -115,7 +154,7 @@ export const AuthService = {
    * @param pass - User password
    * @returns Promise with session data or error
    */
-  async signIn(email: string, pass: string) {
+  async signIn(email: string, pass: string, remember: boolean = true) {
     const anonKey = DataService.getAnonKey();
     try {
       const res = await fetch(`${DataService.SUPABASE_URL}/auth/v1/token?grant_type=password`, {
@@ -159,7 +198,7 @@ export const AuthService = {
         }
       };
       
-      localStorage.setItem('nexus_session', JSON.stringify(session));
+      writeSession(session, remember);
       return { data: session, error: null };
     } catch (e: any) {
       console.error('❌ Exception em signIn:', e);
@@ -358,7 +397,7 @@ export const AuthService = {
         }
       };
 
-      localStorage.setItem('nexus_session', JSON.stringify(session));
+      writeSession(session);
       window.history.replaceState(null, '', window.location.origin);
       return session;
     } catch (e) {
@@ -420,7 +459,7 @@ export const AuthService = {
         }
       };
 
-      localStorage.setItem('nexus_session', JSON.stringify(newSession));
+      writeSession(newSession);
       return newSession;
     } catch (error) {
       console.error('❌ Erro ao renovar token:', error);
@@ -433,7 +472,7 @@ export const AuthService = {
    */
   signOut() {
     // Limpa sessão e caches de autenticação
-    localStorage.removeItem('nexus_session');
+    clearSession();
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('otp_guard_') || key.startsWith('setup_complete_')) {
         localStorage.removeItem(key);
@@ -443,16 +482,17 @@ export const AuthService = {
   },
 
   /**
-   * Retrieves current session from localStorage
-   * @returns Session object or null if not found/invalid
+   * Retrieves current session (sessionStorage first, then localStorage)
    */
   getSession() {
-    const sessionStr = localStorage.getItem('nexus_session');
-    if (!sessionStr) return null;
-    try {
-      return JSON.parse(sessionStr);
-    } catch (e) {
-      return null;
-    }
+    return readSession();
+  },
+
+  /**
+   * Clears the stored session without reloading the page.
+   * Use signOut() for full logout with reload.
+   */
+  clearSession() {
+    clearSession();
   }
 };

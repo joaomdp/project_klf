@@ -13,6 +13,8 @@ interface HeaderProps {
   marketIsOpen?: boolean | null;
   isAdmin?: boolean;
   showMarketTimer?: boolean;
+  isGuest?: boolean;
+  onLogin?: () => void;
 }
 
 const Logo: React.FC = () => {
@@ -48,6 +50,7 @@ const PAGE_ICONS: Record<string, string> = {
 const Header: React.FC<HeaderProps> = ({
   activePage, onNavigate, userName, avatar,
   marketIsOpen = null, isAdmin = false,
+  isGuest = false, onLogin,
 }) => {
   const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean } | null>(null);
 
@@ -66,9 +69,9 @@ const Header: React.FC<HeaderProps> = ({
     { id: 'ranking',   label: 'LIGAS' },
     { id: 'squad',     label: 'TIME' },
     { id: 'market',    label: 'MERCADO' },
-    { id: 'ai-coach',  label: 'IA' },
   ];
 
+  if (!isGuest) navItems.push({ id: 'ai-coach', label: 'IA' });
   if (isAdmin) navItems.push({ id: 'admin', label: 'ADMIN' });
 
   const isMarketOpen = marketStatus?.isOpen ?? marketIsOpen ?? false;
@@ -118,16 +121,25 @@ const Header: React.FC<HeaderProps> = ({
               </span>
             </div>
 
-            {/* Avatar */}
-            <div
-              className="flex items-center gap-3 cursor-pointer group"
-              onClick={() => onNavigate('profile')}
-            >
-              <div className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-all ${activePage === 'profile' ? 'border-[#3b82f6]' : 'border-[#2d3748] group-hover:border-[#4a5568]'}`}>
-                <img src={avatar} className="w-full h-full object-cover" alt="Avatar" />
+            {/* Avatar ou botão ENTRAR (visitante) */}
+            {isGuest ? (
+              <button
+                onClick={() => onLogin?.()}
+                className="px-4 sm:px-5 py-2 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-white text-[11px] sm:text-xs font-bold uppercase tracking-[0.15em] transition-colors shadow-[0_4px_12px_rgba(59,130,246,0.3)]"
+              >
+                Entrar
+              </button>
+            ) : (
+              <div
+                className="flex items-center gap-3 cursor-pointer group"
+                onClick={() => onNavigate('profile')}
+              >
+                <div className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-all ${activePage === 'profile' ? 'border-[#3b82f6]' : 'border-[#2d3748] group-hover:border-[#4a5568]'}`}>
+                  <img src={avatar} className="w-full h-full object-cover" alt="Avatar" />
+                </div>
+                <span className="hidden lg:block text-sm font-medium text-white">{userName}</span>
               </div>
-              <span className="hidden lg:block text-sm font-medium text-white">{userName}</span>
-            </div>
+            )}
           </div>
         </div>
       </header>

@@ -1,0 +1,25 @@
+{
+  "name": "Kings Lendas Fantasy",
+  "short_name": "Kings Lendas",
+  "description": "Fantasy game do CBLOL & LTA Sul. Monte seu time de League of Legends e compita com amigos.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0F0F14",
+  "theme_color": "#0F0F14",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/assets/images/logo/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/images/logo/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

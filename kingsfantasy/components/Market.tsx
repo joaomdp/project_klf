@@ -125,6 +125,21 @@ const Market: React.FC<MarketProps> = ({
       .reduce((sum, p) => sum + p.price, 0);
   }, [userTeam.players]);
 
+  const testMatchups = useMemo(() => {
+    if (Object.keys(teamMatchups).length > 0) return {} as typeof teamMatchups;
+    const teams: Record<string, { name: string; logo: string }> = {};
+    players.forEach(p => {
+      if (p.teamId && !teams[p.teamId]) teams[p.teamId] = { name: p.team, logo: p.teamLogo };
+    });
+    const ids = Object.keys(teams);
+    const result: typeof teamMatchups = {};
+    ids.forEach((id, i) => {
+      const opp = teams[ids[(i + 1) % ids.length]];
+      result[id] = [{ opponentName: opp.name, opponentLogoUrl: opp.logo }];
+    });
+    return result;
+  }, [players, teamMatchups]);
+
 
   const handleConfirm = async () => {
     setShowConfirmCheck(true);
@@ -332,94 +347,93 @@ const Market: React.FC<MarketProps> = ({
             const isHired = hiredPlayer?.id === player.id;
             const canAfford = isHired || (userTeam.budget + (hiredPlayer?.price || 0) >= player.price);
             const hiredChamp = isHired ? (hiredPlayer?.selectedChampion || hiredPlayer?.lastChampion) : null;
-            const matchupList = player.teamId ? (teamMatchups[player.teamId] || []) : [];
+            const matchupList = player.teamId ? (teamMatchups[player.teamId] || testMatchups[player.teamId] || []) : [];
 
             return (
-              <div key={player.id} onClick={() => setHistoryPlayer(player)} className={`relative group bg-black/40 border transition-all duration-500 overflow-hidden cursor-pointer rounded-xl ${isHired ? 'border-[#3b82f6]/50 shadow-[0_0_20px_rgba(59,130,246,0.08)]' : 'border-white/5 hover:border-white/15'}`}>
+              <div key={player.id} onClick={() => setHistoryPlayer(player)} className={`relative group bg-black/40 border transition-all duration-500 overflow-hidden cursor-pointer rounded-xl h-[170px] sm:h-[210px] ${isHired ? 'border-[#3b82f6]/50 shadow-[0_0_20px_rgba(59,130,246,0.08)]' : 'border-white/5 hover:border-white/15'}`}>
 
                 <div className="absolute -top-12 -right-12 w-48 sm:w-64 h-48 sm:h-64 pointer-events-none z-0 transition-all duration-1000 ease-out opacity-[0.03] grayscale blur-[2px] group-hover:opacity-[0.12] group-hover:grayscale-0 group-hover:blur-0 group-hover:rotate-12 group-hover:scale-110">
                   <img src="https://i.imgur.com/4odZyzF.png" className="w-full h-full object-contain invert-[0.1] sepia-[1] saturate-[5] hue-rotate-[210deg]" alt="" />
                 </div>
 
-                <div className="flex items-stretch relative z-10">
+                <div className="flex h-full relative z-10">
 
                   {/* Imagem do jogador */}
-                  <div className="relative w-24 sm:w-44 md:w-52 shrink-0 overflow-hidden bg-black/70">
+                  <div className="relative w-24 sm:w-36 md:w-40 shrink-0 overflow-visible bg-black h-full">
                     {player.teamLogo && (
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
                         <img src={player.teamLogo} alt="" className="w-4/5 h-auto object-contain opacity-[0.06] group-hover:opacity-15 transition-opacity duration-500" />
                       </div>
                     )}
-                    <PlayerImage player={player} className="absolute inset-0 w-full h-full z-10" imgClassName="w-full h-full object-contain object-bottom" />
+                    <PlayerImage player={player} className="absolute inset-x-0 bottom-0 w-full z-10" style={{ height: '115%', top: 'auto' }} imgClassName="w-full h-full object-contain object-bottom" objectPosition="50% 100%" />
                     <div className="absolute top-2 left-2 z-20">
-                      <TeamLogo logoUrl={player.teamLogo} teamName={player.team} className="w-5 h-5 sm:w-8 sm:h-8" />
+                      <TeamLogo logoUrl={player.teamLogo} teamName={player.team} className="w-4 h-4 sm:w-6 sm:h-6" />
                     </div>
                     {hiredChamp && (
-                      <div className="absolute bottom-2 right-2 z-30 w-7 h-7 sm:w-12 sm:h-12 rounded-full border-2 border-[#3b82f6] bg-black shadow-xl overflow-hidden animate-in zoom-in duration-500">
+                      <div className="absolute bottom-2 right-2 z-30 w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-[#3b82f6] bg-black shadow-xl overflow-hidden animate-in zoom-in duration-500">
                         <img src={hiredChamp.image} className="w-full h-full object-cover" alt={hiredChamp.name} />
                       </div>
                     )}
                   </div>
 
                   {/* Info — ocupa o resto */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-between p-2.5 sm:p-5 md:p-7 gap-2">
+                  <div className="flex-1 min-w-0 flex flex-col justify-between p-2.5 sm:p-5 overflow-hidden">
 
-                    {/* Topo: role + nome + confrontos */}
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <img src={roleMetadata[player.role].icon} className="w-3 h-3 brightness-200 opacity-40 shrink-0" alt="" />
-                        <span className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em] truncate">{player.team}</span>
+                    {/* Topo: nome/time/confronto à esquerda | preço à direita */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col gap-1.5 sm:gap-2.5 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <img src={roleMetadata[player.role].icon} className="w-3.5 h-3.5 brightness-200 opacity-40 shrink-0" alt="" />
+                          <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] truncate">{player.team}</span>
+                        </div>
+                        <h3 className="text-sm sm:text-xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#3b82f6] transition-colors truncate">
+                          {player.name}
+                        </h3>
+                        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                          {matchupList.length > 0 ? (
+                            matchupList.map((matchup, index) => (
+                              <div key={`${player.id}-matchup-${matchup.opponentName}-${index}`} className="w-6 h-6 sm:w-7 sm:h-7 shrink-0" title={`Contra: ${matchup.opponentName}`}>
+                                {matchup.opponentLogoUrl
+                                  ? <img src={matchup.opponentLogoUrl} alt={matchup.opponentName} className="w-full h-full object-contain" />
+                                  : <div className="w-full h-full flex items-center justify-center text-[9px] font-black text-gray-500 uppercase">{matchup.opponentName.slice(0, 2)}</div>
+                                }
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-[9px] text-gray-700 uppercase tracking-wider font-black">A definir</span>
+                          )}
+                        </div>
                       </div>
-                      <h3 className="text-sm sm:text-2xl md:text-3xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#3b82f6] transition-colors truncate mb-1.5">
-                        {player.name}
-                      </h3>
-                      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-                        {matchupList.length > 0 ? (
-                          matchupList.map((matchup, index) => (
-                            <div key={`${player.id}-matchup-${matchup.opponentName}-${index}`} className="w-5 h-5 sm:w-8 sm:h-8 shrink-0" title={`Contra: ${matchup.opponentName}`}>
-                              {matchup.opponentLogoUrl
-                                ? <img src={matchup.opponentLogoUrl} alt={matchup.opponentName} className="w-full h-full object-contain" />
-                                : <div className="w-full h-full flex items-center justify-center text-[8px] font-black text-gray-500 uppercase">{matchup.opponentName.slice(0, 2)}</div>
-                              }
-                            </div>
-                          ))
-                        ) : (
-                          <span className="text-[8px] text-gray-700 uppercase tracking-wider font-black">A definir</span>
-                        )}
+                      {/* Preço — canto superior direito */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <PaiCoin size="sm" />
+                        <span className={`text-lg sm:text-3xl font-black font-orbitron tracking-tighter leading-none ${!canAfford && !isHired ? 'text-red-500' : 'text-white'}`}>{player.price.toFixed(1)}</span>
                       </div>
                     </div>
 
-                    {/* Rodapé: stats + preço/botão */}
-                    <div className="flex items-end justify-between gap-1.5">
-
-                      {/* Stats */}
-                      <div className="flex items-center gap-2 sm:gap-5">
+                    {/* Rodapé: stats | botão */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 sm:gap-4">
                         <div>
                           <div className="flex items-end gap-0.5 mb-0.5">
-                            <span className="text-sm sm:text-xl font-black text-white font-orbitron tracking-tighter leading-none">{player.avgPoints > 0 ? Number(player.avgPoints).toFixed(1) : '—'}</span>
-                            <span className="text-[7px] font-black text-[#3b82f6] mb-0.5">PTS</span>
+                            <span className="text-sm sm:text-lg font-black text-white font-orbitron tracking-tighter leading-none">{player.avgPoints > 0 ? Number(player.avgPoints).toFixed(1) : '—'}</span>
+                            <span className="text-[7px] sm:text-[8px] font-black text-[#3b82f6] mb-0.5">PTS</span>
                           </div>
-                          <span className="text-[7px] font-black text-gray-600 uppercase tracking-widest">MÉDIA</span>
+                          <span className="text-[7px] sm:text-[8px] font-black text-gray-600 uppercase tracking-widest">MÉDIA</span>
                         </div>
-                        <div className="w-px h-5 bg-white/8"></div>
+                        <div className="w-px h-5 sm:h-6 bg-white/8" />
                         <div>
                           <div className="flex items-end gap-0.5 mb-0.5">
-                            <span className="text-sm sm:text-xl font-black text-white font-orbitron tracking-tighter leading-none">{player.points > 0 ? Number(player.points).toFixed(1) : '—'}</span>
+                            <span className="text-sm sm:text-lg font-black text-white font-orbitron tracking-tighter leading-none">{player.points > 0 ? Number(player.points).toFixed(1) : '—'}</span>
                           </div>
-                          <span className="text-[7px] font-black text-gray-600 uppercase tracking-widest">ÚLT. JOGO</span>
+                          <span className="text-[7px] sm:text-[8px] font-black text-gray-600 uppercase tracking-widest">ÚLT. JOGO</span>
                         </div>
                       </div>
-
-                      {/* Preço + botão */}
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <div className="flex items-center gap-1">
-                          <PaiCoin size="sm" />
-                          <span className={`text-sm sm:text-base font-black font-orbitron tracking-tighter leading-none ${!canAfford && !isHired ? 'text-red-500' : 'text-white'}`}>{player.price.toFixed(1)}</span>
-                        </div>
+                      <div className="shrink-0">
                         <button
                           onClick={(e) => { e.stopPropagation(); isMarketOpen && (isHired ? onFire(player.role) : onHire(player)); }}
                           disabled={!isMarketOpen || !canAfford}
-                          className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider transition-all touch-manipulation whitespace-nowrap ${
+                          className={`px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all touch-manipulation whitespace-nowrap ${
                             !isMarketOpen ? 'bg-white/5 text-gray-600 cursor-not-allowed opacity-70'
                             : isHired ? 'border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500'
                             : !canAfford ? 'bg-white/5 text-gray-600 cursor-not-allowed opacity-50'

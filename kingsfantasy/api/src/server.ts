@@ -10,8 +10,19 @@ import { marketService } from './services/market.service';
 import { cronJobsService } from './jobs/cron';
 import adminRoutes from './routes/admin';
 import { authMiddleware, adminMiddleware, AuthenticatedRequest } from './middleware/auth.middleware';
+import { initMonitoring, captureException } from './config/monitoring';
 
 dotenv.config();
+initMonitoring();
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+  captureException(reason, { source: 'unhandledRejection' });
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+  captureException(err, { source: 'uncaughtException' });
+});
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -65,7 +76,7 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Rate limiting global
@@ -88,18 +99,11 @@ const aiCoachLimiter = rateLimit({
 });
 
 // ============================================================================
-// EMAIL OTP — in-memory store (email -> { code, expiresAt, attempts })
+// EMAIL OTP — persistente no Supabase (tabela otp_codes)
+// Sobrevive a restart/escala do backend. Cleanup via TTL no verify.
 // ============================================================================
-interface OtpEntry { code: string; expiresAt: number; attempts: number; }
-const otpStore = new Map<string, OtpEntry>();
-
-// Cleanup expired entries every 10 min
-setInterval(() => {
-  const now = Date.now();
-  otpStore.forEach((entry, key) => {
-    if (entry.expiresAt < now) otpStore.delete(key);
-  });
-}, 10 * 60 * 1000);
+const OTP_TTL_MS = 2 * 60 * 1000; // 2 min
+const OTP_MAX_ATTEMPTS = 5;
 
 const otpRateLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -116,8 +120,17 @@ app.post('/api/auth/send-otp', otpRateLimiter, async (req: Request, res: Respons
 
   const normalizedEmail = email.trim().toLowerCase();
   const code = String(Math.floor(100000 + Math.random() * 900000));
-  const expiresAt = Date.now() + 2 * 60 * 1000; // 2 min
-  otpStore.set(normalizedEmail, { code, expiresAt, attempts: 0 });
+  const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
+
+  const { error: upsertError } = await adminSupabase
+    .from('otp_codes')
+    .upsert({ email: normalizedEmail, code, expires_at: expiresAt, attempts: 0 }, { onConflict: 'email' });
+
+  if (upsertError) {
+    console.error('[OTP] Falha ao persistir código:', upsertError);
+    res.status(500).json({ success: false, error: 'Erro ao gerar código. Tente novamente.' });
+    return;
+  }
 
   const brevoApiKey = process.env.BREVO_API_KEY;
   const fromEmail = process.env.BREVO_FROM_EMAIL || 'noreply@kingslendas.gg';
@@ -205,32 +218,44 @@ app.post('/api/auth/verify-otp', otpRateLimiter, async (req: Request, res: Respo
   }
 
   const normalizedEmail = email.trim().toLowerCase();
-  const entry = otpStore.get(normalizedEmail);
+
+  const { data: entry, error: fetchError } = await adminSupabase
+    .from('otp_codes')
+    .select('code, expires_at, attempts')
+    .eq('email', normalizedEmail)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error('[OTP] Falha ao buscar código:', fetchError);
+    res.status(500).json({ success: false, error: 'Erro ao verificar código.' });
+    return;
+  }
 
   if (!entry) {
     res.status(400).json({ success: false, error: 'Código expirado. Solicite um novo.' });
     return;
   }
 
-  if (Date.now() > entry.expiresAt) {
-    otpStore.delete(normalizedEmail);
+  if (new Date(entry.expires_at).getTime() < Date.now()) {
+    await adminSupabase.from('otp_codes').delete().eq('email', normalizedEmail);
     res.status(400).json({ success: false, error: 'Código expirado. Solicite um novo.' });
     return;
   }
 
-  entry.attempts += 1;
-  if (entry.attempts > 5) {
-    otpStore.delete(normalizedEmail);
+  const nextAttempts = (entry.attempts ?? 0) + 1;
+  if (nextAttempts > OTP_MAX_ATTEMPTS) {
+    await adminSupabase.from('otp_codes').delete().eq('email', normalizedEmail);
     res.status(400).json({ success: false, error: 'Muitas tentativas. Solicite um novo código.' });
     return;
   }
 
   if (entry.code !== code.trim()) {
+    await adminSupabase.from('otp_codes').update({ attempts: nextAttempts }).eq('email', normalizedEmail);
     res.status(400).json({ success: false, error: 'Código inválido.' });
     return;
   }
 
-  otpStore.delete(normalizedEmail);
+  await adminSupabase.from('otp_codes').delete().eq('email', normalizedEmail);
   res.json({ success: true });
 });
 
@@ -318,7 +343,6 @@ app.patch('/api/profile/team-name', authMiddleware, async (req: AuthenticatedReq
     return res.status(500).json({ success: false, error: 'Erro ao salvar nome. Tente novamente.' });
   }
 
-  console.log(`✅ Team name updated for user ${userId}: "${current.team_name}" → "${normalizedName}"`);
   return res.json({ success: true, team_name: normalizedName });
 });
 
@@ -650,7 +674,7 @@ app.get('/api/schedule/upcoming', async (req: Request, res: Response) => {
   }
 });
 
-app.get('/api/players/pick-counts', async (req: Request, res: Response) => {
+app.get('/api/players/pick-counts', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { data: teams, error } = await adminSupabase
       .from('user_teams')
@@ -691,41 +715,6 @@ app.post('/api/market/validate-trade/:userTeamId', async (req: Request, res: Res
 });
 
 // ============================================================================
-// DEBUG: Team lookup diagnostic (TEMPORARY - remove after fixing)
-// ============================================================================
-app.get('/api/debug/team-lookup', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
-  const userId = req.user?.id;
-
-  // Test 1: minimal columns (known to work)
-  const { data: t1, error: e1 } = await adminSupabase
-    .from('user_teams')
-    .select('id, user_id')
-    .eq('user_id', userId || '')
-    .single();
-
-  // Test 2: exact same query as lineup/save
-  const { data: t2, error: e2 } = await adminSupabase
-    .from('user_teams')
-    .select('id, budget, lineup')
-    .eq('user_id', userId || '')
-    .maybeSingle();
-
-  // Test 3: select all columns
-  const { data: t3, error: e3 } = await adminSupabase
-    .from('user_teams')
-    .select('*')
-    .eq('user_id', userId || '')
-    .maybeSingle();
-
-  return res.json({
-    auth_user_id: userId,
-    test1_minimal: { found: !!t1, error: e1?.message, code: e1?.code },
-    test2_save_query: { found: !!t2, error: e2?.message, code: e2?.code, data: t2 ? { id: t2.id, budget: t2.budget, has_lineup: !!t2.lineup } : null },
-    test3_select_all: { found: !!t3, error: e3?.message, code: e3?.code, columns: t3 ? Object.keys(t3) : null }
-  });
-});
-
-// ============================================================================
 // LINEUP SAVE ENDPOINT (with server-side budget validation)
 // ============================================================================
 app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
@@ -745,7 +734,7 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
     marketStatus = await marketService.getMarketStatus();
   } catch (e: any) {
     console.error('[lineup/save] Market status error:', e);
-    return res.status(500).json({ success: false, error: 'Erro ao verificar mercado', debug_step: 'market_status', debug_error: e?.message });
+    return res.status(500).json({ success: false, error: 'Erro ao verificar mercado' });
   }
   if (!marketStatus.isOpen) {
     return res.status(403).json({ success: false, error: 'Mercado fechado. Não é possível alterar a escalação.' });
@@ -759,7 +748,8 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
     .maybeSingle();
 
   if (teamError) {
-    return res.status(500).json({ success: false, error: 'Erro ao buscar time', debug_step: 'team_lookup', debug_error: teamError.message });
+    console.error('[lineup/save] team lookup error:', teamError);
+    return res.status(500).json({ success: false, error: 'Erro ao buscar time' });
   }
   if (!currentTeam) {
     return res.status(404).json({ success: false, error: 'Time não encontrado. Faça o cadastro primeiro.' });
@@ -803,7 +793,8 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
       .in('id', newPlayerIds);
 
     if (playersError) {
-      return res.status(500).json({ success: false, error: 'Erro ao buscar jogadores', debug_step: 'players_lookup', debug_error: playersError.message });
+      console.error('[lineup/save] players lookup error:', playersError);
+      return res.status(500).json({ success: false, error: 'Erro ao buscar jogadores' });
     }
 
     const dbPlayerMap = new Map((dbPlayers || []).map((p: any) => [String(p.id), p]));
@@ -833,7 +824,8 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
       .in('id', currentPlayerIds);
 
     if (oldPlayersError) {
-      return res.status(500).json({ success: false, error: 'Erro ao buscar jogadores antigos', debug_step: 'old_players_lookup', debug_error: oldPlayersError.message });
+      console.error('[lineup/save] old players lookup error:', oldPlayersError);
+      return res.status(500).json({ success: false, error: 'Erro ao buscar jogadores antigos' });
     }
     currentLineupCost = (currentDbPlayers || []).reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
   }
@@ -862,11 +854,10 @@ app.post('/api/lineup/save', authMiddleware, async (req: AuthenticatedRequest, r
     .eq('user_id', userId);
 
   if (updateError) {
-    console.error(`❌ DB update error:`, updateError);
-    return res.status(500).json({ success: false, error: 'Erro ao atualizar time', debug_step: 'db_update', debug_error: updateError.message, debug_code: updateError.code });
+    console.error('[lineup/save] DB update error:', updateError);
+    return res.status(500).json({ success: false, error: 'Erro ao atualizar time' });
   }
 
-  console.log(`✅ Lineup saved for user ${userId}: newBudget=${newBudget}`);
   return res.json({ success: true, budget: newBudget, message: 'Escalação salva com sucesso' });
 });
 
@@ -887,7 +878,8 @@ app.post('/api/lineup/clear', authMiddleware, async (req: AuthenticatedRequest, 
     .maybeSingle();
 
   if (teamError) {
-    return res.status(500).json({ success: false, error: 'Erro ao buscar time', debug_step: 'team_lookup', debug_error: teamError.message });
+    console.error('[lineup/clear] team lookup error:', teamError);
+    return res.status(500).json({ success: false, error: 'Erro ao buscar time' });
   }
   if (!currentTeam) {
     return res.status(404).json({ success: false, error: 'Time não encontrado' });
@@ -907,7 +899,8 @@ app.post('/api/lineup/clear', authMiddleware, async (req: AuthenticatedRequest, 
       .in('id', currentPlayerIds);
 
     if (playersError) {
-      return res.status(500).json({ success: false, error: 'Erro ao buscar jogadores', debug_step: 'players_lookup', debug_error: playersError.message });
+      console.error('[lineup/clear] players lookup error:', playersError);
+      return res.status(500).json({ success: false, error: 'Erro ao buscar jogadores' });
     }
     refund = (dbPlayers || []).reduce((sum: number, p: any) => sum + (Number(p.price) || 0), 0);
   }
@@ -925,10 +918,10 @@ app.post('/api/lineup/clear', authMiddleware, async (req: AuthenticatedRequest, 
     .eq('user_id', userId);
 
   if (updateError) {
-    return res.status(500).json({ success: false, error: 'Erro ao atualizar time', debug_step: 'db_update', debug_error: updateError.message, debug_code: updateError.code });
+    console.error('[lineup/clear] DB update error:', updateError);
+    return res.status(500).json({ success: false, error: 'Erro ao atualizar time' });
   }
 
-  console.log(`✅ Lineup cleared for user ${userId}: refund=${refund.toFixed(2)}, newBudget=${newBudget}`);
   return res.json({ success: true, budget: newBudget, message: 'Escalação limpa com sucesso' });
 });
 
@@ -1306,11 +1299,6 @@ app.listen(PORT, () => {
   console.log('   📊 SCORING');
   console.log('   GET  /api/scores/round/:r/user/:u  - User score');
   console.log('   POST /api/scores/calculate/:r - Calculate all scores');
-  console.log('');
-  console.log('   🕷️  SCRAPER');
-  console.log('   GET  /api/scraper/teams        - List teams');
-  console.log('   GET  /api/scraper/players      - List players');
-  console.log('   POST /api/scraper/manual-match - Insert match data');
   console.log('');
   console.log('   ⏰ CRON JOBS');
   console.log('   GET  /api/cron/status          - Jobs status');

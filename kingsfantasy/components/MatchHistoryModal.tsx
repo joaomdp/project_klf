@@ -191,7 +191,7 @@ const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({ player, onClose, 
         onClick={e => e.stopPropagation()}
       >
         {/* Header do player — imagem de fundo */}
-        <div className="relative flex-shrink-0 h-52 overflow-hidden bg-[#0d1117]">
+        <div className="relative flex-shrink-0 h-56 overflow-hidden bg-[#0d1117]">
           {/* Team logo como wallpaper */}
           {player.teamLogo && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -206,8 +206,9 @@ const MatchHistoryModal: React.FC<MatchHistoryModalProps> = ({ player, onClose, 
           {/* Foto do jogador */}
           <PlayerImage
             player={player}
-            className="absolute inset-0 w-full h-full"
+            className="absolute top-4 bottom-0 left-1/2 -translate-x-1/2 w-1/2"
             imgClassName="w-full h-full object-contain object-top"
+            objectPosition="50% 0%"
           />
 
           {/* Gradiente de baixo */}

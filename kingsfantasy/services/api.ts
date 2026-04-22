@@ -168,17 +168,15 @@ export const DataService = {
    * @returns User's JWT token or null
    */
   getUserToken() {
-    const sessionStr = localStorage.getItem('nexus_session');
-    if (sessionStr) {
-      try {
-        const session = JSON.parse(sessionStr);
-        return session?.access_token || null;
-      } catch (error) {
-        console.warn('Failed to parse session:', error);
-        return null;
-      }
+    const raw = sessionStorage.getItem('nexus_session') ?? localStorage.getItem('nexus_session');
+    if (!raw) return null;
+    try {
+      const session = JSON.parse(raw);
+      return session?.access_token || null;
+    } catch (error) {
+      console.warn('Failed to parse session:', error);
+      return null;
     }
-    return null;
   },
 
   /**
@@ -1992,23 +1990,7 @@ export const DataService = {
 
       const data = await response.json();
       if (!response.ok) {
-        console.error('❌ saveLineupSecure failed:', JSON.stringify(data, null, 2));
-        if (data.debug_step) {
-          console.error(`[DEBUG] Failed at step: ${data.debug_step}`);
-        }
-        if (data.debug_error) {
-          console.error(`[DEBUG] Error detail: ${data.debug_error}`);
-        }
-        if (data.debug_code) {
-          console.error(`[DEBUG] Error code: ${data.debug_code}`);
-        }
-        // Auto-diagnose on failure
-        if (response.status === 404 || response.status === 500) {
-          try {
-            const diag = await this.debugTeamLookup();
-            console.error('[AUTO-DIAG] Team lookup result:', JSON.stringify(diag, null, 2));
-          } catch {}
-        }
+        console.error('❌ saveLineupSecure failed:', data?.error);
         return { success: false, error: data.error || 'Erro ao salvar escalação' };
       }
 
@@ -2040,9 +2022,7 @@ export const DataService = {
 
       const data = await response.json();
       if (!response.ok) {
-        console.error('❌ clearLineup failed:', JSON.stringify(data, null, 2));
-        if (data.debug_step) console.error(`[DEBUG] Failed at step: ${data.debug_step}`);
-        if (data.debug_error) console.error(`[DEBUG] Error detail: ${data.debug_error}`);
+        console.error('❌ clearLineup failed:', data?.error);
         return { success: false, error: data.error || 'Erro ao limpar escalação' };
       }
 
@@ -2050,20 +2030,6 @@ export const DataService = {
     } catch (error) {
       console.error('❌ Erro ao limpar lineup:', error);
       return { success: false, error: 'Erro de conexão ao limpar escalação' };
-    }
-  },
-
-  /** TEMPORARY: Debug team lookup */
-  async debugTeamLookup(): Promise<any> {
-    const userToken = this.getUserToken();
-    if (!userToken) return { error: 'Not authenticated' };
-    try {
-      const response = await fetch(`${this.API_BASE_URL}/debug/team-lookup`, {
-        headers: { 'Authorization': `Bearer ${userToken}` }
-      });
-      return await response.json();
-    } catch (e) {
-      return { error: String(e) };
     }
   },
 

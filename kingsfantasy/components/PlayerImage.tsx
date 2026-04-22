@@ -7,8 +7,10 @@ interface PlayerImageProps {
   player: Player;
   className?: string;
   imgClassName?: string;
+  style?: React.CSSProperties;
   priority?: boolean;
   smartFocus?: boolean;
+  objectPosition?: string;
 }
 
 const focusCache = new Map<string, string>();
@@ -17,8 +19,10 @@ const PlayerImage: React.FC<PlayerImageProps> = ({
   player,
   className,
   imgClassName,
+  style,
   priority = false,
-  smartFocus = false
+  smartFocus = false,
+  objectPosition
 }) => {
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(!priority); // Se priority, não mostra loading
@@ -141,7 +145,7 @@ const PlayerImage: React.FC<PlayerImageProps> = ({
   }, [imageUrl, smartFocus]);
 
   return (
-    <div className={`${className} relative overflow-hidden flex items-center justify-center`}>
+    <div className={`${className} relative overflow-hidden flex items-center justify-center`} style={style}>
       {isLoading && imageUrl && !priority && (
         <div className="absolute inset-0 z-10 bg-[#0a0a0a]">
           <div className="w-full h-full bg-gradient-to-r from-transparent via-white/[0.03] to-transparent bg-[length:200%_100%] animate-[shimmer_1.5s_infinite]"></div>
@@ -154,7 +158,7 @@ const PlayerImage: React.FC<PlayerImageProps> = ({
           ${isLoading && imageUrl && !priority ? 'opacity-0 scale-105' : 'opacity-100 scale-100'} 
           ${priority ? '' : 'transition-all duration-700'}
           ${hasError || !imageUrl ? 'p-4 opacity-50 grayscale' : ''}`}
-        style={!hasError && imageUrl ? { objectPosition: smartFocus ? focusPosition : '50% 20%' } : undefined}
+        style={!hasError && imageUrl ? { objectPosition: objectPosition ?? (smartFocus ? focusPosition : '50% 20%') } : undefined}
         alt={player.name}
         onLoad={() => setIsLoading(false)}
         onError={() => {

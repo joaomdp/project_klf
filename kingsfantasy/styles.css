@@ -172,8 +172,18 @@ body::before {
 }
 
 @keyframes reveal {
-    from { opacity: 0; transform: translateY(20px); filter: blur(10px); }
-    to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    from { opacity: 0; transform: translate3d(0, 8px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes overlay-enter {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes overlay-scale-in {
+    from { opacity: 0; transform: scale(0.985); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 @keyframes slide-in-right {
@@ -202,7 +212,27 @@ body::before {
 }
 
 .page-transition-container {
-    animation: reveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: reveal 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    will-change: opacity, transform;
+}
+
+.overlay-transition-container {
+    animation: overlay-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    will-change: opacity;
+}
+
+.overlay-scale-container {
+    animation: overlay-scale-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    will-change: opacity, transform;
+    transform-origin: center center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-transition-container,
+    .overlay-transition-container,
+    .overlay-scale-container {
+        animation: none;
+    }
 }
 
 .animate-slide-in-right {

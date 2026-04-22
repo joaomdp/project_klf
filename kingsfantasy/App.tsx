@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Page, UserTeam, Player, Role, Champion } from './types';
-import { INITIAL_BUDGET, MOCK_PLAYERS } from './constants'; 
+import { INITIAL_BUDGET } from './constants';
 import { DataService } from './services/api';
 import { AuthService } from './services/auth';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -22,6 +22,7 @@ import OnboardingFlow from './components/OnboardingFlow';
 import CommandPalette from './components/CommandPalette';
 import ShortcutsGuide from './components/ShortcutsGuide';
 import AdminPanel from './components/AdminPanel';
+import LegalModal, { LegalPage } from './components/LegalModal';
 
 type MarketMatch = {
   id: number;
@@ -39,7 +40,7 @@ const DEFAULT_USER_TEAM: UserTeam = {
   userId: 'current-user',
   userName: 'INVOCADOR',
   name: 'MEU TIME',
-  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Hakkai',
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=default',
   level: 1,
   honor: 1,
   players: {},
@@ -102,13 +103,12 @@ const isTokenExpiringSoon = (token?: string | null, thresholdSeconds = 300) => {
 };
 
 const clearInvalidSession = async () => {
-  const sessionStr = localStorage.getItem('nexus_session');
-  if (!sessionStr) return;
+  const session = AuthService.getSession();
+  if (!session) return;
 
   try {
-    const session = JSON.parse(sessionStr);
     if (!session.access_token || !session.user?.id) {
-      localStorage.removeItem('nexus_session');
+      AuthService.clearSession();
       return;
     }
 
@@ -118,7 +118,7 @@ const clearInvalidSession = async () => {
         const refreshed = await AuthService.refreshSession();
         if (refreshed) return; // Refresh bem-sucedido
       }
-      localStorage.removeItem('nexus_session');
+      AuthService.clearSession();
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('setup_complete_')) {
           localStorage.removeItem(key);
@@ -126,28 +126,19 @@ const clearInvalidSession = async () => {
       });
     }
   } catch (e) {
-    localStorage.removeItem('nexus_session');
+    AuthService.clearSession();
   }
 };
 
 const AppContent: React.FC = () => {
-  const [showLanding, setShowLanding] = useState(true);
+  const [showLanding, setShowLanding] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | undefined>(undefined);
-  const [players, setPlayers] = useState<Player[]>(MOCK_PLAYERS);
-  const [isLoading, setIsLoading] = useState(() => {
-    try {
-      const sessionStr = localStorage.getItem('nexus_session');
-      const hasSession = Boolean(sessionStr);
-      const hasAuthHash = window.location.hash.includes('access_token');
-      return hasSession || hasAuthHash;
-    } catch (error) {
-      console.warn('⚠️ Falha ao ler sessão inicial', error);
-      return true;
-    }
-  });
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [dbConnected, setDbConnected] = useState(false);
   const [marketIsOpen, setMarketIsOpen] = useState<boolean | null>(null);
   const [isCreateLeagueOpen, setIsCreateLeagueOpen] = useState(false);
@@ -155,6 +146,7 @@ const AppContent: React.FC = () => {
   const [createdLeagueName, setCreatedLeagueName] = useState<string>('');
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isShortcutsGuideOpen, setIsShortcutsGuideOpen] = useState(false);
+  const [legalPage, setLegalPage] = useState<LegalPage>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [marketMatchups, setMarketMatchups] = useState<MarketMatch[]>([]);
   const [marketRoundLabel, setMarketRoundLabel] = useState<string | null>(null);
@@ -388,11 +380,18 @@ const AppContent: React.FC = () => {
           }));
         }
        } else {
-        setShowLanding(true);
+        // Modo visitante: carrega dados públicos sem exigir login
+        setShowLanding(false);
+        setShowLogin(false);
         setIsAuthenticated(false);
         setNeedsOnboarding(false);
+        await Promise.all([
+          fetchPlayers({ silent: true }),
+          loadCurrentRoundMatchups(),
+          refreshMarketStatus()
+        ]);
       }
-      
+
         setIsLoading(false);
       };
 
@@ -552,6 +551,26 @@ const AppContent: React.FC = () => {
   const handleLogout = useCallback(() => {
     AuthService.signOut();
   }, []);
+
+  const requireAuth = useCallback(() => {
+    setShowLanding(true);
+    setShowLogin(false);
+  }, []);
+
+  const openLoginFromLanding = useCallback(() => {
+    setShowLanding(false);
+    setShowLogin(true);
+  }, []);
+
+  const backFromLoginToLanding = useCallback(() => {
+    setShowLogin(false);
+    setShowLanding(true);
+  }, []);
+
+  const closeAuthOverlay = useCallback(() => {
+    setShowLanding(false);
+    setShowLogin(false);
+  }, []);
   
   // Atalhos de teclado
   useKeyboardShortcuts([
@@ -572,28 +591,28 @@ const AppContent: React.FC = () => {
     {
       key: '1',
       ctrl: true,
-      action: () => isAuthenticated && !needsOnboarding && setCurrentPage('dashboard'),
+      action: () => !needsOnboarding && setCurrentPage('dashboard'),
       description: 'Ir para Dashboard',
       category: 'navigation'
     },
     {
       key: '2',
       ctrl: true,
-      action: () => isAuthenticated && !needsOnboarding && setCurrentPage('market'),
+      action: () => !needsOnboarding && setCurrentPage('market'),
       description: 'Ir para Mercado',
       category: 'navigation'
     },
     {
       key: '3',
       ctrl: true,
-      action: () => isAuthenticated && !needsOnboarding && setCurrentPage('squad'),
+      action: () => !needsOnboarding && setCurrentPage('squad'),
       description: 'Ir para Escalação',
       category: 'navigation'
     },
     {
       key: '4',
       ctrl: true,
-      action: () => isAuthenticated && !needsOnboarding && setCurrentPage('ranking'),
+      action: () => !needsOnboarding && setCurrentPage('ranking'),
       description: 'Ir para Ranking',
       category: 'navigation'
     },
@@ -662,6 +681,10 @@ const AppContent: React.FC = () => {
   }, [marketMatchups]);
 
   const handleOpenChampionSelector = useCallback((player: Player) => {
+    if (!isAuthenticated) {
+      requireAuth();
+      return;
+    }
     if (!canEditMarket) {
       showToast({
         type: 'warning',
@@ -675,7 +698,7 @@ const AppContent: React.FC = () => {
     const availableFunds = userTeam.budget + (currentPlayerInRole?.price || 0);
     if (availableFunds < player.price) return;
     setPendingPlayer(player);
-  }, [canEditMarket, userTeam.players, userTeam.budget, showToast]);
+  }, [isAuthenticated, requireAuth, canEditMarket, userTeam.players, userTeam.budget, showToast]);
 
   const handleHirePlayer = useCallback((champion: Champion) => {
     if (!pendingPlayer) return;
@@ -704,6 +727,10 @@ const AppContent: React.FC = () => {
   }, [pendingPlayer, userTeam, persistTeam, showToast]);
 
   const handleFirePlayer = useCallback((role: Role) => {
+    if (!isAuthenticated) {
+      requireAuth();
+      return;
+    }
     if (!canEditMarket) {
       showToast({
         type: 'warning',
@@ -731,10 +758,15 @@ const AppContent: React.FC = () => {
       message: `${playerToFire.name} foi removido da escalação`,
       duration: 3000
     });
-  }, [canEditMarket, userTeam, persistTeam, showToast]);
+  }, [isAuthenticated, requireAuth, canEditMarket, userTeam, persistTeam, showToast]);
 
   const handleNavigate = useCallback((page: Page, leagueId?: string) => {
-    if (page === 'market' || page === 'dashboard' || page === 'squad') {
+    if (!isAuthenticated && (page === 'profile' || page === 'ai-coach' || page === 'admin')) {
+      requireAuth();
+      return;
+    }
+
+    if (isAuthenticated && (page === 'market' || page === 'dashboard' || page === 'squad')) {
       syncUserTeamFromServer();
     }
 
@@ -744,9 +776,13 @@ const AppContent: React.FC = () => {
     } else if (page !== 'ranking') {
       setSelectedLeagueId(undefined);
     }
-  }, [syncUserTeamFromServer]);
+  }, [isAuthenticated, requireAuth, syncUserTeamFromServer]);
 
   const handleConfirmLineup = useCallback(async () => {
+    if (!isAuthenticated) {
+      requireAuth();
+      return;
+    }
     if (!canEditMarket) {
       showToast({
         type: 'warning',
@@ -785,7 +821,7 @@ const AppContent: React.FC = () => {
       console.error('❌ App - Erro ao confirmar escalação:', error);
       showSaveError();
     }
-  }, [canEditMarket, userTeam.players, showToast, showSaveError]);
+  }, [isAuthenticated, requireAuth, canEditMarket, userTeam.players, showToast, showSaveError]);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -808,7 +844,7 @@ const AppContent: React.FC = () => {
           />
         );
       case 'squad': return <SquadBuilder userTeam={userTeam} players={players} onFire={handleFirePlayer} onNavigateToMarket={() => setCurrentPage('market')} />;
-      case 'ranking': return <Ranking onOpenCreateLeague={() => setIsCreateLeagueOpen(true)} userId={userTeam.userId} userName={userTeam.userName} selectedLeagueId={selectedLeagueId} userTeam={{ name: userTeam.name, totalPoints: userTeam.currentRoundPoints ?? userTeam.totalPoints, avatar: userTeam.avatar }} />;
+      case 'ranking': return <Ranking onOpenCreateLeague={() => { if (!isAuthenticated) { requireAuth(); return; } setIsCreateLeagueOpen(true); }} userId={userTeam.userId} userName={userTeam.userName} selectedLeagueId={selectedLeagueId} userTeam={{ name: userTeam.name, totalPoints: userTeam.currentRoundPoints ?? userTeam.totalPoints, avatar: userTeam.avatar }} />;
       case 'ai-coach': return <AICoach userTeam={userTeam} availablePlayers={players} />;
       case 'profile':
         return (
@@ -834,22 +870,60 @@ const AppContent: React.FC = () => {
 
   if (isLoading) return <LoadingScreen />;
   
+  const preAuthLegalBar = (
+    <div className="fixed bottom-0 left-0 right-0 z-[1500] pointer-events-none py-3 px-6 flex items-center justify-center gap-5 text-[9px] uppercase tracking-widest font-medium bg-gradient-to-t from-black/60 to-transparent">
+      <button onClick={() => setLegalPage('privacy')} className="pointer-events-auto text-gray-600 hover:text-white transition-colors">Privacidade</button>
+      <span className="text-gray-800">•</span>
+      <button onClick={() => setLegalPage('terms')} className="pointer-events-auto text-gray-600 hover:text-white transition-colors">Termos</button>
+    </div>
+  );
+
+  const isGuest = !isAuthenticated;
+
+  if (isAuthenticated && needsOnboarding) {
+    return (
+      <div className="flex flex-col min-h-screen bg-transparent text-[#f0f0f0]">
+        <div key="onboarding" className="overlay-transition-container">
+          <OnboardingFlow onComplete={handleOnboardingComplete} />
+        </div>
+        {preAuthLegalBar}
+        <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />
+      </div>
+    );
+  }
+
+  if (isGuest && showLogin) {
+    return (
+      <div className="flex flex-col min-h-screen bg-transparent text-[#f0f0f0]">
+        <div key="login" className="overlay-transition-container">
+          <Login onLoginSuccess={handleLoginSuccess} onBack={backFromLoginToLanding} />
+        </div>
+        {preAuthLegalBar}
+        <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />
+      </div>
+    );
+  }
+
+  if (isGuest && showLanding) {
+    return (
+      <div className="flex flex-col min-h-screen bg-transparent text-[#f0f0f0]">
+        <div key="landing" className="overlay-transition-container">
+          <LandingPage onGetStarted={openLoginFromLanding} onBack={closeAuthOverlay} />
+        </div>
+        {preAuthLegalBar}
+        <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-transparent text-[#f0f0f0]">
-      {showLanding ? (
-        <LandingPage onGetStarted={() => setShowLanding(false)} />
-      ) : !isAuthenticated ? (
-        <Login onLoginSuccess={handleLoginSuccess} />
-      ) : needsOnboarding ? (
-        <OnboardingFlow onComplete={handleOnboardingComplete} />
-      ) : (
-        <>
           {/* Command Palette */}
-          <CommandPalette 
+          <CommandPalette
             isOpen={isCommandPaletteOpen}
             onClose={() => setIsCommandPaletteOpen(false)}
-            onNavigate={setCurrentPage}
-            onOpenCreateLeague={() => setIsCreateLeagueOpen(true)}
+            onNavigate={(page) => handleNavigate(page)}
+            onOpenCreateLeague={() => { if (!isAuthenticated) { requireAuth(); return; } setIsCreateLeagueOpen(true); }}
             onRefreshPlayers={fetchPlayers}
             currentPage={currentPage}
           />
@@ -954,6 +1028,8 @@ const AppContent: React.FC = () => {
               marketIsOpen={marketIsOpen}
               isAdmin={isAdmin}
               showMarketTimer={currentPage === 'market'}
+              isGuest={isGuest}
+              onLogin={requireAuth}
             />
           
           <main className="flex-1 w-full max-w-[1440px] mx-auto px-6 md:px-12 py-12 pb-24 lg:pb-12">
@@ -963,12 +1039,22 @@ const AppContent: React.FC = () => {
           </main>
 
           <footer className="py-20 border-t border-white/5 text-center bg-black/60 backdrop-blur-md">
-            <div className="max-w-[1440px] mx-auto px-8">
+            <div className="max-w-[1440px] mx-auto px-8 space-y-4">
               <p className="text-[11px] text-gray-700 max-w-3xl mx-auto leading-loose font-medium uppercase tracking-widest">© 2026 KINGS LENDAS FANTASY • AMÉRICA LATINA COMPETITIVA</p>
+              <div className="flex items-center justify-center gap-6 text-[10px] uppercase tracking-widest font-medium">
+                <button onClick={() => setLegalPage('privacy')} className="text-gray-600 hover:text-white transition-colors">Privacidade</button>
+                <span className="text-gray-800">•</span>
+                <button onClick={() => setLegalPage('terms')} className="text-gray-600 hover:text-white transition-colors">Termos</button>
+                <span className="text-gray-800">•</span>
+                <a href="mailto:contato@fantasykings.com.br" className="text-gray-600 hover:text-white transition-colors">Contato</a>
+              </div>
+              <p className="text-[9px] text-gray-800 max-w-2xl mx-auto leading-relaxed">
+                Kings Lendas Fantasy não é afiliada à Riot Games, LTA, CBLOL ou qualquer organização do cenário competitivo. League of Legends é marca registrada da Riot Games, Inc.
+              </p>
             </div>
           </footer>
-        </>
-      )}
+
+          <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />
     </div>
   );
 };

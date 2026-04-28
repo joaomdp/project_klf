@@ -135,6 +135,7 @@ const AppContent: React.FC = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [needsTeamSelection, setNeedsTeamSelection] = useState(false);
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | undefined>(undefined);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -252,6 +253,25 @@ const AppContent: React.FC = () => {
     setIsAdmin(result.ok);
   }, []);
 
+  const evaluateTeamSelectionNeed = useCallback(async (team: UserTeam | null) => {
+    if (!team) {
+      setNeedsTeamSelection(false);
+      return;
+    }
+    const hasFavTeam = typeof team.favoriteTeam === 'string' && team.favoriteTeam.trim().length > 0;
+    if (hasFavTeam) {
+      setNeedsTeamSelection(false);
+      return;
+    }
+    try {
+      const teams = await DataService.getTeams();
+      setNeedsTeamSelection(teams.length > 0);
+    } catch (error) {
+      console.warn('⚠️ Falha ao verificar disponibilidade de times:', error);
+      setNeedsTeamSelection(false);
+    }
+  }, []);
+
   const loadCurrentRoundMatchups = useCallback(async () => {
     try {
       const data = await DataService.getCurrentRoundMatchups();
@@ -362,16 +382,17 @@ const AppContent: React.FC = () => {
           setUserTeam(existingTeam);
           setIsAuthenticated(true);
           setNeedsOnboarding(false);
-          
+          await evaluateTeamSelectionNeed(existingTeam);
+
           localStorage.setItem(`setup_complete_${session.user.id}`, 'true');
         } else {
           setIsAuthenticated(true);
           setNeedsOnboarding(true);
-          
+
           // Define userName dos metadados do usuário
           const userName = getUserNameFromSession(session);
           const avatar = getAvatarFromSession(session, userName, DEFAULT_USER_TEAM.avatar);
-          
+
           setUserTeam(prev => ({
             ...prev,
             userId: session.user?.id || prev.userId,
@@ -396,7 +417,7 @@ const AppContent: React.FC = () => {
       };
 
     initApp();
-  }, [fetchPlayers, checkAdminAccess, loadCurrentRoundMatchups, refreshMarketStatus]);
+  }, [fetchPlayers, checkAdminAccess, loadCurrentRoundMatchups, refreshMarketStatus, evaluateTeamSelectionNeed]);
 
   useEffect(() => {
     if (!players.length) return;
@@ -479,6 +500,7 @@ const AppContent: React.FC = () => {
            if (existingTeam) {
             setUserTeam(existingTeam);
           setNeedsOnboarding(false);
+          await evaluateTeamSelectionNeed(existingTeam);
           localStorage.setItem(`setup_complete_${session.user.id}`, 'true');
         } else {
           const userName = getUserNameFromSession(session);
@@ -545,6 +567,46 @@ const AppContent: React.FC = () => {
     }
 
     setNeedsOnboarding(false);
+    setCurrentPage('dashboard');
+  };
+
+  const handleFavTeamSelectionComplete = async (data: { favoriteTeam: string }) => {
+    const session = AuthService.getSession();
+    const userId = session?.user?.id;
+    const favoriteTeam = (data.favoriteTeam || '').trim();
+
+    if (!userId) {
+      showToast({
+        type: 'error',
+        title: 'Sessão inválida',
+        message: 'Faça login novamente para selecionar seu time.',
+        duration: 6000
+      });
+      return;
+    }
+    if (!favoriteTeam) return;
+
+    const result = await DataService.updateFavoriteTeam(userId, favoriteTeam);
+    if (!result.ok) {
+      showToast({
+        type: 'error',
+        title: 'Erro ao salvar',
+        message: result.error || 'Não foi possível salvar seu time do coração.',
+        duration: 6000
+      });
+      return;
+    }
+
+    await DataService.joinDefaultLeagues(userId, favoriteTeam);
+
+    setUserTeam(prev => ({ ...prev, favoriteTeam }));
+    setNeedsTeamSelection(false);
+    showToast({
+      type: 'success',
+      title: 'Time confirmado!',
+      message: `Você entrou na liga oficial de ${favoriteTeam}.`,
+      duration: 4000
+    });
     setCurrentPage('dashboard');
   };
 
@@ -885,6 +947,21 @@ const AppContent: React.FC = () => {
       <div className="flex flex-col min-h-screen bg-transparent text-[#f0f0f0]">
         <div key="onboarding" className="overlay-transition-container">
           <OnboardingFlow onComplete={handleOnboardingComplete} />
+        </div>
+        {preAuthLegalBar}
+        <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />
+      </div>
+    );
+  }
+
+  if (isAuthenticated && !needsOnboarding && needsTeamSelection && !isAdmin) {
+    return (
+      <div className="flex flex-col min-h-screen bg-transparent text-[#f0f0f0]">
+        <div key="fav-team-selection" className="overlay-transition-container">
+          <OnboardingFlow
+            mode="fav-team-only"
+            onComplete={(data) => handleFavTeamSelectionComplete({ favoriteTeam: data.favoriteTeam })}
+          />
         </div>
         {preAuthLegalBar}
         <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />

@@ -71,7 +71,7 @@ const Header: React.FC<HeaderProps> = ({
     { id: 'market',    label: 'MERCADO' },
   ];
 
-  if (!isGuest) navItems.push({ id: 'ai-coach', label: 'IA' });
+  if (!isGuest) navItems.push({ id: 'ai-coach', label: 'IA-SOLUT' });
   if (isAdmin) navItems.push({ id: 'admin', label: 'ADMIN' });
 
   const isMarketOpen = marketStatus?.isOpen ?? marketIsOpen ?? false;

@@ -1099,6 +1099,29 @@ export const DataService = {
   // PROFILE
   // =====================================================
 
+  async updateFavoriteTeam(userId: string, favoriteTeam: string): Promise<{ ok: boolean; error?: string }> {
+    const anonKey = this.getAnonKey();
+    const userToken = this.getUserToken();
+    if (!userToken || !userId) return { ok: false, error: 'Usuário não autenticado.' };
+
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/user_teams?user_id=eq.${userId}`, {
+        method: 'PATCH',
+        headers: buildAuthHeaders(anonKey, userToken, { includeContentType: true, prefer: 'return=minimal', allowAnonFallback: false }),
+        body: JSON.stringify({ favorite_team: favoriteTeam, updated_at: new Date().toISOString() })
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erro ao atualizar time do coração:', response.status, errorText);
+        return { ok: false, error: errorText || 'Erro ao salvar time do coração.' };
+      }
+      return { ok: true };
+    } catch (error) {
+      console.error('❌ Exception em updateFavoriteTeam:', error);
+      return { ok: false, error: 'Erro ao salvar time do coração.' };
+    }
+  },
+
   async updateTeamName(newName: string): Promise<{
     ok: boolean;
     error?: string;

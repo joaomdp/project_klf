@@ -16,7 +16,7 @@ const ShortcutsGuide: React.FC<ShortcutsGuideProps> = ({ isOpen, onClose }) => {
     { key: '2', ctrl: true, action: () => {}, description: 'Ir para Mercado', category: 'navigation' },
     { key: '3', ctrl: true, action: () => {}, description: 'Ir para Escalação', category: 'navigation' },
     { key: '4', ctrl: true, action: () => {}, description: 'Ir para Ranking', category: 'navigation' },
-    { key: '5', ctrl: true, action: () => {}, description: 'Ir para IA Coach', category: 'navigation' },
+    { key: '5', ctrl: true, action: () => {}, description: 'Ir para IA-SOLUT', category: 'navigation' },
     { key: '6', ctrl: true, action: () => {}, description: 'Ir para Perfil', category: 'navigation' },
     
     // Ações

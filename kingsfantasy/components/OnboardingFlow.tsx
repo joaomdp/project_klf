@@ -5,7 +5,8 @@ import { AuthService } from '../services/auth';
 import { useToast } from './Toast';
 
 interface OnboardingFlowProps {
-  onComplete: (data: { userName: string; teamName: string; avatar: string; favoriteTeam: string }) => void;
+  mode?: 'full' | 'fav-team-only';
+  onComplete: (data: { userName: string; teamName: string; avatar: string; favoriteTeam: string }) => void | Promise<void>;
 }
 
 const RESERVED_NAMES = ["T1", "LOUD", "PAIN", "FURIA", "FLUXO", "RED CANIDS", "KABUM", "INTZ", "LOS GRANDES", "ITAFANTASY", "LIBERTY", "VIVO KEYD", "KEYD"];
@@ -17,10 +18,13 @@ const STEP_CONFIG = [
   { key: 'avatar',    icon: 'fa-star',         label: 'Lenda'      },
 ];
 
-const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
+const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ mode = 'full', onComplete }) => {
   const { showToast } = useToast();
+  const isFavTeamOnly = mode === 'fav-team-only';
 
-  const [step, setStep] = useState<'email-verify' | 'username' | 'fav-team' | 'team-name' | 'avatar'>('email-verify');
+  const [step, setStep] = useState<'email-verify' | 'username' | 'fav-team' | 'team-name' | 'avatar'>(
+    isFavTeamOnly ? 'fav-team' : 'email-verify'
+  );
 
   // Email verification
   const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
@@ -81,6 +85,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
   // Auto-send OTP when component mounts + cleanup on unmount
   // Guard via ref to prevent double-send caused by React StrictMode
   useEffect(() => {
+    if (isFavTeamOnly) return;
     if (otpInitiated.current) return;
     otpInitiated.current = true;
     sendOtp();
@@ -88,7 +93,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
       if (cooldownRef.current) clearInterval(cooldownRef.current);
       if (expiryRef.current) clearInterval(expiryRef.current);
     };
-  }, []);
+  }, [isFavTeamOnly]);
 
   const startCooldown = () => {
     setResendCooldown(60);
@@ -595,7 +600,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
       {step === 'fav-team' && (
         <div className="w-full max-w-5xl flex flex-col items-center animate-in fade-in duration-500 relative z-10 h-[100dvh] pt-8 sm:pt-10">
           <div className="w-full px-4 sm:px-6 shrink-0">
-            {renderProgress()}
+            {!isFavTeamOnly && renderProgress()}
             <div className="text-center mb-6">
               <div className="w-12 h-12 bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
                 <i className="fa-solid fa-shield-heart text-[#3b82f6] text-lg"></i>
@@ -603,7 +608,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
               <h2 className="text-white font-orbitron font-black text-xl sm:text-2xl uppercase tracking-tight mb-1">
                 Seu Time do Coração
               </h2>
-              <p className="text-gray-500 text-xs font-medium">Para quem você torce?</p>
+              <p className="text-gray-500 text-xs font-medium">
+                {isFavTeamOnly ? 'Escolha seu time para entrar na liga oficial' : 'Para quem você torce?'}
+              </p>
             </div>
           </div>
 
@@ -611,6 +618,21 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
             <div className="flex-1 flex flex-col items-center justify-center gap-4">
               <div className="w-10 h-10 border-2 border-[#3b82f6]/20 border-t-[#3b82f6] rounded-full animate-spin"></div>
               <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Carregando times...</span>
+            </div>
+          ) : dbTeams.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center w-full px-6 pb-36">
+              <div className="max-w-md w-full bg-white/2 border border-white/10 rounded-3xl p-8 sm:p-10 text-center space-y-5">
+                <div className="w-14 h-14 mx-auto bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-2xl flex items-center justify-center">
+                  <i className="fa-solid fa-clock text-[#3b82f6] text-lg"></i>
+                </div>
+                <h3 className="text-white font-orbitron font-black text-base sm:text-lg uppercase tracking-tight">
+                  Times em breve
+                </h3>
+                <p className="text-gray-400 text-xs sm:text-[13px] leading-relaxed font-medium">
+                  A seleção do time do coração estará disponível assim que todos os times oficiais forem divulgados.
+                  Você pode continuar a criação da sua conta normalmente — depois, escolha seu time para entrar na liga oficial dele.
+                </p>
+              </div>
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto w-full no-scrollbar px-4 sm:px-8 pb-36">
@@ -652,7 +674,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
 
           <div className="fixed bottom-0 left-0 w-full px-4 sm:px-6 pb-6 pt-4 bg-gradient-to-t from-[#08090e] via-[#08090e]/95 to-transparent z-50">
             <div className="max-w-sm mx-auto space-y-3">
-              {selectedFavTeam && (
+              {selectedFavTeam && dbTeams.length > 0 && (
                 <div className="flex items-center gap-3 bg-[#3b82f6]/10 px-4 py-3 rounded-2xl border border-[#3b82f6]/20 animate-in slide-in-from-bottom-2 duration-300">
                   <img src={selectedFavTeam.logo} className="w-7 h-7 object-contain drop-shadow-[0_0_6px_#3b82f6]" alt="" onError={(e) => { (e.target as HTMLImageElement).src = fallbackLogo; }} />
                   <span className="text-white text-[10px] font-black uppercase tracking-widest">
@@ -660,14 +682,54 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
                   </span>
                 </div>
               )}
-              <button
-                disabled={!selectedFavTeam}
-                onClick={() => setStep('team-name')}
-                className="w-full py-4 bg-[#3b82f6] text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-[0_12px_40px_rgba(59,130,246,0.25)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-20 disabled:hover:scale-100 flex items-center justify-center gap-2"
-              >
-                CONFIRMAR
-                <i className="fa-solid fa-arrow-right text-xs"></i>
-              </button>
+              {dbTeams.length === 0 && !isLoadingTeams ? (
+                <button
+                  onClick={() => {
+                    if (isFavTeamOnly) return;
+                    setStep('team-name');
+                  }}
+                  disabled={isFavTeamOnly}
+                  className="w-full py-4 bg-[#3b82f6] text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-[0_12px_40px_rgba(59,130,246,0.25)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 disabled:hover:scale-100 flex items-center justify-center gap-2"
+                >
+                  CONTINUAR
+                  <i className="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+              ) : (
+                <button
+                  disabled={!selectedFavTeam || isSubmitting}
+                  onClick={async () => {
+                    if (isFavTeamOnly) {
+                      if (!selectedFavTeam) return;
+                      setIsSubmitting(true);
+                      try {
+                        await onComplete({
+                          userName: '',
+                          teamName: '',
+                          avatar: '',
+                          favoriteTeam: selectedFavTeam.name,
+                        });
+                      } finally {
+                        setIsSubmitting(false);
+                      }
+                      return;
+                    }
+                    setStep('team-name');
+                  }}
+                  className="w-full py-4 bg-[#3b82f6] text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-[0_12px_40px_rgba(59,130,246,0.25)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-20 disabled:hover:scale-100 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting && isFavTeamOnly ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></span>
+                      SALVANDO...
+                    </>
+                  ) : (
+                    <>
+                      CONFIRMAR
+                      <i className="fa-solid fa-arrow-right text-xs"></i>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>

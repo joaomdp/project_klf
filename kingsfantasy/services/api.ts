@@ -1093,7 +1093,7 @@ export const DataService = {
   /**
    * Base URL da API do backend
    */
-  API_BASE_URL: import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://kingsfantasy-api.onrender.com/api',
+  API_BASE_URL: import.meta.env.VITE_API_URL || 'https://kingsfantasy-api.onrender.com/api',
 
   // =====================================================
   // PROFILE

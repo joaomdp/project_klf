@@ -889,19 +889,23 @@ export const DataService = {
         }
       }
 
-      // Cria a liga
+      // Cria a liga (só inclui logo_url se houve upload — evita erro se a coluna ainda não existir)
+      const leagueBody: Record<string, any> = {
+        name: leagueData.name,
+        code: code,
+        icon: leagueData.icon,
+        is_public: leagueData.isPublic,
+        is_verified: false,
+        created_by: leagueData.createdBy
+      };
+      if (logoPath) {
+        leagueBody.logo_url = logoPath;
+      }
+
       const response = await fetch(`${SUPABASE_URL}/rest/v1/leagues`, {
         method: 'POST',
         headers: buildAuthHeaders(anonKey, userToken, { includeContentType: true, prefer: 'return=representation', allowAnonFallback: false }),
-        body: JSON.stringify({
-          name: leagueData.name,
-          code: code,
-          icon: leagueData.icon,
-          is_public: leagueData.isPublic,
-          is_verified: false,
-          created_by: leagueData.createdBy,
-          logo_url: logoPath
-        })
+        body: JSON.stringify(leagueBody)
       });
 
       if (!response.ok) {
@@ -1035,13 +1039,23 @@ export const DataService = {
         return [];
       }
 
-      // Busca os dados completos das ligas
-      const leaguesResponse = await fetch(
-        `${SUPABASE_URL}/rest/v1/leagues?id=in.(${leagueIds.join(',')})&select=id,name,code,icon,is_public,is_verified,created_by,created_at,logo_url`,
+      // Busca os dados completos das ligas (tenta com logo_url, refaz sem se a coluna não existir)
+      const fetchLeagues = async (selectFields: string) => fetch(
+        `${SUPABASE_URL}/rest/v1/leagues?id=in.(${leagueIds.join(',')})&select=${selectFields}`,
         {
           headers: buildAuthHeaders(anonKey, userToken)
         }
       );
+
+      let leaguesResponse = await fetchLeagues('id,name,code,icon,is_public,is_verified,created_by,created_at,logo_url');
+
+      if (!leaguesResponse.ok) {
+        const errorText = await leaguesResponse.text();
+        if (errorText.toLowerCase().includes('logo_url') || errorText.toLowerCase().includes('column')) {
+          console.warn('⚠️ Coluna logo_url ausente em leagues — refazendo sem ela. Rode o SQL de migração para liberar logos.');
+          leaguesResponse = await fetchLeagues('id,name,code,icon,is_public,is_verified,created_by,created_at');
+        }
+      }
 
       if (!leaguesResponse.ok) {
         console.error('❌ Erro ao buscar dados das ligas');
@@ -1049,7 +1063,7 @@ export const DataService = {
       }
 
       const data = await leaguesResponse.json();
-      
+
       // Mapeia os dados para o formato League
       return data.map(mapLeagueResponse);
     } catch (error) {
@@ -1142,24 +1156,31 @@ export const DataService = {
    * Chamado durante o onboarding
    */
   async joinDefaultLeagues(userId: string, favoriteTeam?: string): Promise<{ok: boolean, error?: string}> {
-    // Esta função não precisa de token pois usa joinLeague que já valida
     try {
-      
       // Sempre adiciona na liga Kings Lendas Global
       const globalResult = await this.joinLeague('KINGSLENDAS', userId);
+      if (!globalResult.ok) {
+        const alreadyJoined = (globalResult.error || '').toLowerCase().includes('já está nesta liga');
+        if (!alreadyJoined) {
+          console.error('❌ Falha ao entrar na liga global KINGSLENDAS:', globalResult.error);
+        }
+      }
 
       // Se tiver time favorito, adiciona na liga do time
       if (favoriteTeam) {
         const teamCode = TEAM_CODE_MAP[favoriteTeam];
-        
+
         if (teamCode) {
           const teamResult = await this.joinLeague(teamCode, userId);
+          if (!teamResult.ok) {
+            console.warn('⚠️ Falha ao entrar na liga do time:', teamCode, teamResult.error);
+          }
         } else {
           console.warn('⚠️ Time não encontrado no mapeamento:', favoriteTeam);
         }
       }
 
-      return { ok: true };
+      return { ok: globalResult.ok || (globalResult.error || '').toLowerCase().includes('já está nesta liga') };
     } catch (error) {
       console.error('❌ Erro ao adicionar usuário nas ligas padrão:', error);
       return { ok: false, error: String(error) };

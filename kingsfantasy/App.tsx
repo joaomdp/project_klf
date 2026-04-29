@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Page, UserTeam, Player, Role, Champion } from './types';
-import { INITIAL_BUDGET } from './constants';
+import { INITIAL_BUDGET, OFFICIAL_TEAMS_AVAILABLE } from './constants';
 import { DataService } from './services/api';
 import { AuthService } from './services/auth';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -255,6 +255,10 @@ const AppContent: React.FC = () => {
 
   const evaluateTeamSelectionNeed = useCallback(async (team: UserTeam | null) => {
     if (!team) {
+      setNeedsTeamSelection(false);
+      return;
+    }
+    if (!OFFICIAL_TEAMS_AVAILABLE) {
       setNeedsTeamSelection(false);
       return;
     }

@@ -3,6 +3,11 @@ import { Role } from './types';
 
 export const INITIAL_BUDGET = 100.0;
 
+// Flag temporária: enquanto a lista oficial dos times do Kings Lendas não for divulgada,
+// a tela "Time do Coração" exibe apenas o aviso "Times em breve" e o app não força
+// usuários existentes a selecionarem time. Mude para `true` para liberar a seleção.
+export const OFFICIAL_TEAMS_AVAILABLE = false;
+
 export const CHAMPION_ROLES_MAP: Record<string, Role[]> = {
   "Aatrox": [Role.TOP],
   "Ahri": [Role.MID],

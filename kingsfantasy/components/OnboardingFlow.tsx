@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { CHAMPIONS_LIST } from '../constants';
+import { CHAMPIONS_LIST, OFFICIAL_TEAMS_AVAILABLE } from '../constants';
 import { DataService } from '../services/api';
 import { AuthService } from '../services/auth';
 import { useToast } from './Toast';
@@ -61,6 +61,11 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ mode = 'full', onComple
 
   useEffect(() => {
     const fetchTeams = async () => {
+      if (!OFFICIAL_TEAMS_AVAILABLE) {
+        setDbTeams([]);
+        setIsLoadingTeams(false);
+        return;
+      }
       setIsLoadingTeams(true);
       const teams = await DataService.getTeams();
       setDbTeams(teams);

@@ -603,43 +603,68 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ mode = 'full', onComple
 
       {/* FAV TEAM */}
       {step === 'fav-team' && (
-        <div className="w-full max-w-5xl flex flex-col items-center animate-in fade-in duration-500 relative z-10 h-[100dvh] pt-8 sm:pt-10">
-          <div className="w-full px-4 sm:px-6 shrink-0">
+        isLoadingTeams ? (
+          <div className="w-full max-w-sm px-6 sm:px-0 flex flex-col items-center gap-4 animate-in fade-in duration-500 relative z-10">
+            <div className="w-10 h-10 border-2 border-[#3b82f6]/20 border-t-[#3b82f6] rounded-full animate-spin"></div>
+            <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Carregando times...</span>
+          </div>
+        ) : dbTeams.length === 0 ? (
+          <div className="w-full max-w-sm px-6 sm:px-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
             {!isFavTeamOnly && renderProgress()}
-            <div className="text-center mb-6">
-              <div className="w-12 h-12 bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <i className="fa-solid fa-shield-heart text-[#3b82f6] text-lg"></i>
+
+            <div className="text-center space-y-2 mb-2">
+              <div className="w-14 h-14 bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <i className="fa-solid fa-shield-heart text-[#3b82f6] text-xl"></i>
               </div>
-              <h2 className="text-white font-orbitron font-black text-xl sm:text-2xl uppercase tracking-tight mb-1">
+              <h2 className="text-white font-orbitron font-black text-2xl sm:text-3xl uppercase tracking-tight">
                 Seu Time do Coração
               </h2>
               <p className="text-gray-500 text-xs font-medium">
                 {isFavTeamOnly ? 'Escolha seu time para entrar na liga oficial' : 'Para quem você torce?'}
               </p>
             </div>
-          </div>
 
-          {isLoadingTeams ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-4">
-              <div className="w-10 h-10 border-2 border-[#3b82f6]/20 border-t-[#3b82f6] rounded-full animate-spin"></div>
-              <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Carregando times...</span>
+            <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 sm:p-8 text-center space-y-4">
+              <div className="w-12 h-12 mx-auto bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-2xl flex items-center justify-center">
+                <i className="fa-solid fa-clock text-[#3b82f6] text-base"></i>
+              </div>
+              <h3 className="text-white font-orbitron font-black text-base uppercase tracking-tight">
+                Times em breve
+              </h3>
+              <p className="text-gray-400 text-[11px] sm:text-xs leading-relaxed font-medium">
+                A seleção do time do coração estará disponível assim que os times oficiais forem divulgados. Você pode continuar normalmente.
+              </p>
             </div>
-          ) : dbTeams.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center w-full px-6 pb-36">
-              <div className="max-w-md w-full bg-white/2 border border-white/10 rounded-3xl p-8 sm:p-10 text-center space-y-5">
-                <div className="w-14 h-14 mx-auto bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-2xl flex items-center justify-center">
-                  <i className="fa-solid fa-clock text-[#3b82f6] text-lg"></i>
+
+            <button
+              onClick={() => {
+                if (isFavTeamOnly) return;
+                setStep('team-name');
+              }}
+              disabled={isFavTeamOnly}
+              className="w-full py-4 bg-[#3b82f6] text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-[0_12px_40px_rgba(59,130,246,0.3)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 disabled:hover:scale-100 flex items-center justify-center gap-2"
+            >
+              CONTINUAR
+              <i className="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+          </div>
+        ) : (
+          <div className="w-full max-w-5xl flex flex-col items-center animate-in fade-in duration-500 relative z-10 h-[100dvh] pt-8 sm:pt-10">
+            <div className="w-full px-4 sm:px-6 shrink-0">
+              {!isFavTeamOnly && renderProgress()}
+              <div className="text-center mb-6">
+                <div className="w-12 h-12 bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                  <i className="fa-solid fa-shield-heart text-[#3b82f6] text-lg"></i>
                 </div>
-                <h3 className="text-white font-orbitron font-black text-base sm:text-lg uppercase tracking-tight">
-                  Times em breve
-                </h3>
-                <p className="text-gray-400 text-xs sm:text-[13px] leading-relaxed font-medium">
-                  A seleção do time do coração estará disponível assim que todos os times oficiais forem divulgados.
-                  Você pode continuar a criação da sua conta normalmente — depois, escolha seu time para entrar na liga oficial dele.
+                <h2 className="text-white font-orbitron font-black text-xl sm:text-2xl uppercase tracking-tight mb-1">
+                  Seu Time do Coração
+                </h2>
+                <p className="text-gray-500 text-xs font-medium">
+                  {isFavTeamOnly ? 'Escolha seu time para entrar na liga oficial' : 'Para quem você torce?'}
                 </p>
               </div>
             </div>
-          ) : (
+
             <div className="flex-1 overflow-y-auto w-full no-scrollbar px-4 sm:px-8 pb-36">
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 sm:gap-5 max-w-4xl mx-auto py-2">
                 {dbTeams.map(team => {
@@ -675,31 +700,17 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ mode = 'full', onComple
                 })}
               </div>
             </div>
-          )}
 
-          <div className="fixed bottom-0 left-0 w-full px-4 sm:px-6 pb-6 pt-4 bg-gradient-to-t from-[#08090e] via-[#08090e]/95 to-transparent z-50">
-            <div className="max-w-sm mx-auto space-y-3">
-              {selectedFavTeam && dbTeams.length > 0 && (
-                <div className="flex items-center gap-3 bg-[#3b82f6]/10 px-4 py-3 rounded-2xl border border-[#3b82f6]/20 animate-in slide-in-from-bottom-2 duration-300">
-                  <img src={selectedFavTeam.logo} className="w-7 h-7 object-contain drop-shadow-[0_0_6px_#3b82f6]" alt="" onError={(e) => { (e.target as HTMLImageElement).src = fallbackLogo; }} />
-                  <span className="text-white text-[10px] font-black uppercase tracking-widest">
-                    Torcedor da <span className="text-[#3b82f6]">{selectedFavTeam.name}</span>
-                  </span>
-                </div>
-              )}
-              {dbTeams.length === 0 && !isLoadingTeams ? (
-                <button
-                  onClick={() => {
-                    if (isFavTeamOnly) return;
-                    setStep('team-name');
-                  }}
-                  disabled={isFavTeamOnly}
-                  className="w-full py-4 bg-[#3b82f6] text-black font-black text-sm uppercase tracking-widest rounded-2xl shadow-[0_12px_40px_rgba(59,130,246,0.25)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 disabled:hover:scale-100 flex items-center justify-center gap-2"
-                >
-                  CONTINUAR
-                  <i className="fa-solid fa-arrow-right text-xs"></i>
-                </button>
-              ) : (
+            <div className="fixed bottom-0 left-0 w-full px-4 sm:px-6 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[#08090e] via-[#08090e]/95 to-transparent z-50">
+              <div className="max-w-sm mx-auto space-y-3">
+                {selectedFavTeam && (
+                  <div className="flex items-center gap-3 bg-[#3b82f6]/10 px-4 py-3 rounded-2xl border border-[#3b82f6]/20 animate-in slide-in-from-bottom-2 duration-300">
+                    <img src={selectedFavTeam.logo} className="w-7 h-7 object-contain drop-shadow-[0_0_6px_#3b82f6]" alt="" onError={(e) => { (e.target as HTMLImageElement).src = fallbackLogo; }} />
+                    <span className="text-white text-[10px] font-black uppercase tracking-widest">
+                      Torcedor da <span className="text-[#3b82f6]">{selectedFavTeam.name}</span>
+                    </span>
+                  </div>
+                )}
                 <button
                   disabled={!selectedFavTeam || isSubmitting}
                   onClick={async () => {
@@ -734,10 +745,10 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ mode = 'full', onComple
                     </>
                   )}
                 </button>
-              )}
+              </div>
             </div>
           </div>
-        </div>
+        )
       )}
 
       {/* TEAM NAME */}
@@ -887,7 +898,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ mode = 'full', onComple
             </div>
           </div>
 
-          <div className={`fixed bottom-0 left-0 w-full px-4 sm:px-6 pb-6 pt-4 z-50 transition-all duration-300 ${
+          <div className={`fixed bottom-0 left-0 w-full px-4 sm:px-6 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] z-50 transition-all duration-300 ${
             selectedAvatar ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
           } bg-gradient-to-t from-[#08090e] via-[#08090e]/95 to-transparent`}>
             <div className="max-w-sm mx-auto space-y-3">

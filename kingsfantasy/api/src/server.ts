@@ -158,7 +158,7 @@ app.post('/api/auth/send-otp', otpRateLimiter, async (req: Request, res: Respons
             <tr><td style="background:linear-gradient(90deg,#3b82f6,#8B5CF6);height:4px;font-size:0;line-height:0">&nbsp;</td></tr>
             <tr>
               <td style="padding:36px 40px 0;text-align:center">
-                <img src="${process.env.APP_URL || 'https://kingsfantasy-api.onrender.com'}/logo.png" height="48" alt="Kings Lendas" style="display:inline-block;border-radius:10px" />
+                <img src="${process.env.APP_URL || 'https://kingslendas.vercel.app'}/logo.png" height="48" alt="Kings Lendas" style="display:inline-block;border-radius:10px" />
               </td>
             </tr>
             <tr><td style="padding:20px 40px 0"><div style="height:1px;background:linear-gradient(90deg,transparent,#1e2030,transparent)"></div></td></tr>
@@ -170,10 +170,10 @@ app.post('/api/auth/send-otp', otpRateLimiter, async (req: Request, res: Respons
                   Use o código abaixo para ativar sua conta.<br>
                   <span style="color:#6b7280;font-size:12px">Válido por 2 minutos.</span>
                 </p>
-                <div style="background:#1a1b2e;border:1px solid #2a2b3d;border-radius:16px;padding:28px 24px;margin-bottom:28px;position:relative">
+                <div style="background:#1a1b2e;border:1px solid #2a2b3d;border-radius:16px;padding:28px 16px;margin-bottom:28px;position:relative">
                   <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:80px;height:2px;background:linear-gradient(90deg,#3b82f6,#8B5CF6);border-radius:0 0 4px 4px"></div>
                   <p style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;margin:0 0 14px">Seu código</p>
-                  <div style="font-family:'Courier New',monospace;font-size:46px;font-weight:900;letter-spacing:14px;color:#3b82f6">${code.split('').join(' ')}</div>
+                  <div style="font-family:'Courier New',monospace;font-size:42px;font-weight:900;letter-spacing:12px;color:#3b82f6;white-space:nowrap;text-align:center">${code}</div>
                 </div>
                 <div style="background:#1a1a1a;border:1px solid #2a2020;border-radius:10px;padding:12px 18px;margin-bottom:28px;text-align:left">
                   <p style="font-size:12px;color:#9ca3af;margin:0;line-height:1.6">

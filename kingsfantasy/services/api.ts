@@ -99,17 +99,26 @@ const buildSimplifiedLineup = (players: UserTeam['players']) => {
   }, {});
 };
 
-const mapLeagueResponse = (league: any): League => ({
-  id: league.id.toString(),
-  name: league.name,
-  code: league.code,
-  icon: league.icon || 'fa-trophy',
-  isPublic: league.is_public || false,
-  isVerified: league.is_verified || false,
-  createdBy: league.created_by,
-  createdAt: league.created_at,
-  logoUrl: league.logo_url
-});
+const mapLeagueResponse = (league: any): League => {
+  const rawLogo = league.logo_url;
+  let logoUrl: string | undefined;
+  if (rawLogo) {
+    logoUrl = rawLogo.startsWith('http')
+      ? rawLogo
+      : `${SUPABASE_URL}/storage/v1/object/public/leagues/${rawLogo.startsWith('/') ? rawLogo.substring(1) : rawLogo}`;
+  }
+  return {
+    id: league.id.toString(),
+    name: league.name,
+    code: league.code,
+    icon: league.icon || 'fa-trophy',
+    isPublic: league.is_public || false,
+    isVerified: league.is_verified || false,
+    createdBy: league.created_by,
+    createdAt: league.created_at,
+    logoUrl
+  };
+};
 
 const mapTeamToRankingEntry = (team: any, index: number): RankingEntry => ({
   rank: index + 1,
@@ -188,11 +197,45 @@ export const DataService = {
     return this.getUserToken() || SUPABASE_ANON_KEY;
   },
 
-  getStorageUrl(bucket: 'players' | 'teams' | 'avatars', path: string): string {
+  getStorageUrl(bucket: 'players' | 'teams' | 'avatars' | 'leagues', path: string): string {
     if (!path) return '';
     if (path.startsWith('http')) return path;
     const cleanPath = path.startsWith('/') ? path.substring(1) : path;
     return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${cleanPath}`;
+  },
+
+  async uploadLeagueLogo(file: File): Promise<{ ok: boolean; path?: string; error?: string }> {
+    const anonKey = this.getAnonKey();
+    const userToken = this.getUserToken();
+
+    if (!userToken) {
+      return { ok: false, error: 'Usuário não autenticado' };
+    }
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = `covers/${Date.now()}-${safeName}`;
+
+    try {
+      const response = await fetch(`${SUPABASE_URL}/storage/v1/object/leagues/${filePath}`, {
+        method: 'POST',
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${userToken}`,
+          'Content-Type': file.type || 'application/octet-stream',
+          'x-upsert': 'true'
+        },
+        body: file
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { ok: false, error: errorText || 'Erro ao enviar imagem da liga' };
+      }
+
+      return { ok: true, path: filePath };
+    } catch (error) {
+      return { ok: false, error: String(error) };
+    }
   },
 
   async uploadAdminImage(bucket: 'players' | 'teams', file: File, folder: string): Promise<{ ok: boolean; path?: string; error?: string }> {
@@ -688,6 +731,31 @@ export const DataService = {
     }
   },
 
+  async getFavoriteTeamsForUsers(userIds: string[]): Promise<Record<string, string | undefined>> {
+    if (userIds.length === 0) return {};
+    const anonKey = this.getAnonKey();
+    const userToken = this.getUserToken();
+    try {
+      const ids = userIds.map(id => encodeURIComponent(id)).join(',');
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/user_teams?user_id=in.(${ids})&select=user_id,favorite_team`,
+        {
+          headers: buildAuthHeaders(anonKey, userToken)
+        }
+      );
+      if (!response.ok) return {};
+      const data = await response.json();
+      const map: Record<string, string | undefined> = {};
+      data.forEach((row: any) => {
+        if (row.user_id) map[row.user_id] = row.favorite_team || undefined;
+      });
+      return map;
+    } catch (e) {
+      console.error('❌ Erro ao buscar favorite_team em batch:', e);
+      return {};
+    }
+  },
+
   async getUserTeam(userId: string): Promise<UserTeam | null> {
     const anonKey = this.getAnonKey();
     const userToken = this.getUserToken();
@@ -800,16 +868,27 @@ export const DataService = {
     icon: string;
     isPublic: boolean;
     createdBy: string;
+    logoFile?: File;
   }): Promise<{ok: boolean, leagueId?: string, code?: string, error?: string}> {
     const anonKey = this.getAnonKey();
     const userToken = this.getUserToken();
     const code = this.generateLeagueCode();
-    
+
     if (!userToken) {
       return { ok: false, error: 'Usuário não autenticado' };
     }
-    
+
     try {
+      let logoPath: string | null = null;
+      if (leagueData.logoFile) {
+        const upload = await this.uploadLeagueLogo(leagueData.logoFile);
+        if (upload.ok && upload.path) {
+          logoPath = upload.path;
+        } else {
+          console.warn('⚠️ Falha ao enviar logo da liga, prosseguindo sem imagem:', upload.error);
+        }
+      }
+
       // Cria a liga
       const response = await fetch(`${SUPABASE_URL}/rest/v1/leagues`, {
         method: 'POST',
@@ -820,7 +899,8 @@ export const DataService = {
           icon: leagueData.icon,
           is_public: leagueData.isPublic,
           is_verified: false,
-          created_by: leagueData.createdBy
+          created_by: leagueData.createdBy,
+          logo_url: logoPath
         })
       });
 
@@ -957,7 +1037,7 @@ export const DataService = {
 
       // Busca os dados completos das ligas
       const leaguesResponse = await fetch(
-        `${SUPABASE_URL}/rest/v1/leagues?id=in.(${leagueIds.join(',')})&select=id,name,code,icon,is_public,is_verified,created_by,created_at`,
+        `${SUPABASE_URL}/rest/v1/leagues?id=in.(${leagueIds.join(',')})&select=id,name,code,icon,is_public,is_verified,created_by,created_at,logo_url`,
         {
           headers: buildAuthHeaders(anonKey, userToken)
         }

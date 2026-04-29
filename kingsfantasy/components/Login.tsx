@@ -14,12 +14,15 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
   const { showToast } = useToast();
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [forgotPasswordMsg, setForgotPasswordMsg] = useState<string | null>(null);
@@ -44,6 +47,17 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isSignUp) {
+      if (password !== confirmPassword) {
+        setErrorMsg('AS SENHAS NÃO COINCIDEM');
+        return;
+      }
+      if (password.length < 6) {
+        setErrorMsg('A SENHA DEVE TER NO MÍNIMO 6 CARACTERES');
+        return;
+      }
+    }
+
     setLoading(true);
     setErrorMsg(null);
 
@@ -55,9 +69,14 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
 
     let result;
     try {
-      result = await AuthService.signIn(email, password, rememberMe);
+      result = isSignUp
+        ? await AuthService.signUp(email, password, undefined, rememberMe)
+        : await AuthService.signIn(email, password, rememberMe);
 
-      if (result.error) {
+      if ((result as any).requiresEmailConfirmation) {
+        setPendingEmail(email);
+        setLoading(false);
+      } else if (result.error) {
         setErrorMsg(result.error.toUpperCase());
         setLoading(false);
       } else if (result.data) {
@@ -251,10 +270,10 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
               {/* Título */}
               <div>
                 <h1 className="font-orbitron font-black text-3xl sm:text-4xl text-white uppercase tracking-tighter leading-tight mb-1.5">
-                  BEM-VINDO
+                  {isSignUp ? 'CRIAR CONTA' : 'BEM-VINDO'}
                 </h1>
                 <p className="text-xs sm:text-sm text-gray-500">
-                  Entre para continuar sua jornada
+                  {isSignUp ? 'Junte-se ao maior fantasy do Kings Lendas' : 'Entre para continuar sua jornada'}
                 </p>
               </div>
 
@@ -303,6 +322,29 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
                   </div>
                 </div>
 
+                {/* Confirmar Senha (só no signup) */}
+                {isSignUp && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Confirmar senha</label>
+                    <div className="relative">
+                      <i className="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 text-xs pointer-events-none"></i>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className={`w-full bg-white/[0.04] border rounded-xl py-3.5 pl-10 pr-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:bg-white/[0.07] transition-all ${
+                          confirmPassword && password !== confirmPassword
+                            ? 'border-red-500/40 focus:border-red-500/60'
+                            : 'border-white/8 focus:border-[#3b82f6]/50'
+                        }`}
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Lembrar / Esqueci */}
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2.5 cursor-pointer group">
@@ -346,21 +388,66 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack }) => {
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     {loading
                       ? <><i className="fa-solid fa-spinner fa-spin"></i> CARREGANDO...</>
-                      : 'ENTRAR'
+                      : (isSignUp ? 'CRIAR CONTA' : 'ENTRAR')
                     }
                   </span>
                 </button>
               </form>
 
-              {/* Aviso de acesso restrito */}
-              <p className="text-center text-[10px] text-gray-600 leading-relaxed">
-                <i className="fa-solid fa-lock text-gray-600 mr-1.5"></i>
-                Acesso antecipado — cadastros abertos apenas para contas aprovadas pelo desenvolvedor.
+              {/* Toggle login/signup */}
+              <p className="text-center text-[11px] text-gray-500 leading-relaxed">
+                {isSignUp ? 'Já tem uma conta?' : 'Ainda não tem uma conta?'}{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setErrorMsg(null);
+                    setConfirmPassword('');
+                  }}
+                  className="text-[#3b82f6] font-black uppercase tracking-wider hover:text-white transition-colors"
+                  disabled={loading}
+                >
+                  {isSignUp ? 'Entrar' : 'Criar conta'}
+                </button>
               </p>
             </div>
           </div>
         </div>
       </div>
+
+      {pendingEmail && (
+        <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300 px-5">
+          <div className="bg-[#0d0e14] border border-white/8 rounded-2xl p-8 max-w-sm w-full shadow-[0_32px_80px_rgba(0,0,0,0.7)]">
+            <div className="flex flex-col items-center gap-4 mb-6">
+              <div className="w-11 h-11 bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-full flex items-center justify-center">
+                <i className="fa-solid fa-envelope-circle-check text-[#3b82f6] text-sm"></i>
+              </div>
+              <div className="text-center">
+                <h3 className="font-orbitron font-black text-white text-base uppercase tracking-tight">Confirme seu e-mail</h3>
+                <p className="text-gray-500 text-[11px] mt-1 leading-relaxed">
+                  Enviamos um link de confirmação para <span className="text-white font-bold break-all">{pendingEmail}</span>. Confirme o e-mail para concluir o cadastro.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => { setPendingEmail(null); setIsSignUp(false); }}
+                className="w-full py-3.5 bg-[#3b82f6] text-white font-black text-xs uppercase tracking-widest rounded-xl hover:brightness-110 active:scale-[0.98] transition-all"
+              >
+                Voltar para login
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingEmail(null)}
+                className="w-full py-3 bg-white/5 border border-white/8 text-gray-500 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-white/8 transition-all"
+              >
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isForgotPasswordOpen && (
         <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300 px-5">

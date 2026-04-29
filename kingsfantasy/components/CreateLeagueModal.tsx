@@ -11,7 +11,8 @@ interface CreateLeagueModalProps {
 const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ onClose, onSuccess, userId }) => {
   const [newLeagueName, setNewLeagueName] = useState('');
   const [newLeagueFormat, setNewLeagueFormat] = useState<'continuo' | 'limitado'>('continuo');
-  const [leagueImage, setLeagueImage] = useState<string | null>(null);
+  const [leagueImageFile, setLeagueImageFile] = useState<File | null>(null);
+  const [leagueImagePreview, setLeagueImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -26,8 +27,9 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ onClose, onSucces
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setLeagueImageFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => setLeagueImage(reader.result as string);
+      reader.onloadend = () => setLeagueImagePreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
@@ -37,17 +39,18 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ onClose, onSucces
     setIsSubmitting(true);
     setSubmitStatus('loading');
     setErrorMessage('');
-    
+
     try {
       // Determina o ícone padrão baseado no nome
-      const icon = leagueImage ? 'fa-shield' : 'fa-trophy';
-      
+      const icon = leagueImageFile ? 'fa-shield' : 'fa-trophy';
+
       // Cria a liga no banco de dados
       const result = await DataService.createLeague({
         name: newLeagueName,
         icon: icon,
         isPublic: false, // Por padrão, ligas são privadas
-        createdBy: userId
+        createdBy: userId,
+        logoFile: leagueImageFile || undefined
       });
 
       if (result.ok && result.code) {
@@ -106,14 +109,14 @@ const CreateLeagueModal: React.FC<CreateLeagueModalProps> = ({ onClose, onSucces
 
             <div className="space-y-3">
               <label className="text-[9px] font-black text-gray-500 uppercase tracking-[0.3em] px-1 block">IDENTIDADE (BRASÃO)</label>
-              <div 
+              <div
                 onClick={() => !isSubmitting && fileInputRef.current?.click()}
-                className={`w-full bg-white/5 border-2 border-dashed p-6 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all group ${leagueImage ? 'border-[#3b82f6]/50' : 'border-white/5 hover:border-[#3b82f6]/40'}`}
+                className={`w-full bg-white/5 border-2 border-dashed p-6 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all group ${leagueImagePreview ? 'border-[#3b82f6]/50' : 'border-white/5 hover:border-[#3b82f6]/40'}`}
               >
                 <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
-                {leagueImage ? (
+                {leagueImagePreview ? (
                   <div className="w-20 h-20 overflow-hidden border-2 border-black bg-black shadow-lg">
-                    <img src={leagueImage} className="w-full h-full object-cover" alt="Preview" />
+                    <img src={leagueImagePreview} className="w-full h-full object-cover" alt="Preview" />
                   </div>
                 ) : (
                   <div className="text-center space-y-3">

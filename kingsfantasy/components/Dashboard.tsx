@@ -53,18 +53,35 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, players, onNavigate }) 
           DataService.getUserLeagues(userTeam.userId),
           DataService.getTeams(),
         ]);
-        const favoriteTeam = userTeam.favoriteTeam;
+
+        const creatorIds = Array.from(new Set(
+          leagues.map(l => l.createdBy).filter((id): id is string => !!id)
+        ));
+        const creatorFavorites = await DataService.getFavoriteTeamsForUsers(creatorIds);
+
+        const findTeamLogo = (q: string | undefined): string | undefined => {
+          if (!q) return undefined;
+          const team = allTeams.find(t =>
+            t.name.toLowerCase() === q.toLowerCase() ||
+            t.name.toLowerCase().includes(q.toLowerCase()) ||
+            q.toLowerCase().includes(t.name.toLowerCase())
+          );
+          return team?.logo;
+        };
+
+        const myFavoriteTeam = userTeam.favoriteTeam;
         const resolved = leagues.map(league => {
           let resolvedLogo: string | undefined;
-          if (league.code === 'KINGSLENDAS' || league.name.toUpperCase().includes('KINGS')) {
+          if (league.logoUrl) {
+            resolvedLogo = league.logoUrl;
+          } else if (league.code === 'KINGSLENDAS' || league.name.toUpperCase().includes('KINGS')) {
             resolvedLogo = kingsLogo;
-          } else if (favoriteTeam) {
-            const team = allTeams.find(t =>
-              t.name.toLowerCase() === favoriteTeam.toLowerCase() ||
-              t.name.toLowerCase().includes(favoriteTeam.toLowerCase()) ||
-              favoriteTeam.toLowerCase().includes(t.name.toLowerCase())
-            );
-            if (team) resolvedLogo = team.logo;
+          } else {
+            const creatorFav = league.createdBy ? creatorFavorites[league.createdBy] : undefined;
+            resolvedLogo =
+              findTeamLogo(creatorFav) ||
+              findTeamLogo(myFavoriteTeam) ||
+              findTeamLogo(league.name);
           }
           return { ...league, resolvedLogo };
         });

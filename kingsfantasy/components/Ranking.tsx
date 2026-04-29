@@ -183,26 +183,40 @@ const Ranking: React.FC<RankingProps> = ({ onOpenCreateLeague, userId, userName,
     try {
       const leagues = await DataService.getUserLeagues(userId);
 
-      const userTeam = await DataService.getUserTeam(userId);
-      const favoriteTeam = userTeam?.favoriteTeam;
+      const [userTeam, allTeams] = await Promise.all([
+        DataService.getUserTeam(userId),
+        DataService.getTeams()
+      ]);
+      const myFavoriteTeam = userTeam?.favoriteTeam;
 
-      const allTeams = await DataService.getTeams();
+      const creatorIds = Array.from(new Set(
+        leagues.map(l => l.createdBy).filter((id): id is string => !!id)
+      ));
+      const creatorFavorites = await DataService.getFavoriteTeamsForUsers(creatorIds);
+
+      const findTeamLogo = (favoriteTeam: string | undefined): string | undefined => {
+        if (!favoriteTeam) return undefined;
+        const team = allTeams.find(t =>
+          t.name.toLowerCase() === favoriteTeam.toLowerCase() ||
+          t.name.toLowerCase().includes(favoriteTeam.toLowerCase()) ||
+          favoriteTeam.toLowerCase().includes(t.name.toLowerCase())
+        );
+        return team?.logo;
+      };
 
       const mappedLeagues: League[] = await Promise.all(leagues.map(async league => {
         let logoUrl: string | undefined;
 
-        if (league.code === 'KINGSLENDAS' || league.name.toUpperCase().includes('KINGS')) {
+        if (league.logoUrl) {
+          logoUrl = league.logoUrl;
+        } else if (league.code === 'KINGSLENDAS' || league.name.toUpperCase().includes('KINGS')) {
           logoUrl = kingsLogo;
-        } else if (favoriteTeam) {
-          const team = allTeams.find(t =>
-            t.name.toLowerCase() === favoriteTeam.toLowerCase() ||
-            t.name.toLowerCase().includes(favoriteTeam.toLowerCase()) ||
-            favoriteTeam.toLowerCase().includes(t.name.toLowerCase())
-          );
-
-          if (team) {
-            logoUrl = team.logo;
-          }
+        } else {
+          const creatorFav = league.createdBy ? creatorFavorites[league.createdBy] : undefined;
+          logoUrl =
+            findTeamLogo(creatorFav) ||
+            findTeamLogo(myFavoriteTeam) ||
+            findTeamLogo(league.name);
         }
 
         const memberCount = await DataService.getLeagueMemberCount(league.id);

@@ -389,19 +389,22 @@ const Market: React.FC<MarketProps> = ({
                         <h3 className="text-sm sm:text-xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-[#3b82f6] transition-colors truncate">
                           {player.name}
                         </h3>
-                        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                          {matchupList.length > 0 ? (
-                            matchupList.map((matchup, index) => (
-                              <div key={`${player.id}-matchup-${matchup.opponentName}-${index}`} className="w-6 h-6 sm:w-7 sm:h-7 shrink-0" title={`Contra: ${matchup.opponentName}`}>
-                                {matchup.opponentLogoUrl
-                                  ? <img src={matchup.opponentLogoUrl} alt={matchup.opponentName} className="w-full h-full object-contain" />
-                                  : <div className="w-full h-full flex items-center justify-center text-[9px] font-black text-gray-500 uppercase">{matchup.opponentName.slice(0, 2)}</div>
-                                }
-                              </div>
-                            ))
-                          ) : (
-                            <span className="text-[9px] text-gray-700 uppercase tracking-wider font-black">A definir</span>
-                          )}
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[7px] sm:text-[8px] font-black text-gray-600 uppercase tracking-widest">PRÓXIMOS CONFRONTOS</span>
+                          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                            {matchupList.length > 0 ? (
+                              matchupList.map((matchup, index) => (
+                                <div key={`${player.id}-matchup-${matchup.opponentName}-${index}`} className="w-6 h-6 sm:w-7 sm:h-7 shrink-0" title={`Contra: ${matchup.opponentName}`}>
+                                  {matchup.opponentLogoUrl
+                                    ? <img src={matchup.opponentLogoUrl} alt={matchup.opponentName} className="w-full h-full object-contain" />
+                                    : <div className="w-full h-full flex items-center justify-center text-[9px] font-black text-gray-500 uppercase">{matchup.opponentName.slice(0, 2)}</div>
+                                  }
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-[9px] text-gray-700 uppercase tracking-wider font-black">A definir</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       {/* Preço — canto superior direito */}

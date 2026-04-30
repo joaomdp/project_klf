@@ -21,7 +21,6 @@ const ShortcutsGuide: React.FC<ShortcutsGuideProps> = ({ isOpen, onClose }) => {
     
     // Ações
     { key: 'R', ctrl: true, shift: true, action: () => {}, description: 'Atualizar jogadores', category: 'actions' },
-    { key: 'N', ctrl: true, action: () => {}, description: 'Criar nova liga (no Ranking)', category: 'actions' },
     { key: '/', action: () => {}, description: 'Buscar jogadores (no Mercado)', category: 'actions' },
     
     // Geral

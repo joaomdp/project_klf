@@ -91,15 +91,6 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
     },
     // Ações
     {
-      id: 'action-create-league',
-      label: 'Criar Liga',
-      description: 'Inicie uma nova competição',
-      icon: 'fa-plus-circle',
-      action: () => { onOpenCreateLeague(); onClose(); },
-      category: 'actions',
-      keywords: ['new', 'nova', 'league']
-    },
-    {
       id: 'action-refresh',
       label: 'Atualizar Jogadores',
       description: 'Recarregar dados do mercado',

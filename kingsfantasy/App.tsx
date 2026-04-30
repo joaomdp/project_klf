@@ -705,17 +705,6 @@ const AppContent: React.FC = () => {
       description: 'Atualizar jogadores',
       category: 'actions'
     },
-    {
-      key: 'n',
-      ctrl: true,
-      action: () => {
-        if (isAuthenticated && !needsOnboarding && currentPage === 'ranking') {
-          setIsCreateLeagueOpen(true);
-        }
-      },
-      description: 'Criar nova liga',
-      category: 'actions'
-    }
   ]);
 
   const teamMatchups = useMemo(() => {

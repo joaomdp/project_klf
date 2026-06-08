@@ -9,10 +9,36 @@ interface AICoachProps {
   availablePlayers?: Player[];
 }
 
+// Página AI-SOLUT desativada por tempo indeterminado.
+// O componente e a rota permanecem no sistema; apenas exibimos um aviso.
+const AI_COACH_ENABLED = false;
+
 const AICoach: React.FC<AICoachProps> = ({ userTeam, availablePlayers = [] }) => {
   const [query, setQuery] = useState('');
   const [response, setResponse] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  if (!AI_COACH_ENABLED) {
+    return (
+      <div className="max-w-2xl mx-auto flex flex-col items-center justify-center text-center px-4" style={{ minHeight: 'calc(100dvh - 180px)' }}>
+        <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center mb-6 opacity-60 grayscale">
+          <img src={aisolutIcon} alt="AI-SOLUT" className="w-full h-full object-contain" />
+        </div>
+        <div className="glass-card p-6 sm:p-8 rounded-2xl border-l-[3px] border-[#3b82f6] max-w-md">
+          <span className="inline-block text-[10px] sm:text-xs uppercase tracking-widest font-black text-[#3b82f6] mb-3">
+            AI-SOLUT
+          </span>
+          <h2 className="font-orbitron font-black text-lg sm:text-xl text-white uppercase tracking-tight mb-3">
+            Recurso desativado
+          </h2>
+          <p className="text-gray-400 text-xs sm:text-sm leading-relaxed">
+            O assistente AI-SOLUT está <strong className="text-white">desativado por tempo indeterminado</strong>.
+            Esta página continua disponível no sistema, mas o coach não está aceitando perguntas no momento.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const askCoach = async () => {
     if (!query.trim()) return;

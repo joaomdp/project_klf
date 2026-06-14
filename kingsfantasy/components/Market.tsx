@@ -125,22 +125,6 @@ const Market: React.FC<MarketProps> = ({
       .reduce((sum, p) => sum + p.price, 0);
   }, [userTeam.players]);
 
-  const testMatchups = useMemo(() => {
-    if (Object.keys(teamMatchups).length > 0) return {} as typeof teamMatchups;
-    const teams: Record<string, { name: string; logo: string }> = {};
-    players.forEach(p => {
-      if (p.teamId && !teams[p.teamId]) teams[p.teamId] = { name: p.team, logo: p.teamLogo };
-    });
-    const ids = Object.keys(teams);
-    const result: typeof teamMatchups = {};
-    ids.forEach((id, i) => {
-      const opp = teams[ids[(i + 1) % ids.length]];
-      result[id] = [{ opponentName: opp.name, opponentLogoUrl: opp.logo }];
-    });
-    return result;
-  }, [players, teamMatchups]);
-
-
   const handleConfirm = async () => {
     setShowConfirmCheck(true);
     try {
@@ -347,7 +331,7 @@ const Market: React.FC<MarketProps> = ({
             const isHired = hiredPlayer?.id === player.id;
             const canAfford = isHired || (userTeam.budget + (hiredPlayer?.price || 0) >= player.price);
             const hiredChamp = isHired ? (hiredPlayer?.selectedChampion || hiredPlayer?.lastChampion) : null;
-            const matchupList = player.teamId ? (teamMatchups[player.teamId] || testMatchups[player.teamId] || []) : [];
+            const matchupList = player.teamId ? (teamMatchups[player.teamId] || []) : [];
 
             return (
               <div key={player.id} onClick={() => setHistoryPlayer(player)} className={`relative group bg-black/40 border transition-all duration-500 overflow-hidden cursor-pointer rounded-xl h-[170px] sm:h-[210px] ${isHired ? 'border-[#3b82f6]/50 shadow-[0_0_20px_rgba(59,130,246,0.08)]' : 'border-white/5 hover:border-white/15'}`}>

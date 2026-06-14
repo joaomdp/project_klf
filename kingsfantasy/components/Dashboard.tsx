@@ -18,8 +18,8 @@ interface DashboardProps {
  * CONFIGURAÇÃO DO MEDIA HUB
  */
 const MEDIA_HUB_CONFIG = {
-  videoId: "dcVDc8uUzK4",
-  videoTitle: "DRAFT DOS CAPITÃES da COPA KINGS LENDAS 2026",
+  videoId: "lnsxjNdQxhQ",
+  videoTitle: "NOVOS PRESIDENTES da KINGS LENDAS FAZEM O DRAFT DOS TIMES",
   customThumbnail: "",
   channelName: "Cortes da Ilha",
   channelIcon: "https://i.imgur.com/4ilaY1c.png"

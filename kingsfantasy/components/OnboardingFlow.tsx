@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { CHAMPIONS_LIST, OFFICIAL_TEAMS_AVAILABLE } from '../constants';
+import { CHAMPIONS_LIST, OFFICIAL_TEAMS_AVAILABLE, DDRAGON_VERSION } from '../constants';
 import { DataService } from '../services/api';
 import { AuthService } from '../services/auth';
 import { useToast } from './Toast';
@@ -309,7 +309,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ mode = 'full', onComple
       .filter(id => id.toLowerCase().includes(champSearch.toLowerCase()))
       .map(id => ({
         id,
-        url: `https://ddragon.leagueoflegends.com/cdn/15.1.1/img/champion/${id}.png`
+        url: `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/champion/${id}.png`
       }));
   }, [champSearch]);
 

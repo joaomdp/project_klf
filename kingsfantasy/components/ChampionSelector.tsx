@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Champion, Role } from '../types';
-import { CHAMPIONS_LIST, CHAMPION_ROLES_MAP } from '../constants';
+import { CHAMPIONS_LIST, CHAMPION_ROLES_MAP, DDRAGON_VERSION } from '../constants';
 
 interface ChampionSelectorProps {
   playerName: string;
@@ -25,12 +25,8 @@ const ChampionSelector: React.FC<ChampionSelectorProps> = ({ playerName, playerI
     { id: Role.SUP, label: 'SUPORTE', icon: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-utility.png' },
   ];
 
-  const CUSTOM_CHAMPION_IMAGES: Record<string, string> = {
-    Zaahen: 'https://ddragon.leagueoflegends.com/cdn/15.1.1/img/champion/Zaahen.png'
-  };
-
   const getChampionImage = (id: string) => {
-    return CUSTOM_CHAMPION_IMAGES[id] || `https://ddragon.leagueoflegends.com/cdn/15.1.1/img/champion/${id}.png`;
+    return `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/champion/${id}.png`;
   };
 
   const filteredChampions = useMemo(() => {

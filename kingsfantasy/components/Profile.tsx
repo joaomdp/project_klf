@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { UserTeam } from '../types';
-import { CHAMPIONS_LIST } from '../constants';
+import { CHAMPIONS_LIST, DDRAGON_VERSION } from '../constants';
 import { DataService } from '../services/api';
 
 interface ProfileProps {
@@ -85,7 +85,7 @@ const Profile: React.FC<ProfileProps> = ({ userTeam, onUpdate, onLogout }) => {
       .map(id => ({
         id,
         name: id === 'MonkeyKing' ? 'Wukong' : id,
-        url: `https://ddragon.leagueoflegends.com/cdn/15.1.1/img/champion/${id}.png`
+        url: `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/champion/${id}.png`
       }));
   }, [champSearch]);
 

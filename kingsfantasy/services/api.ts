@@ -129,36 +129,23 @@ const mapTeamToRankingEntry = (team: any, index: number): RankingEntry => ({
   avatar: team.avatar
 });
 
+// Mapeia o nome do time (como vem do banco, tabela `teams`) para o código da
+// liga oficial de torcida (tabela `leagues`). As chaves são normalizadas em
+// MAIÚSCULAS/sem espaços nas bordas — use `resolveTeamLeagueCode` para consultar,
+// assim diferenças de capitalização no nome do time não quebram o join.
 const TEAM_CODE_MAP: {[key: string]: string} = {
-  'Gen GG': 'GENGG',
-  'GenGG': 'GENGG',
-  'GEN.G': 'GENGG',
-  'Karmine Cospe': 'KARMINE',
-  'Karmine': 'KARMINE',
-  'FONatic': 'FONATIC',
-  'Fonatic': 'FONATIC',
-  'FNC': 'FONATIC',
-  'ÉanDG': 'EANDG',
-  'EanDG': 'EANDG',
-  'EDG': 'EANDG',
-  'paiNtriotas': 'PAINTRIOTAS',
-  'Paintriotas': 'PAINTRIOTAS',
-  'paiN': 'PAINTRIOTAS',
-  'G12 Esports': 'G12',
+  'GEN GG': 'GENGG',
+  'VOS GRANDES': 'VOSGRANDES',
+  'MADMYLONS': 'MADMYLONS',
   'G12': 'G12',
-  'G2 Esports': 'G12',
-  'Vôs Grandes': 'VOSGRANDES',
-  'Vos Grandes': 'VOSGRANDES',
-  'Los Grandes': 'VOSGRANDES',
-  'Oreiudos Esports': 'OREIUDOS',
-  'Oreiudos': 'OREIUDOS',
-  'Orioles': 'OREIUDOS',
-  'Tepei Assassins': 'TEPEI',
-  'Tepei': 'TEPEI',
-  'T1': 'TEPEI',
-  '100Vices': 'VICES100',
-  '100 Vices': 'VICES100',
-  '100 Thieves': 'VICES100'
+  'OREIUDOS ESPORTS': 'OREIUDOS',
+  'MEC9': 'MEC9'
+};
+
+// Consulta tolerante a capitalização/espaços no nome do time.
+const resolveTeamLeagueCode = (teamName?: string): string | undefined => {
+  if (!teamName) return undefined;
+  return TEAM_CODE_MAP[teamName.trim().toUpperCase()];
 };
 
 export const DataService = {
@@ -1168,7 +1155,7 @@ export const DataService = {
 
       // Se tiver time favorito, adiciona na liga do time
       if (favoriteTeam) {
-        const teamCode = TEAM_CODE_MAP[favoriteTeam];
+        const teamCode = resolveTeamLeagueCode(favoriteTeam);
 
         if (teamCode) {
           const teamResult = await this.joinLeague(teamCode, userId);

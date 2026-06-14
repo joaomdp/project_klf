@@ -3,10 +3,15 @@ import { Role } from './types';
 
 export const INITIAL_BUDGET = 100.0;
 
+// Versão do Data Dragon (Riot) usada para montar as URLs das imagens de campeões.
+// Mantenha atualizada: campeões novos (ex.: Mel, Yunara, Zaahen) só existem a
+// partir de versões recentes — versões antigas retornam 403 nas imagens deles.
+export const DDRAGON_VERSION = '16.12.1';
+
 // Flag temporária: enquanto a lista oficial dos times do Kings Lendas não for divulgada,
 // a tela "Time do Coração" exibe apenas o aviso "Times em breve" e o app não força
 // usuários existentes a selecionarem time. Mude para `true` para liberar a seleção.
-export const OFFICIAL_TEAMS_AVAILABLE = false;
+export const OFFICIAL_TEAMS_AVAILABLE = true;
 
 export const CHAMPION_ROLES_MAP: Record<string, Role[]> = {
   "Aatrox": [Role.TOP],
@@ -90,6 +95,7 @@ export const CHAMPION_ROLES_MAP: Record<string, Role[]> = {
   "Malzahar": [Role.MID],
   "Maokai": [Role.SUP, Role.JNG, Role.TOP],
   "MasterYi": [Role.JNG],
+  "Mel": [Role.MID, Role.SUP],
   "Milio": [Role.SUP],
   "MissFortune": [Role.ADC],
   "MonkeyKing": [Role.JNG, Role.TOP],
@@ -171,6 +177,7 @@ export const CHAMPION_ROLES_MAP: Record<string, Role[]> = {
   "Yone": [Role.MID, Role.TOP],
   "Yorick": [Role.TOP],
   "Yuumi": [Role.SUP],
+  "Yunara": [Role.ADC],
   "Zac": [Role.JNG],
   "Zed": [Role.MID],
   "Zeri": [Role.ADC],

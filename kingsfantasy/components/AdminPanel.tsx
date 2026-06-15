@@ -2782,7 +2782,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
     const handleFinalizeTabRound = async () => {
       if (!finalizeTabRoundId) return;
-      if (!window.confirm('Finalizar rodada? Isso vai calcular pontos, atualizar precos e patrimonio dos usuarios.')) {
+      if (!window.confirm('Finalizar rodada? Isso vai calcular pontos, atualizar precos e PAItrimonio dos usuarios.')) {
         return;
       }
 
@@ -2817,7 +2817,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
 
     const handleResetRoundCalculations = async () => {
       if (!finalizeTabRoundId) return;
-      if (!window.confirm('ATENÇÃO: Isso vai reverter TODOS os cálculos desta rodada (preços, patrimônios, pontuações). Deseja continuar?')) {
+      if (!window.confirm('ATENÇÃO: Isso vai reverter TODOS os cálculos desta rodada (preços, PAItrimonios, pontuações). Deseja continuar?')) {
         return;
       }
       if (!window.confirm('Tem certeza? Esta ação não pode ser desfeita. O sistema voltará ao estado pré-finalização.')) {
@@ -2963,7 +2963,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                   </div>
                   <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
                     <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">4</span>
-                    Recalcular patrimonio dos usuarios
+                    Recalcular PAItrimonio dos usuarios
                   </div>
                   <div className="flex items-center gap-2 text-gray-400 p-2 border border-white/5">
                     <span className="w-4 h-4 rounded-full border border-gray-600 flex items-center justify-center text-[8px]">5</span>
@@ -2976,7 +2976,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin, onAdminCheck }) => {
                 <div className="p-3 border border-blue-500/20 bg-blue-500/5 rounded-lg">
                   <p className="text-xs text-blue-200 font-bold uppercase tracking-wider">Modo recalculo</p>
                   <p className="text-[10px] text-gray-400 mt-1">
-                    Esta rodada ja foi finalizada. Ao clicar, apenas as pontuacoes serao recalculadas. Precos e patrimonios NAO serao alterados.
+                    Esta rodada ja foi finalizada. Ao clicar, apenas as pontuacoes serao recalculadas. Precos e PAItrimonios NAO serao alterados.
                   </p>
                 </div>
               )}

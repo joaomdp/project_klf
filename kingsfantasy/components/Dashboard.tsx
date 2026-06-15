@@ -182,7 +182,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userTeam, players, onNavigate }) 
             {/* Stats */}
             <div className="grid grid-cols-2 divide-x divide-white/5 border-b border-white/5">
               <div className="px-4 py-3">
-                <p className="text-[9px] font-black text-gray-600 uppercase tracking-widest mb-1">PATRIMÔNIO</p>
+                <p className="text-[9px] font-black text-gray-600 uppercase tracking-widest mb-1">PAITRIMÔNIO</p>
                 <div className="flex items-center gap-1.5">
                   <PaiCoin size="sm" />
                   <span className="text-lg font-orbitron font-black text-white">{formatValue(userTeam.budget)}</span>

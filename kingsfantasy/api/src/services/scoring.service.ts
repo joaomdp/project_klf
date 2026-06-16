@@ -1,5 +1,76 @@
 import { adminSupabase, supabase } from '../config/supabase';
 
+// Percentual creditado ao slot quando o jogador escalado não jogou, mas um
+// companheiro de time dele jogou (fallback de reserva). Fixo em 10%.
+const RESERVE_FALLBACK_PERCENT = 0.10;
+
+const ROLE_ALIASES: Record<string, string> = {
+  top: 'TOP',
+  jungle: 'JUNGLE', jungler: 'JUNGLE', jng: 'JUNGLE',
+  mid: 'MID', middle: 'MID',
+  adc: 'ADC', bot: 'ADC', bottom: 'ADC',
+  support: 'SUPPORT', sup: 'SUPPORT',
+};
+
+export function normalizeRole(role: string | null | undefined): string | null {
+  if (!role) return null;
+  const key = String(role).trim().toLowerCase();
+  return ROLE_ALIASES[key] ?? String(role).trim().toUpperCase();
+}
+
+/**
+ * Resolve a pontuação de um slot escalado.
+ * - Se o jogador escalado jogou: 100% dos seus pontos.
+ * - Se não jogou: 10% dos pontos do melhor companheiro de time elegível
+ *   (mesma role preferencialmente; senão maior pontuador do time), excluindo
+ *   jogadores que já estão no lineup do usuário (evita dupla contagem).
+ * - Se o time inteiro não jogou: 0.
+ *
+ * Função pura (sem I/O) para ser testável isoladamente.
+ */
+export function resolveSlotScore(params: {
+  playerId: string;
+  role: string | null;
+  teamId: string | null;
+  pointsByPlayer: Map<string, number>;
+  infoByPlayer: Map<string, { teamId: string | null; role: string | null }>;
+  lineupPlayerIds: Set<string>;
+  fallbackPercent: number;
+}): { points: number; teamCounted: string | null; viaReserve: boolean } {
+  const { playerId, role, teamId, pointsByPlayer, infoByPlayer, lineupPlayerIds, fallbackPercent } = params;
+
+  // Jogador escalado jogou → 100%
+  if (pointsByPlayer.has(playerId)) {
+    return { points: pointsByPlayer.get(playerId) || 0, teamCounted: teamId, viaReserve: false };
+  }
+
+  // Não jogou → procurar companheiro de time que jogou
+  if (!teamId) {
+    return { points: 0, teamCounted: null, viaReserve: false };
+  }
+
+  const targetRole = normalizeRole(role);
+  const candidates: Array<{ id: string; role: string | null; pts: number }> = [];
+  for (const [pid, info] of infoByPlayer) {
+    if (pid === playerId) continue;
+    if (lineupPlayerIds.has(pid)) continue; // evita dupla contagem
+    if (info.teamId == null || info.teamId !== teamId) continue;
+    candidates.push({ id: pid, role: info.role, pts: pointsByPlayer.get(pid) || 0 });
+  }
+
+  if (candidates.length === 0) {
+    return { points: 0, teamCounted: null, viaReserve: false };
+  }
+
+  const sameRole = targetRole
+    ? candidates.filter((c) => normalizeRole(c.role) === targetRole)
+    : [];
+  const pool = sameRole.length > 0 ? sameRole : candidates;
+  const best = pool.reduce((a, b) => (b.pts > a.pts ? b : a));
+
+  return { points: best.pts * fallbackPercent, teamCounted: teamId, viaReserve: true };
+}
+
   /**
    * SCORING SERVICE
    * 
@@ -703,11 +774,12 @@ class ScoringService {
         ])
       );
 
+      // Buscar performances da RODADA INTEIRA (não só dos escalados) para
+      // permitir o fallback de reserva: localizar companheiros que jogaram.
       const { data: performances, error: perfError } = await adminSupabase
         .from('player_performances')
-        .select('*, players!inner(id, team_id)')
-        .in('match_id', matchIds)
-        .in('player_id', playerIds);
+        .select('*, players!inner(id, team_id, role)')
+        .in('match_id', matchIds);
 
       if (perfError) throw perfError;
 
@@ -739,9 +811,9 @@ class ScoringService {
 
       const uniquePerformances = Array.from(uniquePerformanceMap.values());
 
+      // Séries por jogador (de TODA a rodada) + info de time/role de quem jogou
       const playerSeriesMap = new Map<string, Map<number, { total: number; games: number }>>();
-      const playersData: Array<{ team_id: string }> = [];
-      const seenPlayers = new Set<string>();
+      const infoByPlayer = new Map<string, { teamId: string | null; role: string | null }>();
 
       for (const perf of uniquePerformances) {
         const playerId = String(perf.player_id);
@@ -759,18 +831,19 @@ class ScoringService {
         byMatch.set(matchId, current);
         playerSeriesMap.set(playerId, byMatch);
 
-        if (!seenPlayers.has(playerId)) {
-          playersData.push({ team_id: (perf.players as any).team_id });
-          seenPlayers.add(playerId);
+        if (!infoByPlayer.has(playerId)) {
+          const playerJoin = (perf.players as any) || {};
+          infoByPlayer.set(playerId, {
+            teamId: playerJoin.team_id != null ? String(playerJoin.team_id) : null,
+            role: playerJoin.role != null ? String(playerJoin.role) : null
+          });
         }
       }
 
-      let basePoints = 0;
-
-      for (const playerId of playerIds) {
-        const playerMatches = playerSeriesMap.get(String(playerId));
-        if (!playerMatches || playerMatches.size === 0) continue;
-
+      // Pontos normalizados da rodada para CADA jogador que jogou
+      // (mesma normalização: soma por match ÷ games_count, média entre matches)
+      const pointsByPlayer = new Map<string, number>();
+      for (const [playerId, playerMatches] of playerSeriesMap.entries()) {
         let playerRoundTotal = 0;
         let seriesCount = 0;
 
@@ -784,12 +857,56 @@ class ScoringService {
           seriesCount += 1;
         }
 
-        const playerAverageForRound = playerRoundTotal / Math.max(seriesCount, 1);
-        basePoints += playerAverageForRound;
+        pointsByPlayer.set(playerId, playerRoundTotal / Math.max(seriesCount, 1));
+      }
+
+      // team_id/role dos escalados que NÃO jogaram (não aparecem em infoByPlayer)
+      const lineupPlayerIds = new Set<string>(playerIds.map((id: any) => String(id)));
+      const missingInfoIds = Array.from(lineupPlayerIds).filter((id) => !infoByPlayer.has(id));
+      const missingInfo = new Map<string, { teamId: string | null; role: string | null }>();
+      if (missingInfoIds.length > 0) {
+        const { data: missingPlayers } = await adminSupabase
+          .from('players')
+          .select('id, team_id, role')
+          .in('id', missingInfoIds);
+
+        for (const p of missingPlayers || []) {
+          missingInfo.set(String(p.id), {
+            teamId: (p as any).team_id != null ? String((p as any).team_id) : null,
+            role: (p as any).role != null ? String((p as any).role) : null
+          });
+        }
+      }
+
+      // Resolver cada slot escalado: 100% se jogou; senão fallback de reserva (10%)
+      let basePoints = 0;
+      const diversityTeams: Array<{ team_id: string }> = [];
+
+      for (const [slotRole, slotPlayer] of Object.entries(lineup)) {
+        if (!slotPlayer || !(slotPlayer as any).id) continue;
+        const playerId = String((slotPlayer as any).id);
+
+        const info = infoByPlayer.get(playerId) || missingInfo.get(playerId) || { teamId: null, role: null };
+        const role = info.role ?? (slotPlayer as any).role ?? slotRole;
+
+        const resolved = resolveSlotScore({
+          playerId,
+          role,
+          teamId: info.teamId,
+          pointsByPlayer,
+          infoByPlayer,
+          lineupPlayerIds,
+          fallbackPercent: RESERVE_FALLBACK_PERCENT
+        });
+
+        basePoints += resolved.points;
+        if (resolved.teamCounted) {
+          diversityTeams.push({ team_id: resolved.teamCounted });
+        }
       }
 
       // 4. Calcular buff de diversidade
-      const diversity = await this.calculateDiversityBonus(playersData);
+      const diversity = await this.calculateDiversityBonus(diversityTeams);
       const teamDiversityBonus = basePoints * (Number(diversity.bonusPercent || 0) / 100);
       const championMultiplierBonus = 0;
 

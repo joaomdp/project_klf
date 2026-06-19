@@ -12,7 +12,6 @@ interface HeaderProps {
   dbConnected?: boolean;
   marketIsOpen?: boolean | null;
   isAdmin?: boolean;
-  showMarketTimer?: boolean;
   isGuest?: boolean;
   onLogin?: () => void;
 }
@@ -63,7 +62,6 @@ const formatTimeLeft = (ms: number): string => {
 const Header: React.FC<HeaderProps> = ({
   activePage, onNavigate, userName, avatar,
   marketIsOpen = null, isAdmin = false,
-  showMarketTimer = false,
   isGuest = false, onLogin,
 }) => {
   const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean; nextCloseTime?: string } | null>(null);
@@ -147,7 +145,7 @@ const Header: React.FC<HeaderProps> = ({
                   {isMarketOpen ? 'MERCADO ABERTO' : 'MERCADO FECHADO'}
                 </span>
               </div>
-              {showMarketTimer && timeLeft && (
+              {timeLeft && (
                 <div className="flex items-center gap-1.5 text-[10px] font-medium text-[#8b949e] whitespace-nowrap">
                   <i className="fa-regular fa-clock text-[9px] text-emerald-400/70" />
                   <span>Fecha em <span className="font-semibold text-white tabular-nums">{timeLeft}</span></span>
@@ -177,6 +175,19 @@ const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       </header>
+
+      {/* ── FAIXA DE STATUS + TIMER — mobile only (no desktop fica no header à direita) ── */}
+      <div className="md:hidden sticky top-20 sm:top-24 z-40 bg-[#0d1117] border-b border-[#1e2530] px-6 py-1.5 flex items-center justify-center gap-2">
+        <span className={`w-1.5 h-1.5 rounded-full ${isMarketOpen ? 'bg-emerald-400' : 'bg-red-400'}`} />
+        <span className={`text-[10px] font-semibold uppercase tracking-wider ${isMarketOpen ? 'text-emerald-400' : 'text-red-400'}`}>
+          {isMarketOpen ? 'MERCADO ABERTO' : 'MERCADO FECHADO'}
+        </span>
+        {timeLeft && (
+          <span className="text-[10px] font-medium text-[#8b949e] whitespace-nowrap">
+            <span className="text-[#3a4252]">·</span> Fecha em <span className="font-semibold text-white tabular-nums">{timeLeft}</span>
+          </span>
+        )}
+      </div>
 
       {/* ── BOTTOM NAV — mobile only ── */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-[#0d1117]/95 backdrop-blur-md border-t border-white/[0.06]"

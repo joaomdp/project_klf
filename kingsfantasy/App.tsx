@@ -1097,7 +1097,6 @@ const AppContent: React.FC = () => {
               dbConnected={dbConnected}
               marketIsOpen={marketIsOpen}
               isAdmin={isAdmin}
-              showMarketTimer={currentPage === 'market'}
               isGuest={isGuest}
               onLogin={requireAuth}
             />

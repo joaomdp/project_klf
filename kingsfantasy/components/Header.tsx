@@ -47,12 +47,27 @@ const PAGE_ICONS: Record<string, string> = {
   admin:     'fa-shield-halved',
 };
 
+// Formata o tempo restante (ms) num contador regressivo legível
+const formatTimeLeft = (ms: number): string => {
+  const totalSeconds = Math.floor(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  if (days > 0) return `${days}d ${pad(hours)}h ${pad(minutes)}m`;
+  if (hours > 0) return `${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+  return `${pad(minutes)}m ${pad(seconds)}s`;
+};
+
 const Header: React.FC<HeaderProps> = ({
   activePage, onNavigate, userName, avatar,
   marketIsOpen = null, isAdmin = false,
+  showMarketTimer = false,
   isGuest = false, onLogin,
 }) => {
-  const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean } | null>(null);
+  const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean; nextCloseTime?: string } | null>(null);
+  const [now, setNow] = useState<number>(() => Date.now());
 
   useEffect(() => {
     const fetchMarketStatus = async () => {
@@ -62,6 +77,12 @@ const Header: React.FC<HeaderProps> = ({
     fetchMarketStatus();
     const interval = setInterval(fetchMarketStatus, 60000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Tick de 1s para o contador regressivo do prazo de escalação
+  useEffect(() => {
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(tick);
   }, []);
 
   const navItems: { id: Page; label: string }[] = [
@@ -75,6 +96,11 @@ const Header: React.FC<HeaderProps> = ({
   if (isAdmin) navItems.push({ id: 'admin', label: 'ADMIN' });
 
   const isMarketOpen = marketStatus?.isOpen ?? marketIsOpen ?? false;
+
+  // Prazo para escalar = horário de fechamento do mercado
+  const closeTimeMs = marketStatus?.nextCloseTime ? new Date(marketStatus.nextCloseTime).getTime() : NaN;
+  const remainingMs = Number.isNaN(closeTimeMs) ? 0 : closeTimeMs - now;
+  const timeLeft = isMarketOpen && remainingMs > 0 ? formatTimeLeft(remainingMs) : null;
 
   return (
     <>
@@ -114,11 +140,19 @@ const Header: React.FC<HeaderProps> = ({
           {/* Right side */}
           <div className="flex items-center gap-5 shrink-0">
             {/* Market status */}
-            <div className="hidden md:flex items-center gap-2">
-              <span className={`w-1.5 h-1.5 rounded-full ${isMarketOpen ? 'bg-emerald-400' : 'bg-red-400'}`} />
-              <span className={`text-[11px] font-semibold uppercase tracking-wider ${isMarketOpen ? 'text-emerald-400' : 'text-red-400'}`}>
-                {isMarketOpen ? 'MERCADO ABERTO' : 'MERCADO FECHADO'}
-              </span>
+            <div className="hidden md:flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                <span className={`w-1.5 h-1.5 rounded-full ${isMarketOpen ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                <span className={`text-[11px] font-semibold uppercase tracking-wider ${isMarketOpen ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {isMarketOpen ? 'MERCADO ABERTO' : 'MERCADO FECHADO'}
+                </span>
+              </div>
+              {showMarketTimer && timeLeft && (
+                <div className="flex items-center gap-1.5 text-[10px] font-medium text-[#8b949e] whitespace-nowrap">
+                  <i className="fa-regular fa-clock text-[9px] text-emerald-400/70" />
+                  <span>Fecha em <span className="font-semibold text-white tabular-nums">{timeLeft}</span></span>
+                </div>
+              )}
             </div>
 
             {/* Avatar ou botão ENTRAR (visitante) */}

@@ -31,6 +31,102 @@ const parseJsonFromGemini = (rawText: string) => {
   return JSON.parse(cleanText);
 };
 
+// Modelos tentados em ordem: se o principal seguir sobrecarregado, cai pro próximo.
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash'];
+// Status transitórios da API do Gemini que valem retry (sobrecarga, rate limit, gateway).
+const TRANSIENT_GEMINI_STATUS = new Set([429, 500, 502, 503, 504]);
+const GEMINI_MAX_ATTEMPTS = 3;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+type GeminiExtractResult =
+  | { ok: true; rawText: string; model: string }
+  | { ok: false; status: number; details: string };
+
+/**
+ * Chama o Gemini para extrair a tabela da imagem com resiliência:
+ * - Retry com backoff exponencial + jitter em erros transitórios (503/429/5xx).
+ * - Fallback automático para o próximo modelo da lista se o atual esgotar as tentativas.
+ * - Erros permanentes (400/401/403/404) falham na hora — retry não ajudaria.
+ */
+async function callGeminiExtract(params: {
+  apiKey: string;
+  prompt: string;
+  mimeType: string;
+  base64: string;
+}): Promise<GeminiExtractResult> {
+  const { apiKey, prompt, mimeType, base64 } = params;
+  const body = JSON.stringify({
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          { text: prompt },
+          { inlineData: { mimeType, data: base64 } }
+        ]
+      }
+    ],
+    generationConfig: {
+      temperature: 0.1,
+      responseMimeType: 'application/json'
+    }
+  });
+
+  let lastStatus = 0;
+  let lastDetails = 'Sem resposta da IA';
+
+  for (const model of GEMINI_MODELS) {
+    for (let attempt = 1; attempt <= GEMINI_MAX_ATTEMPTS; attempt++) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body
+          }
+        );
+
+        if (response.ok) {
+          const data: any = await response.json();
+          const rawText = data?.candidates?.[0]?.content?.parts
+            ?.map((part: any) => part.text || '')
+            .join('') || '';
+          return { ok: true, rawText, model };
+        }
+
+        lastStatus = response.status;
+        lastDetails = await response.text();
+
+        // Erros permanentes: retry e fallback não ajudam, falha imediata.
+        if (!TRANSIENT_GEMINI_STATUS.has(response.status)) {
+          return { ok: false, status: response.status, details: lastDetails };
+        }
+
+        console.warn(
+          `⚠️  Gemini ${model} retornou ${response.status} (tentativa ${attempt}/${GEMINI_MAX_ATTEMPTS}).`
+        );
+      } catch (err) {
+        // Erro de rede/timeout: trata como transitório e tenta de novo.
+        lastStatus = 0;
+        lastDetails = err instanceof Error ? err.message : String(err);
+        console.warn(
+          `⚠️  Falha de rede ao chamar Gemini ${model} (tentativa ${attempt}/${GEMINI_MAX_ATTEMPTS}): ${lastDetails}`
+        );
+      }
+
+      // Backoff exponencial com jitter (1s, 2s, ...), exceto após a última tentativa do modelo.
+      if (attempt < GEMINI_MAX_ATTEMPTS) {
+        const backoff = 1000 * 2 ** (attempt - 1) + Math.floor(Math.random() * 500);
+        await sleep(backoff);
+      }
+    }
+    console.warn(`⚠️  Gemini ${model} esgotou as tentativas. Tentando próximo modelo de fallback...`);
+  }
+
+  return { ok: false, status: lastStatus, details: lastDetails };
+}
+
 const findBestByName = <T extends { id: number | string; name: string; key_name?: string }>(
   inputName: string,
   list: T[],
@@ -372,47 +468,25 @@ export async function extractPerformancesFromImage(req: AuthenticatedRequest, re
       '- Não incluir outros campos além dos solicitados.'
     ].join('\n');
 
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                { text: prompt },
-                {
-                  inlineData: {
-                    mimeType,
-                    data: base64
-                  }
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.1,
-            responseMimeType: 'application/json'
-          }
-        })
-      }
-    );
+    const geminiResult = await callGeminiExtract({
+      apiKey: geminiApiKey,
+      prompt,
+      mimeType,
+      base64
+    });
 
-    if (!geminiResponse.ok) {
-      const err = await geminiResponse.text();
-      return res.status(502).json({
+    if (!geminiResult.ok) {
+      const transient = geminiResult.status === 0 || TRANSIENT_GEMINI_STATUS.has(geminiResult.status);
+      return res.status(transient ? 503 : 502).json({
         success: false,
-        error: 'Falha ao extrair dados da imagem via IA',
-        details: err
+        error: transient
+          ? 'A IA está sobrecarregada no momento. Aguarde alguns instantes e tente enviar o print novamente.'
+          : 'Falha ao extrair dados da imagem via IA',
+        details: geminiResult.details
       });
     }
 
-    const geminiData: any = await geminiResponse.json();
-    const rawText = geminiData?.candidates?.[0]?.content?.parts?.map((part: any) => part.text || '').join('') || '';
+    const rawText = geminiResult.rawText;
     if (!rawText) {
       return res.status(502).json({
         success: false,

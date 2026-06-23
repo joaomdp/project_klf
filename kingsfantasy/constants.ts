@@ -1,7 +1,7 @@
 
 import { Role } from './types';
 
-export const INITIAL_BUDGET = 100.0;
+export const INITIAL_BUDGET = 80.0;
 
 // Versão do Data Dragon (Riot) usada para montar as URLs das imagens de campeões.
 // Mantenha atualizada: campeões novos (ex.: Mel, Yunara, Zaahen) só existem a
@@ -189,4 +189,4 @@ export const CHAMPION_ROLES_MAP: Record<string, Role[]> = {
 };
 
 export const CHAMPIONS_LIST = Object.keys(CHAMPION_ROLES_MAP).sort();
-export const INITIAL_BUDGET_DISPLAY = 100.0;
+export const INITIAL_BUDGET_DISPLAY = 80.0;

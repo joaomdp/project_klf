@@ -645,8 +645,12 @@ export const DataService = {
   },
 
   async getPlayerPickCounts(): Promise<Record<string, number>> {
+    const anonKey = this.getAnonKey();
+    const userToken = this.getUserToken();
     try {
-      const response = await fetch(`${this.API_BASE_URL}/players/pick-counts`);
+      const response = await fetch(`${this.API_BASE_URL}/players/pick-counts`, {
+        headers: buildAuthHeaders(anonKey, userToken)
+      });
       if (!response.ok) return {};
       return await response.json();
     } catch (e) {
